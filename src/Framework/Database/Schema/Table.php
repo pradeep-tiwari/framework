@@ -15,22 +15,17 @@ class Table
         $this->columns = new ColumnCollection();
     }
 
-    public function showDefinition()
-    {
-        print_r($this->columns);
-    }
-
     public function column(string $column, string $type, array $options = [])
     {
-        $this->columns->add($column, $type, $options);
+        $column = new Column($column, $type, $options);
+
+        $this->columns->add($column);
 
         return $this;
     }
 
-    public function create()
+    public function compileCreate()
     {
-        $sql = (new Create)->compile();
-
-        print_r($sql);
+        return (new Create)->compile($this->tableName, $this->columns);
     }
 }

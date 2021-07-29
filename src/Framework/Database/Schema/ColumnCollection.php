@@ -4,14 +4,24 @@ namespace Lightpack\Database\Schema;
 
 class ColumnCollection
 {
+    /**
+     * @var array Lightpack\Database\Schema\Column
+     */
     private $columns = [];
 
-    public function add(string $column, string $type, array $options = [])
+    public function add(Column $column)
     {
-        $this->columns[$column] = ['type' => $type];
-        
-        foreach($options as $key => $value) {
-            $this->columns[$column][$key] = $value;
+        $this->columns[] = $column;
+    }
+
+    public function compile()
+    {
+        $sql = [];
+
+        foreach($this->columns as $column) {
+            $sql[] = $column->compile();
         }
+
+        return implode(', ', $sql);
     }
 }

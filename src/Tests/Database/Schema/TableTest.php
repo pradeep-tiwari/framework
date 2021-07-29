@@ -10,17 +10,14 @@ final class TableTest extends TestCase
     {
         $table = new Table('products');
 
-        $table->column('id', 'int');
-
-        $table->column('title', 'varchar', [
-            'length' => 55,
-        ]);
-
-        $table->column('created_at', 'datetime');
+        $table
+            ->column('id', 'int')
+            ->column('title', 'varchar', ['length' => 55])
+            ->column('created_at', 'datetime');
 
         // Assertion
         $this->assertEquals(
-            $table->compileCreate(), 
+            $table->compileCreate(),
             "CREATE TABLE products (id INT, title VARCHAR(55), created_at DATETIME);"
         );
     }

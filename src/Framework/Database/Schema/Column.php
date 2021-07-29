@@ -25,7 +25,7 @@ class Column
     {
         $this->definition = "{$this->column} {$this->type}";
 
-        if($this->length) {
+        if ($this->length) {
             $this->definition .= "($this->length)";
         }
 
@@ -34,8 +34,8 @@ class Column
 
     private function setOptions(array $options = [])
     {
-        foreach($options as $key => $value) {
-            switch($key) {
+        foreach ($options as $key => $value) {
+            switch ($key) {
                 case 'length':
                     $this->length = $value;
                     break;

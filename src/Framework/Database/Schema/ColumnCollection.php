@@ -18,7 +18,7 @@ class ColumnCollection
     {
         $sql = [];
 
-        foreach($this->columns as $column) {
+        foreach ($this->columns as $column) {
             $sql[] = $column->compile();
         }
 

@@ -17,6 +17,18 @@ class Column
     private $attribute;
     private $collation;
 
+    public const DEFAULT_NULL = 'NULL';
+    public const DEFAULT_CURRENT_TIMESTAMP = 'CURRENT_TIMESTAMP';
+    public const ATTRIBUTE_BINARY = 'BINARY';
+    public const ATTRIBUTE_UNSIGNED = 'UNSIGNED ZEROFILL';
+    public const ATTRIBUTE_UNSIGNED_ZEROFILL = 'BINARY';
+    public const ATTRIBUTE_ON_UPDATE_CURRENT_TIMESTAMP = 'ON UPDATE CURRENT_TIMESTAMP';
+    public const INDEX_PRIMARY = 'PRIMARY KEY';
+    public const INDEX_UNIQUE = 'UNIQUE';
+    public const INDEX_INDEX = 'INDEX';
+    public const INDEX_FULLTEXT = 'FULLTEXT';
+    public const INDEX_SPATIAL = 'SPATIAL';
+
     public function __construct(string $column)
     {
         $this->column = $column;
@@ -47,7 +59,7 @@ class Column
         }
 
         if ($this->default) {
-            if($this->default !== 'NULL' || $this->default !== 'CURRENT_TIMESTAMP') {
+            if($this->default !== 'NULL' && $this->default !== 'CURRENT_TIMESTAMP') {
                 $default = "'{$this->default}'";
             } else {
                 $default = "{$this->default}";

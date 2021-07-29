@@ -10,19 +10,12 @@ final class TableTest extends TestCase
     {
         $table = new Table('products');
 
-        $table->addColumn('title', [
-            'type' => 'varchar',
-            'length' => 55,
-            'default' => 'Untitled',
-            'nullable' => false,
-        ]);
+        $table->column('title', 'varchar');
 
-        $table->addColumn('created_at', [
-            'type' => 'datetime',
-            'default' => 'current_timestamp',
-            'nullable' => false,
-        ]);
+        $table->column('created_at', 'datetime');
 
         $table->showDefinition();
+
+        $table->create();
     }
 }

@@ -2,6 +2,8 @@
 
 namespace Lightpack\Database\Schema;
 
+use Lightpack\Database\Schema\Compilers\Create;
+
 class Table
 {
     protected $tableName;
@@ -18,10 +20,17 @@ class Table
         print_r($this->columns);
     }
 
-    public function addColumn(string $column, array $options)
+    public function column(string $column, string $type, array $options = [])
     {
-        $this->columns->add($column, $options);
+        $this->columns->add($column, $type, $options);
 
         return $this;
+    }
+
+    public function create()
+    {
+        $sql = (new Create)->compile();
+
+        print_r($sql);
     }
 }

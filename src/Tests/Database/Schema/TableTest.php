@@ -53,7 +53,7 @@ final class TableTest extends TestCase
             ->default(Column::DEFAULT_CURRENT_TIMESTAMP);
 
         $table
-            ->foreign('category_id', 'categories')
+            ->foreign('category_id')
             ->references('categories')
             ->on('id')
             ->update('cascade')

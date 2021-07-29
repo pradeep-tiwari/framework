@@ -1,6 +1,7 @@
 <?php
 
 use Lightpack\Database\Schema\Column;
+use Lightpack\Database\Schema\Foreign;
 use PHPUnit\Framework\TestCase;
 use Lightpack\Database\Schema\Table;
 
@@ -56,12 +57,12 @@ final class TableTest extends TestCase
             ->foreign('category_id')
             ->references('categories')
             ->on('id')
-            ->update('cascade')
-            ->delete('cascade');;
+            ->update(Foreign::ACTION_CASCADE)
+            ->delete(Foreign::ACTION_CASCADE);
 
         // Assertion
         $this->assertEquals(
-            "CREATE TABLE products (id INT(6) UNSIGNED AUTO_INCREMENT, category_id INT, title VARCHAR(55) DEFAULT 'Untitled', description TEXT DEFAULT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id), UNIQUE idx_product_title (title), FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE cascade ON UPDATE cascade);",
+            "CREATE TABLE products (id INT(6) UNSIGNED AUTO_INCREMENT, category_id INT, title VARCHAR(55) DEFAULT 'Untitled', description TEXT DEFAULT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id), UNIQUE idx_product_title (title), FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE ON UPDATE CASCADE);",
             $table->compileCreate()
         );
     }

@@ -10,6 +10,11 @@ class Foreign
     private $updateAction;
     private $deleteAction;
 
+    public const ACTION_CASCADE = 'CASCADE';
+    public const ACTION_RESTRICT = 'RESTRICT';
+    public const ACTION_SET_NULL = 'SET_NULL';
+    public const ACTION_NONE = 'NO ACTION';
+
     public function __construct(string $foreignKey = null)
     {
         $this->foreignKey = $foreignKey;

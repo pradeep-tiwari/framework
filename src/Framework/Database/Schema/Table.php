@@ -13,6 +13,7 @@ class Table
     {
         $this->table = $table;
         $this->columns = new ColumnsCollection();
+        $this->foreigns = new ForeignsCollection();
     }
 
     public function column(string $column): Column
@@ -26,11 +27,15 @@ class Table
 
     public function foreign(string $column): Foreign
     {
-        return new Foreign($column);
+        $foreign = new Foreign($column);
+
+        $this->foreigns->add($foreign);
+
+        return $foreign;
     }
 
     public function compileCreate()
     {
-        return (new Create)->compile($this->table, $this->columns);
+        return (new Create)->compile($this->table, $this->columns, $this->foreigns);
     }
 }

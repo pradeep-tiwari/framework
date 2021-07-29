@@ -5,7 +5,7 @@ namespace Lightpack\Database\Schema;
 class Foreign
 {
     private $foreignKey;
-    private $referenceTable;
+    private $parentTable;
     private $parentColumn;
     private $updateAction;
     private $deleteAction;
@@ -17,7 +17,7 @@ class Foreign
 
     public function references(string $table): self
     {
-        $this->referenceTable = $table;
+        $this->parentTable = $table;
 
         return $this;
     }
@@ -41,5 +41,21 @@ class Foreign
         $this->deleteAction = $action;
         
         return $this;
+    }
+
+    public function compile()
+    {
+        $constraint[] = "FOREIGN KEY ({$this->foreignKey})";
+        $constraint[] = "REFERENCES {$this->parentTable}({$this->parentColumn})";
+
+        if($this->deleteAction) {
+            $constraint[] = "ON DELETE {$this->deleteAction}";
+        }
+
+        if($this->updateAction) {
+            $constraint[] = "ON UPDATE {$this->updateAction}";
+        }
+
+        return implode(' ', $constraint);
     }
 }

@@ -15,13 +15,13 @@ class Table
         $this->columns = new ColumnCollection();
     }
 
-    public function column(string $column, string $type, array $options = [])
+    public function column(string $column): Column
     {
-        $column = new Column($column, $type, $options);
+        $column = new Column($column);
 
         $this->columns->add($column);
 
-        return $this;
+        return $column;
     }
 
     public function compileCreate()

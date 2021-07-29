@@ -10,15 +10,14 @@ final class TableTest extends TestCase
     {
         $table = new Table('products');
 
-        $table
-            ->column('id', 'int')
-            ->column('title', 'varchar', ['length' => 55])
-            ->column('created_at', 'datetime');
+        $table->column('id')->type('int')->length(6)->increments(true)->attribute('unsigned')->index('primary key');
+        $table->column('title')->type('varchar')->length(55)->index('unique')->default('Untitled');
+        $table->column('created_at')->type('datetime');
 
         // Assertion
         $this->assertEquals(
-            $table->compileCreate(),
-            "CREATE TABLE products (id INT, title VARCHAR(55), created_at DATETIME);"
+            "CREATE TABLE products (id INT, title VARCHAR(55), created_at DATETIME);",
+            $table->compileCreate()
         );
     }
 }

@@ -6,13 +6,13 @@ use Lightpack\Database\Schema\Compilers\Create;
 
 class Table
 {
-    protected $tableName;
+    protected $table;
     protected $columns;
 
-    public function __construct(string $tableName)
+    public function __construct(string $table)
     {
-        $this->tableName = $tableName;
-        $this->columns = new ColumnCollection();
+        $this->table = $table;
+        $this->columns = new ColumnsCollection();
     }
 
     public function column(string $column): Column
@@ -26,6 +26,6 @@ class Table
 
     public function compileCreate()
     {
-        return (new Create)->compile($this->tableName, $this->columns);
+        return (new Create)->compile($this->table, $this->columns);
     }
 }

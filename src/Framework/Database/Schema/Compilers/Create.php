@@ -2,11 +2,11 @@
 
 namespace Lightpack\Database\Schema\Compilers;
 
-use Lightpack\Database\Schema\ColumnCollection;
+use Lightpack\Database\Schema\ColumnsCollection;
 
 class Create
 {
-    public function compile(string $table, ColumnCollection $columns)
+    public function compile(string $table, ColumnsCollection $columns)
     {
         $sql = "CREATE TABLE {$table} (";
         $sql .= $columns->compile();

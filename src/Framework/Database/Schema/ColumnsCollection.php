@@ -2,7 +2,7 @@
 
 namespace Lightpack\Database\Schema;
 
-class ColumnCollection
+class ColumnsCollection
 {
     /**
      * @var array Lightpack\Database\Schema\Column
@@ -16,12 +16,17 @@ class ColumnCollection
 
     public function compile()
     {
-        $sql = [];
+        $columns = [];
+        $indexes = [];
 
         foreach ($this->columns as $column) {
-            $sql[] = $column->compile();
+            $columns[] = $column->compileColumn();
+
+            if($index = $column->compileIndex()) {
+                $indexes[] = $index;
+            }
         }
 
-        return implode(', ', $sql);
+        return implode(', ', array_merge($columns, $indexes));
     }
 }

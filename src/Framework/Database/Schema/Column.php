@@ -13,9 +13,9 @@ class Column
     private $default;
     private $nullable;
     private $index;
+    private $indexName;
     private $increments = false;
     private $attribute;
-    private $collation;
 
     public const DEFAULT_NULL = 'NULL';
     public const DEFAULT_CURRENT_TIMESTAMP = 'CURRENT_TIMESTAMP';
@@ -34,50 +34,13 @@ class Column
         $this->column = $column;
     }
 
-    public function compile()
-    {
-        $this->definition = "{$this->column} {$this->type}";
-
-        if ($this->length) {
-            $this->definition .= "($this->length)";
-        }
-
-        if ($this->attribute) {
-            $this->definition .= " {$this->attribute}";
-        }
-
-        if ($this->increments) {
-            $this->definition .= " AUTO_INCREMENT";
-        }
-
-        if ($this->index) {
-            $this->definition .= " {$this->index}";
-        }
-
-        if ($this->nullable) {
-            $this->definition .= " NULL";
-        }
-
-        if ($this->default) {
-            if($this->default !== 'NULL' && $this->default !== 'CURRENT_TIMESTAMP') {
-                $default = "'{$this->default}'";
-            } else {
-                $default = "{$this->default}";
-            }
-
-            $this->definition .= " DEFAULT {$default}";
-        }
-
-        return $this->definition;
-    }
-
     public function type(string $type): self
     {
         $this->type = strtoupper($type);
 
         return $this;
     }
-    
+
     public function length(int $length): self
     {
         $this->length = $length;
@@ -85,16 +48,20 @@ class Column
         return $this;
     }
 
-    public function nullable(bool $flag): self
+    public function nullable(): self
     {
-        $this->nullable = $flag;
+        $this->nullable = true;
 
         return $this;
     }
 
-    public function index(string $index): self
+    public function index(string $index, string $name = null): self
     {
         $this->index = strtoupper($index);
+
+        if ($name) {
+            $this->indexName = $name;
+        }
 
         return $this;
     }
@@ -113,17 +80,60 @@ class Column
         return $this;
     }
 
-    public function collation(string $collation): self
-    {
-        $this->collation = $collation;
-
-        return $this;
-    }
-
     public function default(string $default): self
     {
         $this->default = $default;
 
         return $this;
+    }
+
+    public function compileIndex()
+    {
+        if (!$this->index) {
+            return null;
+        }
+
+        $index = "{$this->index}";
+
+        if ($this->indexName) {
+            $index .= " $this->indexName";
+        }
+
+        $index .= " ($this->column)";
+
+        return $index;
+    }
+
+    public function compileColumn()
+    {
+        $column = "{$this->column} {$this->type}";
+
+        if ($this->length) {
+            $column .= "($this->length)";
+        }
+
+        if ($this->attribute) {
+            $column .= " {$this->attribute}";
+        }
+
+        if ($this->increments) {
+            $column .= " AUTO_INCREMENT";
+        }
+
+        if ($this->nullable) {
+            $column .= " NULL";
+        }
+
+        if ($this->default) {
+            if ($this->default !== 'NULL' && $this->default !== 'CURRENT_TIMESTAMP') {
+                $default = "'{$this->default}'";
+            } else {
+                $default = "{$this->default}";
+            }
+
+            $column .= " DEFAULT {$default}";
+        }
+
+        return $column;
     }
 }

@@ -24,6 +24,11 @@ class Table
         return $column;
     }
 
+    public function foreign(string $column): Foreign
+    {
+        return new Foreign($column);
+    }
+
     public function compileCreate()
     {
         return (new Create)->compile($this->table, $this->columns);

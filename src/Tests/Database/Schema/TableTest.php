@@ -37,6 +37,13 @@ final class TableTest extends TestCase
             ->type('datetime')
             ->default(Column::DEFAULT_CURRENT_TIMESTAMP);
 
+        $table
+            ->foreign('category_id', 'categories')
+            ->references('categories')
+            ->on('id')
+            ->update('cascade')
+            ->delete('cascade');;
+
         print_r($table->compileCreate());
 
         // Assertion

@@ -80,4 +80,18 @@ final class TableTest extends TestCase
             $table->compileAdd()
         );
     }
+
+    public function testCanAlterTableChangeColumns()
+    {
+        $table = new Table('products');
+
+        $table->column('title')->type('varchar')->length(150)->nullable(false);
+        $table->column('description')->type('text');
+
+        // Assertion
+        $this->assertEquals(
+            "ALTER TABLE products CHANGE title title VARCHAR(150) NULL, CHANGE description description TEXT;",
+            $table->compileChange()
+        );
+    }
 }

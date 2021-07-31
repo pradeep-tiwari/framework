@@ -30,27 +30,27 @@ class ColumnsCollection
         $indexes = [];
 
         foreach ($this->columns as $column) {
-            $columns[] = $column->compileColumn();
+            $columns[$column->getColumnName()] = $column->compileColumn();
 
             if($index = $column->compileIndex()) {
                 $indexes[] = $index;
             }
         }
 
-        if($this->context === 'create') {
-            $result = implode(', ', array_merge($columns, $indexes));
-        }
+        $elements = array_merge($columns, $indexes);
 
         if($this->context === 'add') {
-            $elements = array_merge($columns, $indexes);
-
             foreach($elements as $key => $value) {
                 $elements[$key] = "ADD {$value}";
             }
-
-            $result = implode(', ', $elements);
         }
 
-        return $result ?? null;
+        if($this->context === 'change') {
+            foreach($elements as $key => $value) {
+                $elements[$key] = "CHANGE {$key} {$value}";
+            }
+        }
+
+        return implode(', ', $elements);
     }
 }

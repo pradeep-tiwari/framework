@@ -136,4 +136,9 @@ class Column
 
         return $column;
     }
+
+    public function getColumnName()
+    {
+        return $this->column;
+    }
 }

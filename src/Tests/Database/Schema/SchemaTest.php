@@ -35,6 +35,15 @@ final class SchemaTest extends TestCase
         $this->assertTrue(in_array('products', $this->getTables()));
     }
 
+    public function testSchemaCanAlterTableAddColumn()
+    {
+        $table = new Table('products');
+
+        $table->column('description')->type('text');
+
+        $this->schema->add($table);
+    }
+
     private function getTables()
     {
         $tables = [];

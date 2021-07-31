@@ -29,4 +29,17 @@ class Schema
 
         $this->connection->query($sql);
     }
+
+    /**
+     * Alter table add columns.
+     *
+     * @param Table $table
+     * @return void
+     */
+    public function add(Table $table): void
+    {
+        $sql = $table->compileAdd();
+
+        $this->connection->query($sql);
+    }
 }

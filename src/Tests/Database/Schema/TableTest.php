@@ -66,4 +66,18 @@ final class TableTest extends TestCase
             $table->compileCreate()
         );
     }
+
+    public function testCanAlterTableAddColumns()
+    {
+        $table = new Table('products');
+
+        $table->column('x')->type('int');
+        $table->column('y')->type('int');
+
+        // Assertion
+        $this->assertEquals(
+            "ALTER TABLE products ADD x INT, ADD y INT;",
+            $table->compileAdd()
+        );
+    }
 }

@@ -3,6 +3,7 @@
 namespace Lightpack\Database\Schema;
 
 use Lightpack\Database\Schema\Compilers\Add;
+use Lightpack\Database\Schema\Compilers\Drop;
 use Lightpack\Database\Schema\Compilers\Change;
 use Lightpack\Database\Schema\Compilers\Create;
 
@@ -49,5 +50,10 @@ class Table
     public function compileChange()
     {
         return (new Change)->compile($this->table, $this->columns, $this->foreigns);
+    }
+
+    public function compileDropColumns(string ...$columns)
+    {
+        return (new Drop)->compile($this->table, ...$columns);
     }
 }

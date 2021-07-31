@@ -94,4 +94,15 @@ final class TableTest extends TestCase
             $table->compileChange()
         );
     }
+
+    public function testCanAlterTableDropColumns()
+    {
+        $table = new Table('products');
+
+        // Assertion
+        $this->assertEquals(
+            "ALTER TABLE products DROP title, DROP description;",
+            $table->compileDropColumns('title', 'description')
+        );
+    }
 }

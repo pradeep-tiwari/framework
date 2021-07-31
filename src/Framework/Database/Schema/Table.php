@@ -2,7 +2,7 @@
 
 namespace Lightpack\Database\Schema;
 
-use Lightpack\Database\Schema\Compilers\Alter;
+use Lightpack\Database\Schema\Compilers\Add;
 use Lightpack\Database\Schema\Compilers\Create;
 
 class Table
@@ -42,6 +42,11 @@ class Table
 
     public function compileAdd()
     {
-        return (new Alter)->compile($this->table, $this->columns, $this->foreigns);
+        return (new Add)->compile($this->table, $this->columns, $this->foreigns);
+    }
+
+    public function compileChange()
+    {
+        return (new Add)->compile($this->table, $this->columns, $this->foreigns);
     }
 }

@@ -6,6 +6,7 @@ use Lightpack\Database\Schema\Compilers\Add;
 use Lightpack\Database\Schema\Compilers\Drop;
 use Lightpack\Database\Schema\Compilers\Change;
 use Lightpack\Database\Schema\Compilers\Create;
+use Lightpack\Database\Schema\Compilers\Truncate;
 
 class Table
 {
@@ -55,5 +56,10 @@ class Table
     public function compileDropColumns(string ...$columns)
     {
         return (new Drop)->compile($this->table, ...$columns);
+    }
+
+    public function compileTruncate()
+    {
+        return (new Truncate)->compile($this->table);
     }
 }

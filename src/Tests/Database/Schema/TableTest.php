@@ -105,4 +105,14 @@ final class TableTest extends TestCase
             $table->compileDropColumns('title', 'description')
         );
     }
+
+    public function testCanTruncateTable()
+    {
+        $table = new Table('products');
+
+        $this->assertEquals(
+            "TRUNCATE products;",
+            $table->compileTruncate()
+        );
+    }
 }

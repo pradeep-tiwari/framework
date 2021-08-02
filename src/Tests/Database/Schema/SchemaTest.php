@@ -53,6 +53,13 @@ final class SchemaTest extends TestCase
         $this->assertEquals(0, $count['count']);
     }
 
+    public function testSchemaCanDropTable()
+    {
+        $this->schema->drop('products');
+
+        $this->assertFalse(in_array('products', $this->getTables()));
+    }
+
     private function getTables()
     {
         $tables = [];

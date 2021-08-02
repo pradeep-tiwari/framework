@@ -3,6 +3,7 @@
 namespace Lightpack\Database\Schema;
 
 use Lightpack\Database\Pdo;
+use Lightpack\Database\Schema\Compilers\DropTable;
 use Lightpack\Database\Schema\Table;
 
 class Schema
@@ -54,6 +55,13 @@ class Schema
         $table = new Table($table);
 
         $sql = $table->compileTruncate();
+
+        $this->connection->query($sql);   
+    }
+
+    public function drop(string $table): void
+    {
+        $sql = (new DropTable)->compile($table);
 
         $this->connection->query($sql);   
     }

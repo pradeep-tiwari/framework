@@ -42,4 +42,19 @@ class Schema
 
         $this->connection->query($sql);
     }
+
+    /**
+     * Truncate a table.
+     *
+     * @param string $table
+     * @return void
+     */
+    public function truncate(string $table): void
+    {
+        $table = new Table($table);
+
+        $sql = $table->compileTruncate();
+
+        $this->connection->query($sql);   
+    }
 }

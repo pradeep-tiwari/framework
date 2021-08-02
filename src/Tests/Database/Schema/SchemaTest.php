@@ -44,6 +44,15 @@ final class SchemaTest extends TestCase
         $this->schema->add($table);
     }
 
+    public function testSchemaCanTruncateTable()
+    {
+        $this->schema->truncate('products');
+
+        $count = $this->connection->query("SELECT COUNT(*) AS count FROM products")->fetch();
+
+        $this->assertEquals(0, $count['count']);
+    }
+
     private function getTables()
     {
         $tables = [];

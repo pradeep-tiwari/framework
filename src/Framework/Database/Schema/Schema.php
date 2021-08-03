@@ -56,13 +56,19 @@ class Schema
 
         $sql = $table->compileTruncate();
 
-        $this->connection->query($sql);   
+        $this->connection->query($sql);
     }
 
+    /**
+     * Drop a table.
+     *
+     * @param string $table
+     * @return void
+     */
     public function drop(string $table): void
     {
         $sql = (new DropTable)->compile($table);
 
-        $this->connection->query($sql);   
+        $this->connection->query($sql);
     }
 }

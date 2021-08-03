@@ -47,19 +47,6 @@ class Schema
     }
 
     /**
-     * Drop a table.
-     *
-     * @param string $table
-     * @return void
-     */
-    public function drop(string $table): void
-    {
-        $sql = (new DropTable)->compile($table);
-
-        $this->connection->query($sql);
-    }
-
-    /**
      * Create a new table.
      *
      * @param Table $table
@@ -80,7 +67,9 @@ class Schema
      */
     public function dropTable(string $table): void
     {
-        // todo...
+        $sql = (new DropTable)->compile($table);
+
+        $this->connection->query($sql);
     }
 
     /**

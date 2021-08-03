@@ -55,7 +55,7 @@ final class SchemaTest extends TestCase
 
     public function testSchemaCanDropTable()
     {
-        $this->schema->drop('products');
+        $this->schema->dropTable('products');
 
         $this->assertFalse(in_array('products', $this->getTables()));
     }

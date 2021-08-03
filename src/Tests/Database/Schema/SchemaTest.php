@@ -46,7 +46,7 @@ final class SchemaTest extends TestCase
 
     public function testSchemaCanTruncateTable()
     {
-        $this->schema->truncate('products');
+        $this->schema->truncateTable('products');
 
         $count = $this->connection->query("SELECT COUNT(*) AS count FROM products")->fetch();
 

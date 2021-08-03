@@ -32,21 +32,6 @@ class Schema
     }
 
     /**
-     * Truncate a table.
-     *
-     * @param string $table
-     * @return void
-     */
-    public function truncate(string $table): void
-    {
-        $table = new Table($table);
-
-        $sql = $table->compileTruncate();
-
-        $this->connection->query($sql);
-    }
-
-    /**
      * Create a new table.
      *
      * @param Table $table
@@ -80,7 +65,11 @@ class Schema
      */
     public function truncateTable(string $table): void
     {
-        // todo...
+        $table = new Table($table);
+
+        $sql = $table->compileTruncate();
+
+        $this->connection->query($sql);
     }
 
     /**

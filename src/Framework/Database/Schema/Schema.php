@@ -81,7 +81,9 @@ class Schema
      */
     public function dropColumn(string $table, string ...$columns): void
     {
-        // todo...
+        $sql = (new Table($table))->compileDropColumns(...$columns);
+
+        $this->connection->query($sql);
     }
 
     /**

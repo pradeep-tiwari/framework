@@ -71,4 +71,71 @@ class Schema
 
         $this->connection->query($sql);
     }
+
+    /**
+     * Create a new table.
+     *
+     * @param Table $table
+     * @return void
+     */
+    public function createTable(Table $table): void
+    {
+        // todo...
+    }
+
+    /**
+     * Drop a table.
+     *
+     * @param string $table
+     * @return void
+     */
+    public function dropTable(string $table): void
+    {
+        // todo...
+    }
+
+    /**
+     * Truncate a table.
+     *
+     * @param string $table
+     * @return void
+     */
+    public function truncateTable(string $table): void
+    {
+        // todo...
+    }
+
+    /**
+     * Add column in a table.
+     *
+     * @param Table $table
+     * @return void
+     */
+    public function addColumn(Table $table): void
+    {
+        // todo...
+    }
+
+    /**
+     * Drop columns in a table.
+     *
+     * @param string $table
+     * @param string ...$columns
+     * @return void
+     */
+    public function dropColumn(string $table, string ...$columns): void
+    {
+        // todo...
+    }
+
+    /**
+     * Modify a column.
+     *
+     * @param Table $table
+     * @return void
+     */
+    public function modifyColumn(Table $table): void
+    {
+        // todo...
+    }
 }

@@ -41,7 +41,7 @@ final class SchemaTest extends TestCase
 
         $table->column('description')->type('text');
 
-        $this->schema->add($table);
+        $this->schema->addColumn($table);
     }
 
     public function testSchemaCanTruncateTable()

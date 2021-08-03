@@ -19,19 +19,6 @@ class Schema
     }
 
     /**
-     * Alter table add columns.
-     *
-     * @param Table $table
-     * @return void
-     */
-    public function add(Table $table): void
-    {
-        $sql = $table->compileAdd();
-
-        $this->connection->query($sql);
-    }
-
-    /**
      * Create a new table.
      *
      * @param Table $table
@@ -73,14 +60,16 @@ class Schema
     }
 
     /**
-     * Add column in a table.
+     * Alter table add columns.
      *
      * @param Table $table
      * @return void
      */
     public function addColumn(Table $table): void
     {
-        // todo...
+        $sql = $table->compileAdd();
+
+        $this->connection->query($sql);
     }
 
     /**

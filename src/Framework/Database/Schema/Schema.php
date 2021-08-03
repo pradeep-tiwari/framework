@@ -19,19 +19,6 @@ class Schema
     }
 
     /**
-     * Create a new table.
-     *
-     * @param Table $table
-     * @return void
-     */
-    public function create(Table $table): void
-    {
-        $sql = $table->compileCreate();
-
-        $this->connection->query($sql);
-    }
-
-    /**
      * Alter table add columns.
      *
      * @param Table $table
@@ -80,7 +67,9 @@ class Schema
      */
     public function createTable(Table $table): void
     {
-        // todo...
+        $sql = $table->compileCreate();
+
+        $this->connection->query($sql);
     }
 
     /**

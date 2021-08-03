@@ -30,7 +30,7 @@ final class SchemaTest extends TestCase
         $table->column('id')->type('int')->increments(true)->index(Column::INDEX_PRIMARY);
         $table->column('title')->type('varchar')->length(55);
 
-        $this->schema->create($table);
+        $this->schema->createTable($table);
         
         $this->assertTrue(in_array('products', $this->getTables()));
     }

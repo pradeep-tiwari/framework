@@ -94,6 +94,8 @@ class Schema
      */
     public function modifyColumn(Table $table): void
     {
-        // todo...
+        $sql = $table->compileChange();
+
+        $this->connection->query($sql);
     }
 }

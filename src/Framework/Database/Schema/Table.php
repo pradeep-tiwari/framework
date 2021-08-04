@@ -48,11 +48,6 @@ class Table
         return (new Drop)->compile($this->table, ...$columns);
     }
 
-    public function compileTruncate()
-    {
-        return (new Truncate)->compile($this->table);
-    }
-
     public function columns(): ColumnsCollection
     {
         return $this->columns;

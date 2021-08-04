@@ -3,6 +3,7 @@
 namespace Lightpack\Database\Schema;
 
 use Lightpack\Database\Pdo;
+use Lightpack\Database\Schema\Compilers\AddColumn;
 use Lightpack\Database\Schema\Compilers\CreateTable;
 use Lightpack\Database\Schema\Compilers\DropTable;
 use Lightpack\Database\Schema\Compilers\TruncateTable;
@@ -67,7 +68,7 @@ class Schema
      */
     public function addColumn(Table $table): void
     {
-        $sql = $table->compileAdd();
+        $sql = (new AddColumn)->compile($table);
 
         $this->connection->query($sql);
     }

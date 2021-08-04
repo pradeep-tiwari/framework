@@ -3,6 +3,8 @@
 namespace Lightpack\Database\Schema;
 
 use Lightpack\Database\Pdo;
+use Lightpack\Database\Schema\Compilers\Create;
+use Lightpack\Database\Schema\Compilers\CreateTable;
 use Lightpack\Database\Schema\Compilers\DropTable;
 use Lightpack\Database\Schema\Table;
 
@@ -26,7 +28,7 @@ class Schema
      */
     public function createTable(Table $table): void
     {
-        $sql = $table->compileCreate();
+        $sql = (new CreateTable)->compile($table);
 
         $this->connection->query($sql);
     }

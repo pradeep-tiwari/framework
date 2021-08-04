@@ -62,4 +62,19 @@ class Table
     {
         return (new Truncate)->compile($this->table);
     }
+
+    public function columns(): ColumnsCollection
+    {
+        return $this->columns;
+    }
+
+    public function keys(): ForeignsCollection
+    {
+        return $this->foreigns;
+    }
+
+    public function name()
+    {
+        return $this->table;
+    }
 }

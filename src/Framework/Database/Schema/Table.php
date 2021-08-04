@@ -38,11 +38,6 @@ class Table
         return $foreign;
     }
 
-    public function compileAdd()
-    {
-        return (new Add)->compile($this->table, $this->columns, $this->foreigns);
-    }
-
     public function compileChange()
     {
         return (new Change)->compile($this->table, $this->columns, $this->foreigns);

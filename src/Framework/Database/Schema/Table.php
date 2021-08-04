@@ -38,11 +38,6 @@ class Table
         return $foreign;
     }
 
-    public function compileChange()
-    {
-        return (new Change)->compile($this->table, $this->columns, $this->foreigns);
-    }
-
     public function columns(): ColumnsCollection
     {
         return $this->columns;

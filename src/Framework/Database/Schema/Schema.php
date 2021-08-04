@@ -3,14 +3,13 @@
 namespace Lightpack\Database\Schema;
 
 use Lightpack\Database\Pdo;
+use Lightpack\Database\Schema\Table;
 use Lightpack\Database\Schema\Compilers\AddColumn;
-use Lightpack\Database\Schema\Compilers\ChangeColumn;
-use Lightpack\Database\Schema\Compilers\CreateTable;
-use Lightpack\Database\Schema\Compilers\DropColumn;
 use Lightpack\Database\Schema\Compilers\DropTable;
+use Lightpack\Database\Schema\Compilers\DropColumn;
+use Lightpack\Database\Schema\Compilers\CreateTable;
 use Lightpack\Database\Schema\Compilers\ModifyColumn;
 use Lightpack\Database\Schema\Compilers\TruncateTable;
-use Lightpack\Database\Schema\Table;
 
 class Schema
 {

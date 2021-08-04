@@ -43,11 +43,6 @@ class Table
         return (new Change)->compile($this->table, $this->columns, $this->foreigns);
     }
 
-    public function compileDropColumns(string ...$columns)
-    {
-        return (new Drop)->compile($this->table, ...$columns);
-    }
-
     public function columns(): ColumnsCollection
     {
         return $this->columns;

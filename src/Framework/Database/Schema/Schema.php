@@ -3,9 +3,9 @@
 namespace Lightpack\Database\Schema;
 
 use Lightpack\Database\Pdo;
-use Lightpack\Database\Schema\Compilers\Create;
 use Lightpack\Database\Schema\Compilers\CreateTable;
 use Lightpack\Database\Schema\Compilers\DropTable;
+use Lightpack\Database\Schema\Compilers\TruncateTable;
 use Lightpack\Database\Schema\Table;
 
 class Schema
@@ -54,9 +54,7 @@ class Schema
      */
     public function truncateTable(string $table): void
     {
-        $table = new Table($table);
-
-        $sql = $table->compileTruncate();
+        $sql = (new TruncateTable)->compile($table);
 
         $this->connection->query($sql);
     }

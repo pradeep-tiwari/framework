@@ -6,16 +6,15 @@ use RuntimeException;
 
 class Column
 {
-    private $column;
-    private $type;
-    private $length;
-    private $values;
-    private $default;
-    private $nullable;
-    private $index;
-    private $indexName;
-    private $increments = false;
-    private $attribute;
+    private $columnName;
+    private $columnType;
+    private $columnLength;
+    private $columnDefaultValue;
+    private $columnIsNullable;
+    private $columnIndexType;
+    private $columnIndexName;
+    private $columnIncrements = false;
+    private $columnAttribute;
 
     public const DEFAULT_NULL = 'NULL';
     public const DEFAULT_CURRENT_TIMESTAMP = 'CURRENT_TIMESTAMP';
@@ -29,106 +28,106 @@ class Column
     public const INDEX_FULLTEXT = 'FULLTEXT';
     public const INDEX_SPATIAL = 'SPATIAL';
 
-    public function __construct(string $column)
+    public function __construct(string $columnName)
     {
-        $this->column = $column;
+        $this->columnName = $columnName;
     }
 
-    public function type(string $type): self
+    public function type(string $columnType): self
     {
-        $this->type = strtoupper($type);
+        $this->columnType = strtoupper($columnType);
 
         return $this;
     }
 
-    public function length(int $length): self
+    public function length(int $columnLength): self
     {
-        $this->length = $length;
+        $this->columnLength = $columnLength;
 
         return $this;
     }
 
     public function nullable(): self
     {
-        $this->nullable = true;
+        $this->columnIsNullable = true;
 
         return $this;
     }
 
-    public function index(string $index, string $name = null): self
+    public function index(string $indexType, string $indexName = null): self
     {
-        $this->index = strtoupper($index);
+        $this->columnIndexType = strtoupper($indexType);
 
-        if ($name) {
-            $this->indexName = $name;
+        if ($indexName) {
+            $this->columnIndexName = $indexName;
         }
 
         return $this;
     }
 
-    public function increments(bool $flag): self
+    public function increments(): self
     {
-        $this->increments = $flag;
+        $this->columnIncrements = true;
 
         return $this;
     }
 
-    public function attribute(string $attribute): self
+    public function attribute(string $columnAttribute): self
     {
-        $this->attribute = strtoupper($attribute);
+        $this->columnAttribute = strtoupper($columnAttribute);
 
         return $this;
     }
 
-    public function default(string $default): self
+    public function default(string $value): self
     {
-        $this->default = $default;
+        $this->columnDefaultValue = $value;
 
         return $this;
     }
 
     public function compileIndex()
     {
-        if (!$this->index) {
+        if (!$this->columnIndexType) {
             return null;
         }
 
-        $index = "{$this->index}";
+        $index = "{$this->columnIndexType}";
 
-        if ($this->indexName) {
-            $index .= " $this->indexName";
+        if ($this->columnIndexName) {
+            $index .= " $this->columnIndexName";
         }
 
-        $index .= " ($this->column)";
+        $index .= " ($this->columnName)";
 
         return $index;
     }
 
     public function compileColumn()
     {
-        $column = "{$this->column} {$this->type}";
+        $column = "{$this->columnName} {$this->columnType}";
 
-        if ($this->length) {
-            $column .= "($this->length)";
+        if ($this->columnLength) {
+            $column .= "($this->columnLength)";
         }
 
-        if ($this->attribute) {
-            $column .= " {$this->attribute}";
+        if ($this->columnAttribute) {
+            $column .= " {$this->columnAttribute}";
         }
 
-        if ($this->increments) {
+        if ($this->columnIncrements) {
             $column .= " AUTO_INCREMENT";
         }
 
-        if ($this->nullable) {
+        if ($this->columnIsNullable) {
             $column .= " NULL";
         }
 
-        if ($this->default) {
-            if ($this->default !== 'NULL' && $this->default !== 'CURRENT_TIMESTAMP') {
-                $default = "'{$this->default}'";
+        if ($this->columnDefaultValue) {
+            if ($this->columnDefaultValue !== 'NULL' && $this->columnDefaultValue !== 'CURRENT_TIMESTAMP') {
+                $default = "'{$this->columnDefaultValue}'";
             } else {
-                $default = "{$this->default}";
+                $default = "{$this->columnDefaultValue}";
             }
 
             $column .= " DEFAULT {$default}";
@@ -137,8 +136,8 @@ class Column
         return $column;
     }
 
-    public function getColumnName()
+    public function name()
     {
-        return $this->column;
+        return $this->columnName;
     }
 }

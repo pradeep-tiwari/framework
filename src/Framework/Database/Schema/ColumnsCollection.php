@@ -30,7 +30,7 @@ class ColumnsCollection
         $indexes = [];
 
         foreach ($this->columns as $column) {
-            $columns[$column->getColumnName()] = $column->compileColumn();
+            $columns[$column->name()] = $column->compileColumn();
 
             if($index = $column->compileIndex()) {
                 $indexes[] = $index;

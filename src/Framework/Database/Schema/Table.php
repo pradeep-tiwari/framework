@@ -12,7 +12,7 @@ class Table
     {
         $this->tableName = $tableName;
         $this->columns = new ColumnsCollection();
-        $this->keys = new ForeignsCollection();
+        $this->keys = new KeysCollection();
     }
 
     public function column(string $column): Column

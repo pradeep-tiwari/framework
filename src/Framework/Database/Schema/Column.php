@@ -2,8 +2,6 @@
 
 namespace Lightpack\Database\Schema;
 
-use RuntimeException;
-
 class Column
 {
     private $columnName;

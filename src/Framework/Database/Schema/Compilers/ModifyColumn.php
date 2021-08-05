@@ -2,8 +2,6 @@
 
 namespace Lightpack\Database\Schema\Compilers;
 
-use Lightpack\Database\Schema\ColumnsCollection;
-use Lightpack\Database\Schema\ForeignsCollection;
 use Lightpack\Database\Schema\Table;
 
 class ModifyColumn

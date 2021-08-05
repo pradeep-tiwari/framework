@@ -2,12 +2,6 @@
 
 namespace Lightpack\Database\Schema;
 
-use Lightpack\Database\Schema\Compilers\Add;
-use Lightpack\Database\Schema\Compilers\Drop;
-use Lightpack\Database\Schema\Compilers\Change;
-use Lightpack\Database\Schema\Compilers\Create;
-use Lightpack\Database\Schema\Compilers\Truncate;
-
 class Table
 {
     protected $table;

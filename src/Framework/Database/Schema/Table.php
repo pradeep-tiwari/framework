@@ -4,14 +4,15 @@ namespace Lightpack\Database\Schema;
 
 class Table
 {
-    protected $table;
+    protected $tableName;
     protected $columns;
+    protected $keys;
 
-    public function __construct(string $table)
+    public function __construct(string $tableName)
     {
-        $this->table = $table;
+        $this->tableName = $tableName;
         $this->columns = new ColumnsCollection();
-        $this->foreigns = new ForeignsCollection();
+        $this->keys = new ForeignsCollection();
     }
 
     public function column(string $column): Column
@@ -27,7 +28,7 @@ class Table
     {
         $foreign = new Foreign($column);
 
-        $this->foreigns->add($foreign);
+        $this->keys->add($foreign);
 
         return $foreign;
     }
@@ -39,11 +40,11 @@ class Table
 
     public function keys(): ForeignsCollection
     {
-        return $this->foreigns;
+        return $this->keys;
     }
 
     public function name()
     {
-        return $this->table;
+        return $this->tableName;
     }
 }

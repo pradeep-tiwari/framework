@@ -24,9 +24,9 @@ class Table
         return $column;
     }
 
-    public function foreign(string $column): Foreign
+    public function foreign(string $column): Key
     {
-        $foreign = new Foreign($column);
+        $foreign = new Key($column);
 
         $this->keys->add($foreign);
 
@@ -38,7 +38,7 @@ class Table
         return $this->columns;
     }
 
-    public function keys(): ForeignsCollection
+    public function keys(): KeysCollection
     {
         return $this->keys;
     }

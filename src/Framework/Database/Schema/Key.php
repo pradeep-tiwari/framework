@@ -2,7 +2,7 @@
 
 namespace Lightpack\Database\Schema;
 
-class Foreign
+class Key
 {
     private $foreignKey;
     private $parentTable;

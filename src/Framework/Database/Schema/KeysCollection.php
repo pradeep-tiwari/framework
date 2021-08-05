@@ -5,21 +5,21 @@ namespace Lightpack\Database\Schema;
 class KeysCollection
 {
     /**
-     * @var array Lightpack\Database\Schema\Foreign
+     * @var array Lightpack\Database\Schema\Key
      */
     private $keys = [];
 
-    public function add(Foreign $foreign)
+    public function add(Key $key)
     {
-        $this->keys[] = $foreign;
+        $this->keys[] = $key;
     }
 
     public function compile()
     {
         $constraints = [];
 
-        foreach ($this->keys as $foreign) {
-            $constraints[] = $foreign->compile();
+        foreach ($this->keys as $key) {
+            $constraints[] = $key->compile();
         }
 
         return implode(', ', $constraints);

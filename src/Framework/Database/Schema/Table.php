@@ -4,9 +4,9 @@ namespace Lightpack\Database\Schema;
 
 class Table
 {
-    protected $tableName;
-    protected $tableColumns;
-    protected $tableKeys;
+    private $tableName;
+    private $tableColumns;
+    private $tableKeys;
 
     public function __construct(string $tableName)
     {

@@ -5,42 +5,42 @@ namespace Lightpack\Database\Schema;
 class Table
 {
     protected $tableName;
-    protected $columns;
-    protected $keys;
+    protected $tableColumns;
+    protected $tableKeys;
 
     public function __construct(string $tableName)
     {
         $this->tableName = $tableName;
-        $this->columns = new ColumnsCollection();
-        $this->keys = new KeysCollection();
+        $this->tableColumns = new ColumnsCollection();
+        $this->tableKeys = new KeysCollection();
     }
 
     public function column(string $column): Column
     {
         $column = new Column($column);
 
-        $this->columns->add($column);
+        $this->tableColumns->add($column);
 
         return $column;
     }
 
-    public function foreign(string $column): Key
+    public function key(string $column): Key
     {
         $foreign = new Key($column);
 
-        $this->keys->add($foreign);
+        $this->tableKeys->add($foreign);
 
         return $foreign;
     }
 
     public function columns(): ColumnsCollection
     {
-        return $this->columns;
+        return $this->tableColumns;
     }
 
     public function keys(): KeysCollection
     {
-        return $this->keys;
+        return $this->tableKeys;
     }
 
     public function name()

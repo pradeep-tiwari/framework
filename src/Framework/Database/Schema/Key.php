@@ -18,6 +18,8 @@ class Key
     public function __construct(string $foreignKey = null)
     {
         $this->foreignKey = $foreignKey;
+        $this->updateAction = self::ACTION_RESTRICT;
+        $this->deleteAction = self::ACTION_RESTRICT;
     }
 
     public function references(string $table): self
@@ -44,7 +46,7 @@ class Key
     public function delete(string $action): self
     {
         $this->deleteAction = $action;
-        
+
         return $this;
     }
 
@@ -53,11 +55,11 @@ class Key
         $constraint[] = "FOREIGN KEY ({$this->foreignKey})";
         $constraint[] = "REFERENCES {$this->parentTable}({$this->parentColumn})";
 
-        if($this->deleteAction) {
+        if ($this->deleteAction) {
             $constraint[] = "ON DELETE {$this->deleteAction}";
         }
 
-        if($this->updateAction) {
+        if ($this->updateAction) {
             $constraint[] = "ON UPDATE {$this->updateAction}";
         }
 

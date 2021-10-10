@@ -23,6 +23,14 @@ final class SchemaTest extends TestCase
         $this->schema = new Schema($this->connection);
     }
 
+    public function tearDown(): void
+    {
+        $this->connection->query("SET FOREIGN_KEY_CHECKS = 0");
+        $this->schema->dropTable('products');
+        $this->schema->dropTable('categories');
+        $this->connection->query("SET FOREIGN_KEY_CHECKS = 1");
+    }
+
     public function testSchemaCanCreateTable()
     {
         $table = new Table('products');
@@ -37,10 +45,14 @@ final class SchemaTest extends TestCase
 
     public function testSchemaCanAlterTableAddColumn()
     {
+        // Create products table
         $table = new Table('products');
+        $table->column('id')->type('int')->increments(true)->index(Column::INDEX_PRIMARY);
+        $this->schema->createTable($table);
 
+        // Add new column
+        $table = new Table('products');
         $table->column('description')->type('text');
-
         $this->schema->addColumn($table);
 
         $this->assertTrue(in_array('description', $this->getColumns('products')));
@@ -69,6 +81,12 @@ final class SchemaTest extends TestCase
 
     public function testSchemaCanTruncateTable()
     {
+        // Create products table
+        $table = new Table('products');
+        $table->column('id')->type('int')->increments(true)->index(Column::INDEX_PRIMARY);
+        $this->schema->createTable($table);
+
+        // Truncate the table
         $this->schema->truncateTable('products');
 
         $count = $this->connection->query("SELECT COUNT(*) AS count FROM products")->fetch();
@@ -78,9 +96,34 @@ final class SchemaTest extends TestCase
 
     public function testSchemaCanDropTable()
     {
+        // Create products table
+        $table = new Table('products');
+        $table->column('id')->type('int')->increments(true)->index(Column::INDEX_PRIMARY);
+        $this->schema->createTable($table);
+
+        // Drop the table
         $this->schema->dropTable('products');
 
         $this->assertFalse(in_array('products', $this->getTables()));
+    }
+
+    public function testSchemaCanAddForeignKey()
+    {
+        // Create categories table
+        $table = new Table('categories');
+        $table->column('id')->type('int')->increments(true)->index(Column::INDEX_PRIMARY);
+        $table->column('title')->type('varchar')->length(55);
+        $this->schema->createTable($table);
+
+        // Create products table
+        $table = new Table('products');
+        $table->column('id')->type('int')->increments(true)->index(Column::INDEX_PRIMARY);
+        $table->column('category_id')->type('int');
+        $table->column('title')->type('varchar')->length(55);
+        $table->key('category_id')->references('categories')->on('id');
+        $this->schema->createTable($table);
+
+        $this->assertTrue(in_array('products', $this->getTables()));
     }
 
     private function getTables()
@@ -116,7 +159,7 @@ final class SchemaTest extends TestCase
         $rows = $this->connection->query('DESCRIBE ' . $table);
 
         while (($row = $rows->fetch())) {
-            if($column === $row['Field']) {
+            if ($column === $row['Field']) {
                 return $row;
             }
         }

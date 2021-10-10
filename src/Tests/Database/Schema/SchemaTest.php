@@ -31,7 +31,7 @@ final class SchemaTest extends TestCase
         $table->column('title')->type('varchar')->length(55);
 
         $this->schema->createTable($table);
-        
+
         $this->assertTrue(in_array('products', $this->getTables()));
     }
 
@@ -42,6 +42,8 @@ final class SchemaTest extends TestCase
         $table->column('description')->type('text');
 
         $this->schema->addColumn($table);
+
+        $this->assertTrue(in_array('description', $this->getColumns('products')));
     }
 
     public function testSchemaCanTruncateTable()
@@ -67,11 +69,24 @@ final class SchemaTest extends TestCase
         $rows = $this->connection->query('SHOW TABLES');
 
         while (($row = $rows->fetch())) {
-            foreach($row as $value) {
+            foreach ($row as $value) {
                 $tables[] = $value;
             }
         }
 
         return $tables;
+    }
+
+    private function getColumns(string $table)
+    {
+        $columns = [];
+
+        $rows = $this->connection->query('DESCRIBE ' . $table);
+
+        while (($row = $rows->fetch())) {
+            $columns[] = $row['Field'];
+        }
+
+        return $columns;
     }
 }

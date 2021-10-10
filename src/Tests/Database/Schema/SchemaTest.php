@@ -1,7 +1,6 @@
 <?php
 
 use Lightpack\Database\Schema\Column;
-use Lightpack\Database\Schema\Foreign;
 use Lightpack\Database\Schema\Schema;
 use PHPUnit\Framework\TestCase;
 use Lightpack\Database\Schema\Table;

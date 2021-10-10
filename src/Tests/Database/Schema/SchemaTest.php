@@ -46,6 +46,27 @@ final class SchemaTest extends TestCase
         $this->assertTrue(in_array('description', $this->getColumns('products')));
     }
 
+    public function testSchemaCanAlterTableModifyColumn()
+    {
+        // First drop the table if exists
+        $this->schema->dropTable('products');
+
+        // First create the table
+        $table = new Table('products');
+        $table->column('description')->type('text');
+        $this->schema->createTable($table);
+
+        // Now lets modify the description column
+        $table = new Table('products');
+        $table->column('description')->type('varchar')->length(150);
+        $this->schema->modifyColumn($table);
+
+        // If column modified successfully, we should get its type 
+        $descriptionColumnInfo = $this->getColumn('products', 'description');
+
+        $this->assertEquals($descriptionColumnInfo['Type'], 'varchar(150)');
+    }
+
     public function testSchemaCanTruncateTable()
     {
         $this->schema->truncateTable('products');
@@ -88,5 +109,18 @@ final class SchemaTest extends TestCase
         }
 
         return $columns;
+    }
+
+    private function getColumn(string $table, string $column)
+    {
+        $rows = $this->connection->query('DESCRIBE ' . $table);
+
+        while (($row = $rows->fetch())) {
+            if($column === $row['Field']) {
+                return $row;
+            }
+        }
+
+        return null;
     }
 }

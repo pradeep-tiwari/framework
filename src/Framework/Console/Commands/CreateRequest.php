@@ -4,23 +4,26 @@ namespace Lightpack\Console\Commands;
 
 use Lightpack\File\File;
 use Lightpack\Console\ICommand;
-use Lightpack\Console\Views\ControllerView;
+use Lightpack\Console\Views\RequestView;
 
-class CreateController implements ICommand
+class CreateRequest implements ICommand
 {
     public function run(array $arguments = [])
     {
         $className = $arguments[0] ?? null;
 
         if (null === $className) {
-            $message = "Please provide a controller class name.\n\n";
+            $message = "Please provide a form request class name.\n\n";
             fputs(STDERR, $message);
             return;
         }
 
         $parts = explode('\\', trim($className, '/'));
-        $namespace = 'App\Controllers';
-        $directory = DIR_ROOT . '/app/Controllers';
+        $namespace = 'App\Requests';
+        $directory = DIR_ROOT . '/app/Requests';
+
+        // Make directory if not exists
+        (new File)->makeDir($directory);
 
         /**
          * This takes care if namespaced controller is to be created.
@@ -35,14 +38,14 @@ class CreateController implements ICommand
         $filename = $directory . '/' . $className;
 
         if (!preg_match('/^[\w]+$/', $className)) {
-            $message = "Invalid controller class name.\n\n";
+            $message = "Invalid form request class name.\n\n";
             fputs(STDERR, $message);
             return;
         }
 
-        $template = ControllerView::getTemplate();
+        $template = RequestView::getTemplate();
         $template = str_replace(
-            ['__NAMESPACE__', '__CONTROLLER_NAME__'],
+            ['__NAMESPACE__', '__REQUEST_NAME__'],
             [$namespace, $className],
             $template
         );
@@ -50,6 +53,6 @@ class CreateController implements ICommand
         $directory = substr($directory, strlen(DIR_ROOT));
 
         file_put_contents($filename . '.php', $template);
-        fputs(STDOUT, "✓ Controller created: .{$directory}/{$className}.php\n\n");
+        fputs(STDOUT, "✓ request created: .{$directory}/{$className}.php\n\n");
     }
 }

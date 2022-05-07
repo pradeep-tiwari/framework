@@ -37,6 +37,22 @@ class Compiler
         return "INSERT INTO {$this->query->table} ($columns) VALUES $parameters";
     }
 
+    public function compileBulkInsert(array $columns, array $values)
+    {
+        foreach ($values as $value) {
+            if(count($value) == 1) {
+                $parameters[] = '(' . $this->parameterize(count($value)) . ')';
+            } else {
+                $parameters[] = $this->parameterize(count($value));
+            }
+        }
+
+        $columns = implode(', ', $columns);
+        $values = implode(', ', $parameters);
+
+        return "INSERT INTO {$this->query->table} ($columns) VALUES $values";
+    }
+
     public function compileUpdate(array $columns)
     {
         $where = $this->where();
@@ -72,7 +88,7 @@ class Compiler
 
     private function from(): string
     {
-        return 'FROM ' . $this->query->table . ($this->query->alias ? ' as ' . $this->query->alias : '');
+        return 'FROM ' . $this->query->table . ($this->query->alias ? ' AS ' . $this->query->alias : '');
     }
 
     private function join()
@@ -90,6 +106,11 @@ class Compiler
         return implode(' ', $joins);
     }
 
+    public function compileWhere()
+    {
+        return $this->where();
+    }
+
     private function where(): string
     {
         if (!$this->query->where) {
@@ -98,9 +119,33 @@ class Compiler
 
         // $wheres[] = 'WHERE 1=1';
         $wheres = [];
-        
+
         foreach ($this->query->where as $where) {
             $parameters = $this->parameterize(1);
+
+            // Workaround for where exists queries
+            if (isset($where['type']) && $where['type'] === 'where_exists') {
+                $wheres[] = 'AND EXISTS' . ' ' . '(' . $where['sub_query'] . ')';
+                continue;
+            }
+
+            // Workaround for where not exists queries
+            if (isset($where['type']) && $where['type'] === 'where_not_exists') {
+                $wheres[] = 'NOT EXISTS' . ' ' . '(' . $where['sub_query'] . ')';
+                continue;
+            }
+
+            // Workaround for where group logical params
+            if (isset($where['type']) && $where['type'] === 'where_logical_group') {
+                $wheres[] = $where['joiner'] . ' (' . $where['sub_query'] . ')';
+                continue;
+            }
+
+            // Workaround for where sub query
+            if (isset($where['type']) && $where['type'] === 'where_sub_query') {
+                $wheres[] = $where['joiner'] . ' ' . $where['column'] . ' ' . $where['operator'] . ' ' . '(' . $where['sub_query'] . ')';
+                continue;
+            }
             
             // Workaround for raw where queries
             if (isset($where['type']) && $where['type'] === 'where_raw') {
@@ -108,19 +153,49 @@ class Compiler
                 continue;
             }
 
-            // Workaround for IS NULL and IS NOT NULL conditions.
-            if (!$where['operator'] && isset($where['value'])) {
-                $parameters = $where['value'];
+            // Workaround for where between queries
+            if (isset($where['type']) && ($where['type'] === 'where_between' || $where['type'] === 'where_not_between')) {
+                $parameters = $this->parameterize(2);
+                $wheres[] = strtoupper($where['joiner']) . ' ' . $where['column'] . ' ' . $where['operator'] . ' ' . '?' . ' AND ' . '?';
+                continue;
             }
 
+
+            // Set parameters for multiple values
             if (isset($where['values'])) {
                 $parameters = $this->parameterize(count($where['values']));
             }
 
-            $wheres[] = strtoupper($where['joiner']) . ' ' . $where['column'] . ' ' . $where['operator'] . ' ' . $parameters;
+            // Workaround for IN conditions
+            if($where['operator'] === 'IN' && count($where['values']) === 1) {
+                $parameters = '(' . $parameters . ')';
+            }
+
+            if(!isset($where['value']) && !isset($where['values'])) {
+                $parameters = '';
+            }
+
+            // Finally prepare where clause
+            $whereStatement = strtoupper($where['joiner']) . ' ' . $where['column'];
+
+            if(isset($where['operator'])) {
+                $whereStatement .= ' ' . trim($where['operator']);
+            }
+
+            if($parameters) {
+                $whereStatement .= ' ' . $parameters;
+            }
+
+            $wheres[] = $whereStatement;
         }
 
-        return $wheres ? 'WHERE ' . trim(implode(' ', $wheres)) : null;
+        $wheres = trim(implode(' ', $wheres));
+
+        if(strpos($wheres, 'AND') === 0) {
+            $wheres = trim(substr($wheres, 3));
+        }
+
+        return $wheres ? 'WHERE ' . $wheres : null;
     }
 
     private function groupBy()

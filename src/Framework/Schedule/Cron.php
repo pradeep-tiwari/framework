@@ -67,11 +67,11 @@ class Cron
     {
         $cron = new self($cronExpression);
 
-        return $cron->minuteIsDue() &&
-            $cron->hourIsDue() &&
-            $cron->dayIsDue() &&
-            $cron->monthIsDue() &&
-            $cron->weekdayIsDue();
+        return $cron->minuteIsDue()
+            && $cron->hourIsDue()
+            && $cron->dayIsDue()
+            && $cron->monthIsDue()
+            && $cron->weekdayIsDue();
     }
 
     protected function checkIfDue($expression, $current)

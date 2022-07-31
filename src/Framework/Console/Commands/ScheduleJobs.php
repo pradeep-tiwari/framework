@@ -22,13 +22,17 @@ class ScheduleJobs implements ICommand
 
     public function run(array $arguments = [])
     {
-        $this->scheduler->run();
+        if(in_array('--async', $arguments)) {
+            $this->scheduler->runAsync();
+        } else {
+            $this->scheduler->run();
+        }
     }
 
     protected function addScheduledJobs()
     {
         foreach ($this->schedules as $schedule) {
-            $this->scheduler->addJob($schedule['job'], $schedule['time']);
+            $this->scheduler->addJob($schedule['job'], $schedule['interval']);
         }
     }
 }

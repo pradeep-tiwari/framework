@@ -7,15 +7,28 @@ use Lightpack\Schedule\Scheduler;
 
 class ScheduleJobs implements ICommand
 {
+    /** @var array */
+    protected $schedules;
+
+    /** @var Scheduler */
+    protected $scheduler;
+
+    public function __construct()
+    {
+        $this->schedules = config('schedules');
+        $this->scheduler = new Scheduler();
+        $this->addScheduledJobs();
+    }
+
     public function run(array $arguments = [])
     {
-        $scheduler = new Scheduler();
-        $schedules = config('schedules');
+        $this->scheduler->run();
+    }
 
-        foreach ($schedules as $schedule) {
-            $scheduler->addJob($schedule['job'], $schedule['time']);
+    protected function addScheduledJobs()
+    {
+        foreach ($this->schedules as $schedule) {
+            $this->scheduler->addJob($schedule['job'], $schedule['time']);
         }
-
-        $scheduler->run();
     }
 }

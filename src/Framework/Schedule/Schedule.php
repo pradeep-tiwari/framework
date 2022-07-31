@@ -53,7 +53,7 @@ class Schedule
     {
         foreach ($this->jobs as $job) {
             if (Cron::isDue($job['time'])) {
-                $job['job']->run();
+                $job['job']->dispatch();
             }
         }
     }

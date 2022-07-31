@@ -27,6 +27,8 @@ class Runner
 
     protected function isDue(string $cronTime)
     {
-        return (new Cron)->isDue($cronTime);
+        $cron = new Cron($cronTime);
+        
+        return $cron->isDue($cronTime);
     }
 }

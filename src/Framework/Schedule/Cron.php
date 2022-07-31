@@ -4,44 +4,37 @@ namespace Lightpack\Schedule;
 
 class Cron
 {
-    /**
-     * @var string $cronTime Cron time expression
-     */
-    protected $cronTime;
-
+    /** @var string */
     protected $minutes;
+
+    /** @var string */
     protected $hours;
+
+    /** @var string */
     protected $days;
+
+    /** @var string */
     protected $months;
+
+    /** @var string */
     protected $weekdays;
 
     /**
-     * @var string $cronTime Cron time expression
+     * @var string $cronTime Cron time expression.
+     * Example: '* * * * *'
      */
-    public function __construct(string $cronTime)
+    public function __construct(string $cronExpression)
     {
-        $this->cronTime = $cronTime;
-
-        // Split cron time expression into array
-        $cronParts = explode(' ', $this->cronTime);
+        $cronParts = explode(' ', $cronExpression);
 
         if (count($cronParts) !== 5) {
             throw new \Exception('Invalid cron time expression');
         }
 
-        // Get cron minutes: 0-59
         $this->minutes = $cronParts[0];
-
-        // Get cron hours: 0-23
         $this->hours = $cronParts[1];
-
-        // Get cron day of month: 1-31
         $this->days = $cronParts[2];
-
-        // Get cron month: 0-11 or JAN-DEC
         $this->months = $cronParts[3];
-
-        // Get cron day of week: 1-7 or SUN-SAT
         $this->weekdays = $cronParts[4];
     }
 
@@ -70,9 +63,15 @@ class Cron
         return $this->checkIfDue($this->weekdays, date('w'));
     }
 
-    public function isDue()
+    public static function isDue(string $cronExpression)
     {
-        return $this->minuteIsDue() && $this->hourIsDue() && $this->dayIsDue() && $this->monthIsDue() && $this->weekdayIsDue();
+        $cron = new self($cronExpression);
+
+        return $cron->minuteIsDue() &&
+            $cron->hourIsDue() &&
+            $cron->dayIsDue() &&
+            $cron->monthIsDue() &&
+            $cron->weekdayIsDue();
     }
 
     protected function checkIfDue($expression, $current)
@@ -96,6 +95,15 @@ class Cron
             $parts = explode('/', $expression);
             if ($current % $parts[1] === 0) {
                 return true;
+            }
+        }
+
+        if (strpos($expression, ',') !== false) {
+            $parts = explode(',', $expression);
+            foreach ($parts as $part) {
+                if ($part === $current) {
+                    return true;
+                }
             }
         }
 

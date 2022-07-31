@@ -4,7 +4,7 @@ namespace Lightpack\Schedule;
 
 use Lightpack\Jobs\Job;
 
-class Schedule
+class Scheduler
 {
     /**
      * @var array
@@ -14,7 +14,7 @@ class Schedule
     /**
      * Add a job to the schedule.
      */
-    public function job(Job $job, string $cronTime)
+    public function addJob(Job $job, string $cronTime)
     {
         $this->jobs[] = [
             'job' => $job,

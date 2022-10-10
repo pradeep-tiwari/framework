@@ -34,7 +34,7 @@ class Scheduler
     }
 
     /**
-     * Run all scheduled jobs that are due.
+     * Get all scheduled jobs that are due.
      */
     public function getDueJobs(): array
     {

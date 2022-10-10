@@ -32,14 +32,24 @@ final class CronTest extends TestCase
 
     public function testCronIsDue(): void
     {
-        echo date('i');
-        // Test if cron is due for multiple possible cron expressions.
+        // Assert: At every minute
         $this->assertTrue(Cron::isDue('* * * * *'));
-        $this->assertTrue(Cron::isDue('*/1 * * * *'));
-        // $this->assertFalse(Cron::isDue('*/3 * * * *'));
-        $this->assertFalse(Cron::isDue('*/5 * * * *'));
-        $this->assertFalse(Cron::isDue('*/10 * * * *'));
-        $this->assertFalse(Cron::isDue('*/47 * * * *'));
-        $this->assertTrue(Cron::isDue('*/17 * * * *'));
+        $this->assertTrue(Cron::isDue('*/1 * * * *')); 
+
+        // Assert: At minute 'N'
+        $minutes = date('i');
+        $this->assertTrue(Cron::isDue($minutes . ' * * * *'));
+
+        // Assert: At every minute from 'N' to 'N+5'
+        $minutes = date('i') . '-' . date('i') + 5;
+        $this->assertTrue(Cron::isDue($minutes . ' * * * *'));
+
+        // Assert: Every 'N'th minute
+        $minutes = date('i');
+        $this->assertTrue(Cron::isDue("*/$minutes * * * *"));
+
+        // Assert: At minute 'N+5'
+        $minutes = date('i') + 5;
+        $this->assertFalse(Cron::isDue("*/$minutes * * * *"));
     }
 }

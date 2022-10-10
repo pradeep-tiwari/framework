@@ -30,7 +30,7 @@ final class CronTest extends TestCase
         new Cron('* * * * * *');
     }
 
-    public function testCronIsDue(): void
+    public function testCronIsDueInMinutes(): void
     {
         // Assert: At every minute
         $this->assertTrue(Cron::isDue('* * * * *'));
@@ -51,5 +51,27 @@ final class CronTest extends TestCase
         // Assert: At minute 'N+5'
         $minutes = date('i') + 5;
         $this->assertFalse(Cron::isDue("*/$minutes * * * *"));
+    }
+
+    public function testCronIsDueInHours(): void
+    {
+        // Assert: At every minute past every hour
+        $this->assertTrue(Cron::isDue('* */1 * * *'));
+
+        // Assert: At every minute past hour 'N'
+        $hours = date('H');
+        $this->assertTrue(Cron::isDue('* ' . $hours . ' * * *'));
+
+        // Assert: At every minute past every hour from 'N' to 'N+5'
+        $hours = date('H') . '-' . date('H') + 5;
+        $this->assertTrue(Cron::isDue('* ' . $hours . ' * * *'));
+
+        // Assert: At every minute past every 'N'th hour
+        $hours = date('H');
+        $this->assertTrue(Cron::isDue('* */' . $hours . ' * * *'));
+
+        // Assert: At every minute past every 'N+5' hour
+        $hours = date('H') + 5;
+        $this->assertFalse(Cron::isDue('* */' . $hours . ' * * *'));
     }
 }

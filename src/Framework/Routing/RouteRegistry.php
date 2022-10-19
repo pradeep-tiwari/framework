@@ -13,12 +13,12 @@ class RouteRegistry
         'OPTIONS' => [],
     ];
     private $placeholders = [
-        ':any' => '(.*)',
-        ':seg' => '([^/]+)',
-        ':num' => '([0-9]+)',
-        ':slug' => '([a-zA-Z0-9-]+)',
-        ':alpha' => '([a-zA-Z]+)',
-        ':alnum' => '([a-zA-Z0-9]+)',
+        'any' => '(.*)',
+        'seg' => '([^/]+)',
+        'num' => '([0-9]+)',
+        'slug' => '([a-zA-Z0-9-]+)',
+        'alpha' => '([a-zA-Z]+)',
+        'alnum' => '([a-zA-Z0-9]+)',
     ];
 
     private $options = [
@@ -104,12 +104,14 @@ class RouteRegistry
         $routes = $this->getRoutesForCurrentRequest();
 
         foreach ($routes as $routeUri) {
-            if (preg_match('@^' . $this->regex($routeUri) . '$@', $path, $matches)) {
+            ['params' => $params, 'regex' => $regex] = $this->compileRegexWithParams($routeUri);
+
+            if (preg_match('@^' . $regex. '$@', $path, $matches)) {
                 \array_shift($matches);
 
                 /** @var Route */
                 $route = $this->routes[$this->request->method()][$routeUri];
-                $route->setParams($matches);
+                $route->setParams($params ? array_combine($params, $matches) : $matches);
                 $route->setPath($path);
 
                 return $route;
@@ -153,6 +155,29 @@ class RouteRegistry
         $replace = \array_values($this->placeholders);
 
         return str_replace($search, $replace, $path);
+    }
+
+    private function compileRegexWithParams(string $routePattern): array
+    {
+        $params = [];
+        $parts = [];
+        $fragments = explode('/', $routePattern);
+
+        foreach ($fragments as $fragment) {
+            if(strpos($fragment, ':') === 0) {
+                $splits = explode('|', $fragment, 2);
+                $params[] = substr($splits[0], 1);
+                $pattern = $splits[1] ?? 'seg';
+                $parts[] = $this->placeholders[$pattern] ?? $pattern;
+            } else {
+                $parts[] = $fragment;
+            }
+        }
+
+        return [
+            'params' => $params,
+            'regex' => implode('/', $parts),
+        ];
     }
 
     private function getRoutesForCurrentRequest()

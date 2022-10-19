@@ -31,7 +31,7 @@ final class RouterTest extends TestCase
 
     public function testRouterCanParseUrl()
     {
-        $this->routeRegistry->get('/users/:num/role/:alpha/:any', 'UserController', 'index');
+        $this->routeRegistry->get('/users/:num/role/:alpha/:any|any', 'UserController', 'index');
         $this->router->parse('/users/23/role/admin/hello/world');
 
         $this->assertEquals(
@@ -46,8 +46,8 @@ final class RouterTest extends TestCase
             'Router should parse action: index'
         );
 
-        $this->assertSame(
-            ['23', 'admin', 'hello/world'],
+        $this->assertEquals(
+            ['num' => 23, 'alpha' => 'admin', 'any' => 'hello/world'],
             $this->router->getRoute()->getParams(),
             'Router should parse params correctly'
         );
@@ -60,11 +60,9 @@ final class RouterTest extends TestCase
         $routes = [
             '/' => ['GET', '/', 'News', 'handle', []],
             '/news' => ['GET', '/news', 'News', 'handle', []],
-            '/news/order/asc' => ['POST', '/news/order/:alpha', 'News', 'handle', ['asc']],
-            '/news/23/category/politics' => ['PUT', '/news/:num/category/:slug', 'News', 'handle', ['23', 'politics']],
-            '/news/v2.0/latest/politics' => ['PATCH', '/news/:seg/:seg/:alpha', 'News', 'handle', ['v2.0', 'latest', 'politics']],
-            '/news/author/bob-walter/id-23' => ['DELETE', '/news/:alpha/:any', 'News', 'handle', ['author', 'bob-walter/id-23']],
-            '/news/way2go/id-23' => ['GET', '/news/:alnum/:any', 'News', 'handle', ['way2go', 'id-23']],
+            '/news/order/asc' => ['POST', '/news/order/:alpha', 'News', 'handle', ['alpha' => 'asc']],
+            '/news/23/category/politics' => ['PUT', '/news/:num/category/:slug', 'News', 'handle', ['num' => 23, 'slug' => 'politics']],
+            '/news/author/bob-walter/id-23' => ['DELETE', '/news/:alpha/:any|any', 'News', 'handle', ['alpha' => 'author', 'any' => 'bob-walter/id-23']],
         ];
 
         foreach ($routes as $path => $config) {
@@ -112,7 +110,7 @@ final class RouterTest extends TestCase
             'action' => 'index',
             'route' => '/news/:num/author/:slug',
             'path' => '/news/23/author/bob',
-            'params' => ['23', 'bob'],
+            'params' => ['num' => 23, 'slug' => 'bob'],
             'filters' => ['auth', 'csrf']
         ];
 
@@ -128,15 +126,15 @@ final class RouterTest extends TestCase
         $this->router->parse('/news//23');
 
         // should be false
-        $this->assertFalse($this->router->hasRoute(), "Router should have returned fale for bad url requests");
+        $this->assertFalse($this->router->hasRoute(), "Router should have returned false for bad url requests");
     }
 
     public function testRouterCanParseRegexUrl()
     {
-        $this->routeRegistry->get('/news/([0-9]+)/slug/([a-zA-Z]+)', 'News', 'index');
+        $this->routeRegistry->get('/news/:id|([0-9]+)/slug/:slug|([a-zA-Z]+)', 'News', 'index');
         $this->router->parse('/news/23/slug/politics');
 
-        $this->assertEquals(['23', 'politics'], $this->router->getRoute()->getParams());
+        $this->assertEquals(['id' => '23', 'slug' => 'politics'], $this->router->getRoute()->getParams());
     }
 
     public function testRouterCanParseComplexUrl()

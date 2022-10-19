@@ -75,13 +75,25 @@ final class RouteRegistryTest extends TestCase
     public function testRouteMatchesUrl()
     {
         $this->routeRegistry->get('/users', 'UserController', 'index');
-        $this->routeRegistry->get('/users/:num/role/:alpha', 'UserController', 'showForm');
-        $this->routeRegistry->post('/users/:num/profile', 'UserController', 'submitForm');
+        $this->routeRegistry->post('/users/:user/profile', 'UserController', 'submitForm');
+        $this->routeRegistry->get('/users/:user|num/role/:role|alpha', 'UserController', 'showForm');
 
         $_SERVER['REQUEST_METHOD'] = self::HTTP_GET;
         $this->assertTrue(
             $this->routeRegistry->matches('/users') instanceof Route,
             'Route should match request GET /users'
+        );
+
+        $_SERVER['REQUEST_METHOD'] = self::HTTP_POST;
+        $this->assertTrue(
+            $this->routeRegistry->matches('/users/23/profile') instanceof Route,
+            'Route should match request POST /users/23/profile'
+        );
+
+        $_SERVER['REQUEST_METHOD'] = self::HTTP_POST;
+        $this->assertTrue(
+            $this->routeRegistry->matches('/users/23/profile') instanceof Route,
+            'Route should match request POST /users/23/profile'
         );
 
         $_SERVER['REQUEST_METHOD'] = self::HTTP_GET;
@@ -90,16 +102,10 @@ final class RouteRegistryTest extends TestCase
             'Route should match request GET /users/23/role/editor'
         );
 
-        $_SERVER['REQUEST_METHOD'] = self::HTTP_POST;
-        $this->assertTrue(
-            $this->routeRegistry->matches('/users/23/profile') instanceof Route,
-            'Route should match request POST /users/23/profile'
-        );
-
-        $_SERVER['REQUEST_METHOD'] = self::HTTP_POST;
-        $this->assertTrue(
-            $this->routeRegistry->matches('/users/23/profile') instanceof Route,
-            'Route should match request POST /users/23/profile'
+        $_SERVER['REQUEST_METHOD'] = self::HTTP_GET;
+        $this->assertFalse(
+            $this->routeRegistry->matches('/users/bob/role/23') instanceof Route,
+            'Route should not match request GET /users/bob/role/editor'
         );
     }
 

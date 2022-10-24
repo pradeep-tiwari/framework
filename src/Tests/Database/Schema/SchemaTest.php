@@ -38,7 +38,8 @@ final class SchemaTest extends TestCase
         // $table->column('title')->type('varchar')->length(55);
 
         $table->id();
-        $table->string('title');
+        $table->title(125);
+        $table->email(125)->nullable();
 
         $this->schema->createTable($table);
 

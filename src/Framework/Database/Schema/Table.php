@@ -71,9 +71,30 @@ class Table
         return $column;
     }
 
-    public function string(string $name): Column
+    public function string(string $name, int $length = 255): Column
     {
         $column = new StringColumn($name);
+
+        $column->length($length);
+
+        $this->tableColumns->add($column);
+
+        return $column;
+    }
+
+    /**
+     * Set a string column automagically.
+     * 
+     * For example: 
+     * $table->email(125); // Sets the column type to VARCHAR and the column length to 125.
+     */
+    public function __call($name, $arguments): Column
+    {
+        $column = new StringColumn($name);
+
+        if(isset($arguments[0]) && is_int($arguments[0])) {
+            $column->length($arguments[0]);
+        }
 
         $this->tableColumns->add($column);
 

@@ -1,10 +1,10 @@
 <?php
 
-namespace Lightpack\Database\Schema\Fields;
+namespace Lightpack\Database\Schema\Columns;
 
 use Lightpack\Database\Schema\Column;
 
-class Id extends Column
+class IdColumn extends Column
 {
     public function __construct(string $name = 'id')
     {        

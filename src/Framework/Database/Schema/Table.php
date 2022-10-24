@@ -2,7 +2,8 @@
 
 namespace Lightpack\Database\Schema;
 
-use Lightpack\Database\Schema\Fields\Id;
+use Lightpack\Database\Schema\Columns\IdColumn;
+use Lightpack\Database\Schema\Columns\StringColumn;
 
 class Table
 {
@@ -63,7 +64,16 @@ class Table
 
     public function id(string $name = 'id'): Column
     {
-        $column = new Id($name);
+        $column = new IdColumn($name);
+
+        $this->tableColumns->add($column);
+
+        return $column;
+    }
+
+    public function string(string $name): Column
+    {
+        $column = new StringColumn($name);
 
         $this->tableColumns->add($column);
 

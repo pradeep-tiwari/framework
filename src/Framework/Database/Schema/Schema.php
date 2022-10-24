@@ -32,7 +32,7 @@ class Schema
     public function createTable(Table $table): void
     {
         $sql = (new CreateTable)->compile($table);
-        pp($sql);
+        
         $this->connection->query($sql);
     }
 

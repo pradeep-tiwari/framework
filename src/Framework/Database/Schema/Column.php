@@ -4,15 +4,15 @@ namespace Lightpack\Database\Schema;
 
 class Column
 {
-    private $columnName;
-    private $columnType;
-    private $columnLength;
-    private $columnDefaultValue;
-    private $columnIsNullable;
-    private $columnIndexType;
-    private $columnIndexName;
-    private $columnIncrements = false;
-    private $columnAttribute;
+    protected $columnName;
+    protected $columnType;
+    protected $columnLength;
+    protected $columnDefaultValue;
+    protected $columnIsNullable;
+    protected $columnIndexType;
+    protected $columnIndexName;
+    protected $columnIncrements = false;
+    protected $columnAttribute;
 
     public const DEFAULT_NULL = 'NULL';
     public const DEFAULT_CURRENT_TIMESTAMP = 'CURRENT_TIMESTAMP';

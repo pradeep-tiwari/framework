@@ -2,6 +2,8 @@
 
 namespace Lightpack\Database\Schema;
 
+use Lightpack\Database\Schema\Fields\Id;
+
 class Table
 {
     private $tableName;
@@ -57,5 +59,14 @@ class Table
     public function getRenameColumns(): array
     {
         return $this->renameColumns;
+    }
+
+    public function id(string $name = 'id'): Column
+    {
+        $column = new Id($name);
+
+        $this->tableColumns->add($column);
+
+        return $column;
     }
 }

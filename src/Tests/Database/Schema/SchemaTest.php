@@ -34,7 +34,8 @@ final class SchemaTest extends TestCase
     {
         $table = new Table('products');
 
-        $table->column('id')->type('int')->increments()->index(Column::INDEX_PRIMARY);
+        // $table->column('id')->type('int')->increments()->index(Column::INDEX_PRIMARY);
+        $table->id();
         $table->column('title')->type('varchar')->length(55);
 
         $this->schema->createTable($table);

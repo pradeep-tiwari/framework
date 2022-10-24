@@ -97,7 +97,7 @@ class Column
         }
 
         $index .= " ($this->columnName)";
-
+        
         return $index;
     }
 

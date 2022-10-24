@@ -37,7 +37,12 @@ class ColumnsCollection
             }
         }
 
-        $elements = array_merge($columns, $indexes);
+        if(in_array($this->context, ['create', 'add'])) {
+            $elements = array_merge($columns, $indexes);
+        } else {
+            $elements = $columns;
+        }
+
 
         if($this->context === 'add') {
             foreach($elements as $key => $value) {

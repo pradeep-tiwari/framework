@@ -6,6 +6,7 @@ class Table
 {
     private $tableName;
     private $tableColumns;
+    private $renameColumns = [];
     private $tableKeys;
 
     public function __construct(string $tableName)
@@ -46,5 +47,15 @@ class Table
     public function name()
     {
         return $this->tableName;
+    }
+
+    public function renameColumn(string $oldName, string $newName): void
+    {
+        $this->renameColumns[$oldName] = $newName;
+    }
+
+    public function getRenameColumns(): array
+    {
+        return $this->renameColumns;
     }
 }

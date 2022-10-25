@@ -14,13 +14,11 @@ use Lightpack\Database\Schema\Compilers\TruncateTable;
 class Schema
 {
     /**
-     * @var \Lightpack\Database\Pdo
+     * Create a new table instance.
      */
-    private $connection;
-
-    public function __construct(Pdo $connection)
+    public function for(string $name): Table
     {
-        $this->connection = $connection;
+        return new Table($name);
     }
 
     /**
@@ -29,11 +27,11 @@ class Schema
      * @param Table $table
      * @return void
      */
-    public function createTable(Table $table): void
+    public function createTable(Table $table): string
     {
         $sql = (new CreateTable)->compile($table);
         
-        $this->connection->query($sql);
+        return $sql;
     }
 
     /**
@@ -42,11 +40,11 @@ class Schema
      * @param string $table
      * @return void
      */
-    public function dropTable(string $table): void
+    public function dropTable(string $table): string
     {
         $sql = (new DropTable)->compile($table);
 
-        $this->connection->query($sql);
+        return $sql;
     }
 
     /**
@@ -55,11 +53,11 @@ class Schema
      * @param string $table
      * @return void
      */
-    public function truncateTable(string $table): void
+    public function truncateTable(string $table): string
     {
         $sql = (new TruncateTable)->compile($table);
 
-        $this->connection->query($sql);
+        return $sql;
     }
 
     /**
@@ -68,11 +66,11 @@ class Schema
      * @param Table $table
      * @return void
      */
-    public function addColumn(Table $table): void
+    public function addColumn(Table $table): string
     {
         $sql = (new AddColumn)->compile($table);
 
-        $this->connection->query($sql);
+        return $sql;
     }
 
     /**
@@ -82,11 +80,11 @@ class Schema
      * @param string ...$columns
      * @return void
      */
-    public function dropColumn(string $table, string ...$columns): void
+    public function dropColumn(string $table, string ...$columns): string
     {
         $sql = (new DropColumn)->compile($table, ...$columns);
 
-        $this->connection->query($sql);
+        return $sql;
     }
 
     /**
@@ -95,10 +93,10 @@ class Schema
      * @param Table $table
      * @return void
      */
-    public function modifyColumn(Table $table): void
+    public function modifyColumn(Table $table): string
     {
         $sql = (new ModifyColumn)->compile($table);
 
-        $this->connection->query($sql);
+        return $sql;
     }
 }

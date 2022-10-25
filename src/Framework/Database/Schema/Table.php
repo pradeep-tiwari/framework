@@ -2,9 +2,6 @@
 
 namespace Lightpack\Database\Schema;
 
-use Lightpack\Database\Schema\Columns\IdColumn;
-use Lightpack\Database\Schema\Columns\StringColumn;
-
 class Table
 {
     private $tableName;
@@ -64,7 +61,9 @@ class Table
 
     public function id(string $name = 'id'): Column
     {
-        $column = new IdColumn($name);
+        $column = new Column($name);
+
+        $column->type('BIGINT')->length(20)->attribute('UNSIGNED')->increments()->index(Column::INDEX_PRIMARY);
 
         $this->tableColumns->add($column);
 
@@ -73,9 +72,70 @@ class Table
 
     public function string(string $name, int $length = 255): Column
     {
-        $column = new StringColumn($name);
+        $column = new Column($name);
 
+        $column->type('VARCHAR');
         $column->length($length);
+
+        $this->tableColumns->add($column);
+
+        return $column;
+    }
+
+    public function boolean(string $column, bool $default = false): Column
+    {
+        $column = new Column($column);
+
+        $column->type('BOOLEAN');
+        $column->default($default);
+
+        $this->tableColumns->add($column);
+
+        return $column;
+    }
+
+    public function created_at(): Column
+    {
+        $column = new Column('created_at');
+
+        $column->type('DATETIME');
+        $column->default('CURRENT_TIMESTAMP');
+
+        $this->tableColumns->add($column);
+
+        return $column;
+    }
+
+    public function updated_at(): Column
+    {
+        $column = new Column('updated_at');
+
+        $column->type('DATETIME');
+        $column->attribute('ON UPDATE CURRENT_TIMESTAMP');
+
+        $this->tableColumns->add($column);
+
+        return $column;
+    }
+
+    public function deleted_at(): Column
+    {
+        $column = new Column('deleted_at');
+
+        $column->type('DATETIME');
+        $column->nullable();
+
+        $this->tableColumns->add($column);
+
+        return $column;
+    }
+
+    public function datetime(string $column): Column
+    {
+        $column = new Column($column);
+
+        $column->type('DATETIME');
+        $column->nullable();
 
         $this->tableColumns->add($column);
 
@@ -90,10 +150,20 @@ class Table
      */
     public function __call($name, $arguments): Column
     {
-        $column = new StringColumn($name);
+        // if column ends with '_at', set the column type to DATETIME
+        if (substr($name, -3) === '_at') {
+            return $this->datetime($name);
+        }
 
-        if(isset($arguments[0]) && is_int($arguments[0])) {
+        // otherwise, set the column type to VARCHAR
+        $column = new Column($name);
+
+        $column->type('VARCHAR');
+
+        if (isset($arguments[0]) && is_int($arguments[0])) {
             $column->length($arguments[0]);
+        } else {
+            $column->length(255);
         }
 
         $this->tableColumns->add($column);

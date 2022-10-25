@@ -156,18 +156,6 @@ class Table
         }
 
         // otherwise, set the column type to VARCHAR
-        $column = new Column($name);
-
-        $column->type('VARCHAR');
-
-        if (isset($arguments[0]) && is_int($arguments[0])) {
-            $column->length($arguments[0]);
-        } else {
-            $column->length(255);
-        }
-
-        $this->tableColumns->add($column);
-
-        return $column;
+        return $this->string($name, $arguments[0] ?? 255);
     }
 }

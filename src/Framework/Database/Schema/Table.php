@@ -63,7 +63,7 @@ class Table
     {
         $column = new Column($name);
 
-        $column->type('BIGINT')->length(20)->attribute('UNSIGNED')->increments()->index(Column::INDEX_PRIMARY);
+        $column->type('BIGINT')->attribute('UNSIGNED')->increments()->index(Column::INDEX_PRIMARY);
 
         $this->tableColumns->add($column);
 

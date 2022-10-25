@@ -8,7 +8,7 @@ class Column
     protected $columnType;
     protected $columnLength;
     protected $columnDefaultValue;
-    protected $columnIsNullable;
+    protected $columnIsNullable = false;
     protected $columnIndexType;
     protected $columnIndexName;
     protected $columnIncrements = false;
@@ -119,6 +119,8 @@ class Column
 
         if ($this->columnIsNullable) {
             $column .= " NULL";
+        } else {
+            $column .= " NOT NULL";
         }
 
         if ($this->columnDefaultValue) {

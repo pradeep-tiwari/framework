@@ -17,7 +17,7 @@ final class CreateTableTest extends TestCase
         
         $sql = (new CreateTable)->compile($table);
         
-        $expected = 'CREATE TABLE products (id INT AUTO_INCREMENT, PRIMARY KEY (id));';
+        $expected = 'CREATE TABLE IF NOT EXISTS products (id INT AUTO_INCREMENT NOT NULL, PRIMARY KEY (id));';
 
         $this->assertEquals($expected, $sql);
     }
@@ -29,11 +29,12 @@ final class CreateTableTest extends TestCase
         $table->column('id')->type('int')->increments()->index(Column::INDEX_PRIMARY);
         $table->column('category_id')->type('int');
         $table->column('title')->type('varchar')->length(55);
+        $table->column('description')->type('varchar')->length(55)->nullable();
         $table->key('category_id')->references('categories')->on('id');
         
         $sql = (new CreateTable)->compile($table);
         
-        $expected = 'CREATE TABLE products (id INT AUTO_INCREMENT, category_id INT, title VARCHAR(55), PRIMARY KEY (id), FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT ON UPDATE RESTRICT);';
+        $expected = 'CREATE TABLE IF NOT EXISTS products (id INT AUTO_INCREMENT NOT NULL, category_id INT NOT NULL, title VARCHAR(55) NOT NULL, description VARCHAR(55) NULL, PRIMARY KEY (id), FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT ON UPDATE RESTRICT);';
 
         $this->assertEquals($expected, $sql);
     }
@@ -46,7 +47,6 @@ final class CreateTableTest extends TestCase
         
         $sql = (new RenameColumn)->compile($table);
 
-        
         $expected = 'ALTER TABLE products RENAME COLUMN title TO heading;';
 
         $this->assertEquals($expected, $sql);
@@ -60,7 +60,7 @@ final class CreateTableTest extends TestCase
         
         $sql = (new ModifyColumn)->compile($table);
         
-        $expected = 'ALTER TABLE products CHANGE id id INT AUTO_INCREMENT;';
+        $expected = 'ALTER TABLE products CHANGE id id INT AUTO_INCREMENT NOT NULL;';
 
         $this->assertEquals($expected, $sql);
     }

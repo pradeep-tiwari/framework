@@ -2,18 +2,28 @@
 
 namespace Lightpack\Database\Schema;
 
+use Lightpack\Utils\Str;
+
 class Table
 {
     private $tableName;
-    private $tableColumns;
     private $renameColumns = [];
+
+    /**
+     * @var ColumnCollection
+     */
+    private $tableColumns;
+
+    /**
+     * @var ForeignKeyCollection
+     */
     private $tableKeys;
 
     public function __construct(string $tableName)
     {
         $this->tableName = $tableName;
-        $this->tableColumns = new ColumnsCollection();
-        $this->tableKeys = new KeysCollection();
+        $this->tableColumns = new ColumnCollection();
+        $this->tableKeys = new ForeignKeyCollection();
     }
 
     public function column(string $column): Column
@@ -25,21 +35,12 @@ class Table
         return $column;
     }
 
-    public function key(string $column): Key
-    {
-        $foreign = new Key($column);
-
-        $this->tableKeys->add($foreign);
-
-        return $foreign;
-    }
-
-    public function columns(): ColumnsCollection
+    public function columns(): ColumnCollection
     {
         return $this->tableColumns;
     }
 
-    public function keys(): KeysCollection
+    public function foreignKeys(): ForeignKeyCollection
     {
         return $this->tableKeys;
     }
@@ -140,6 +141,33 @@ class Table
         $this->tableColumns->add($column);
 
         return $column;
+    }
+
+    public function parent(string $parentTable): ForeignKey
+    {
+        $key = (new Str)->foreignKey($parentTable);
+
+        $foreign = new ForeignKey($key);
+
+        $foreign->references('id')->on($parentTable);
+
+        $this->tableKeys->add($foreign);
+
+        return $foreign;
+    }
+
+    public function foreignKey(string $column): ForeignKey
+    {
+        $parentTable = explode('_', $column)[0];
+        $parentTable = (new Str)->tableize($column);
+
+        $foreign = new ForeignKey($column);
+
+        $foreign->references('id')->on($parentTable);
+
+        $this->tableKeys->add($foreign);
+
+        return $foreign;
     }
 
     /**

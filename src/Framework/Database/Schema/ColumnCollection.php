@@ -2,7 +2,7 @@
 
 namespace Lightpack\Database\Schema;
 
-class ColumnsCollection
+class ColumnCollection
 {
     /**
      * @var array Lightpack\Database\Schema\Column

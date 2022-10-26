@@ -11,7 +11,7 @@ class CreateTable
         $sql = "CREATE TABLE IF NOT EXISTS {$table->name()} (";
         $sql .= $table->columns()->compile();
 
-        if($constraints = $table->keys()->compile()) {
+        if($constraints = $table->foreignKeys()->compile()) {
             $sql .= ', ' . $constraints;
         }
 

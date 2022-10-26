@@ -14,7 +14,7 @@ class ModifyColumn
         $sql = "ALTER TABLE {$table->name()} ";
         $sql .= $columns->compile();
 
-        if($constraints = $table->keys()->compile()) {
+        if($constraints = $table->foreignKeys()->compile()) {
             $sql .= ', ' . $constraints;
         }
 

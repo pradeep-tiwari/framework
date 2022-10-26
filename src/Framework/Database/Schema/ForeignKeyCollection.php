@@ -2,14 +2,14 @@
 
 namespace Lightpack\Database\Schema;
 
-class KeysCollection
+class ForeignKeyCollection
 {
     /**
-     * @var array Lightpack\Database\Schema\Key
+     * @var array Lightpack\Database\Schema\ForeignKey
      */
     private $keys = [];
 
-    public function add(Key $key)
+    public function add(ForeignKey $key)
     {
         $this->keys[] = $key;
     }

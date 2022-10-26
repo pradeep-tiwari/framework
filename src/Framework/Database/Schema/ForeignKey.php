@@ -2,18 +2,17 @@
 
 namespace Lightpack\Database\Schema;
 
-class Key
+class ForeignKey
 {
     private $foreignKey;
     private $parentTable;
-    private $parentColumn;
+    private $parentColumn = 'id';
     private $updateAction;
     private $deleteAction;
 
     public const ACTION_CASCADE = 'CASCADE';
     public const ACTION_RESTRICT = 'RESTRICT';
-    public const ACTION_SET_NULL = 'SET_NULL';
-    public const ACTION_NONE = 'NO ACTION';
+    public const ACTION_SET_NULL = 'SET NULL';
 
     public function __construct(string $foreignKey = null)
     {
@@ -22,30 +21,58 @@ class Key
         $this->deleteAction = self::ACTION_RESTRICT;
     }
 
-    public function references(string $table): self
+    public function references(string $parentColumn): self
     {
-        $this->parentTable = $table;
+        $this->parentColumn = $parentColumn;
 
         return $this;
     }
 
-    public function on(string $column): self
+    public function on(string $parentTable): self
     {
-        $this->parentColumn = $column;
+        $this->parentTable = $parentTable;
 
         return $this;
     }
 
-    public function update(string $action): self
+    public function cascadeOnDelete(): self
     {
-        $this->updateAction = $action;
+        $this->deleteAction = self::ACTION_CASCADE;
 
         return $this;
     }
 
-    public function delete(string $action): self
+    public function cascadeOnUpdate(): self
     {
-        $this->deleteAction = $action;
+        $this->updateAction = self::ACTION_CASCADE;
+
+        return $this;
+    }
+
+    public function restrictOnDelete(): self
+    {
+        $this->deleteAction = self::ACTION_RESTRICT;
+
+        return $this;
+    }
+
+    public function restrictOnUpdate(): self
+    {
+        $this->updateAction = self::ACTION_RESTRICT;
+
+        return $this;
+    }
+
+    public function nullOnDelete(): self
+    {
+        $this->deleteAction = self::ACTION_SET_NULL;
+
+        return $this;
+    }
+
+    public function nullOnUpdate(): self
+    {
+        $this->updateAction = self::ACTION_SET_NULL;
 
         return $this;
     }

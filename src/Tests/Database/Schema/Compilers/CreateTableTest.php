@@ -30,7 +30,7 @@ final class CreateTableTest extends TestCase
         $table->column('category_id')->type('int');
         $table->column('title')->type('varchar')->length(55);
         $table->column('description')->type('varchar')->length(55)->nullable();
-        $table->key('category_id')->references('categories')->on('id');
+        $table->foreignKey('category_id')->references('id')->on('categories');
         
         $sql = (new CreateTable)->compile($table);
         

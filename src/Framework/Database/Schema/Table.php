@@ -2,6 +2,9 @@
 
 namespace Lightpack\Database\Schema;
 
+use Lightpack\Database\Schema\Compilers\AddColumn;
+use Lightpack\Database\Schema\Compilers\DropColumn;
+use Lightpack\Database\Schema\Compilers\ModifyColumn;
 use Lightpack\Utils\Str;
 
 class Table
@@ -168,6 +171,46 @@ class Table
         $this->tableKeys->add($foreign);
 
         return $foreign;
+    }
+
+    /**
+     * Alter table add columns.
+     *
+     * @param Table $table
+     * @return void
+     */
+    public function addColumn(): string
+    {
+        $sql = (new AddColumn)->compile($this);
+
+        return $sql;
+    }
+
+    /**
+     * Drop columns in a table.
+     *
+     * @param string $table
+     * @param string ...$columns
+     * @return void
+     */
+    public function dropColumn(string ...$columns): string
+    {
+        $sql = (new DropColumn)->compile($this->name(), ...$columns);
+
+        return $sql;
+    }
+
+    /**
+     * Modify a column.
+     *
+     * @param Table $table
+     * @return void
+     */
+    public function modifyColumn(): string
+    {
+        $sql = (new ModifyColumn)->compile($this);
+
+        return $sql;
     }
 
     /**

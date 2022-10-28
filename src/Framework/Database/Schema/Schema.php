@@ -4,21 +4,15 @@ namespace Lightpack\Database\Schema;
 
 use Lightpack\Database\Pdo;
 use Lightpack\Database\Schema\Table;
-use Lightpack\Database\Schema\Compilers\AddColumn;
 use Lightpack\Database\Schema\Compilers\DropTable;
-use Lightpack\Database\Schema\Compilers\DropColumn;
 use Lightpack\Database\Schema\Compilers\CreateTable;
-use Lightpack\Database\Schema\Compilers\ModifyColumn;
 use Lightpack\Database\Schema\Compilers\TruncateTable;
 
 class Schema
 {
-    /**
-     * Create a new table instance.
-     */
-    public function for(string $name): Table
+    public function __construct(private Pdo $connection)
     {
-        return new Table($name);
+        // ...
     }
 
     /**
@@ -30,7 +24,7 @@ class Schema
     public function createTable(Table $table): string
     {
         $sql = (new CreateTable)->compile($table);
-        
+
         return $sql;
     }
 
@@ -61,42 +55,52 @@ class Schema
     }
 
     /**
-     * Alter table add columns.
-     *
-     * @param Table $table
-     * @return void
+     * Inspect the list of tables in the database.
      */
-    public function addColumn(Table $table): string
+    public function inspectTables(): array
     {
-        $sql = (new AddColumn)->compile($table);
+        $tables = [];
 
-        return $sql;
+        $rows = $this->connection->query('SHOW TABLES');
+
+        while (($row = $rows->fetch())) {
+            foreach ($row as $value) {
+                $tables[] = $value;
+            }
+        }
+
+        return $tables;
     }
 
     /**
-     * Drop columns in a table.
-     *
-     * @param string $table
-     * @param string ...$columns
-     * @return void
+     * Inspect the list of columns in a table.
      */
-    public function dropColumn(string $table, string ...$columns): string
+    public function inspectColumns(string $table)
     {
-        $sql = (new DropColumn)->compile($table, ...$columns);
+        $columns = [];
 
-        return $sql;
+        $rows = $this->connection->query('DESCRIBE ' . $table);
+
+        while (($row = $rows->fetch())) {
+            $columns[] = $row['Field'];
+        }
+
+        return $columns;
     }
 
     /**
-     * Modify a column.
-     *
-     * @param Table $table
-     * @return void
+     * Inspect a column in a table.
      */
-    public function modifyColumn(Table $table): string
+    public function inspectColumn(string $table, string $column)
     {
-        $sql = (new ModifyColumn)->compile($table);
+        $rows = $this->connection->query('DESCRIBE ' . $table);
 
-        return $sql;
+        while (($row = $rows->fetch())) {
+            if ($column === $row['Field']) {
+                return $row;
+            }
+        }
+
+        return null;
     }
 }

@@ -41,7 +41,7 @@ final class SchemaTest extends TestCase
         $sql = $this->schema->createTable($table);
         $this->connection->query($sql);
 
-        $this->assertTrue(in_array('products', $this->getTables()));
+        $this->assertTrue(in_array('products', $this->schema->inspectTables()));
     }
 
     public function testSchemaCanAlterTableAddColumn()
@@ -55,10 +55,10 @@ final class SchemaTest extends TestCase
         // Add new column
         $table = new Table('products');
         $table->column('description')->type('text');
-        $sql = $this->schema->addColumn($table);
+        $sql = $table->addColumn();
         $this->connection->query($sql);
 
-        $this->assertTrue(in_array('description', $this->getColumns('products')));
+        $this->assertTrue(in_array('description', $this->schema->inspectColumns('products')));
     }
 
     public function testSchemaCanAlterTableModifyColumn()
@@ -76,11 +76,11 @@ final class SchemaTest extends TestCase
         // Now lets modify the description column
         $table = new Table('products');
         $table->column('description')->type('varchar')->length(150);
-        $sql = $this->schema->modifyColumn($table);
+        $sql = $table->modifyColumn();
         $this->connection->query($sql);
 
         // If column modified successfully, we should get its type 
-        $descriptionColumnInfo = $this->getColumn('products', 'description');
+        $descriptionColumnInfo = $this->schema->inspectColumn('products', 'description');
 
         $this->assertEquals($descriptionColumnInfo['Type'], 'varchar(150)');
     }
@@ -114,7 +114,7 @@ final class SchemaTest extends TestCase
         $sql = $this->schema->dropTable('products');
         $this->connection->query($sql);
 
-        $this->assertFalse(in_array('products', $this->getTables()));
+        $this->assertFalse(in_array('products', $this->schema->inspectTables()));
     }
 
     public function testSchemaCanAddForeignKey()
@@ -135,47 +135,6 @@ final class SchemaTest extends TestCase
         $sql = $this->schema->createTable($table);
         $this->connection->query($sql);
 
-        $this->assertTrue(in_array('products', $this->getTables()));
-    }
-
-    private function getTables()
-    {
-        $tables = [];
-
-        $rows = $this->connection->query('SHOW TABLES');
-
-        while (($row = $rows->fetch())) {
-            foreach ($row as $value) {
-                $tables[] = $value;
-            }
-        }
-
-        return $tables;
-    }
-
-    private function getColumns(string $table)
-    {
-        $columns = [];
-
-        $rows = $this->connection->query('DESCRIBE ' . $table);
-
-        while (($row = $rows->fetch())) {
-            $columns[] = $row['Field'];
-        }
-
-        return $columns;
-    }
-
-    private function getColumn(string $table, string $column)
-    {
-        $rows = $this->connection->query('DESCRIBE ' . $table);
-
-        while (($row = $rows->fetch())) {
-            if ($column === $row['Field']) {
-                return $row;
-            }
-        }
-
-        return null;
+        $this->assertTrue(in_array('products', $this->schema->inspectTables()));
     }
 }

@@ -31,8 +31,12 @@ final class RouterTest extends TestCase
 
     public function testRouterCanParseUrl()
     {
-        $this->routeRegistry->get('/users/:num/role/:alpha/:any|any', 'UserController', 'index');
-        $this->router->parse('/users/23/role/admin/hello/world');
+        $this->routeRegistry->get('/users/:user/roles/:role', 'UserController', 'index')->pattern([
+            'user' => ':num',
+            'role' => ':slug',
+        ]);
+
+        $this->router->parse('/users/23/roles/admin');
 
         $this->assertEquals(
             'UserController',
@@ -47,7 +51,7 @@ final class RouterTest extends TestCase
         );
 
         $this->assertEquals(
-            ['num' => 23, 'alpha' => 'admin', 'any' => 'hello/world'],
+            ['user' => 23, 'role' => 'admin'],
             $this->router->getRoute()->getParams(),
             'Router should parse params correctly'
         );
@@ -62,7 +66,6 @@ final class RouterTest extends TestCase
             '/news' => ['GET', '/news', 'News', 'handle', []],
             '/news/order/asc' => ['POST', '/news/order/:alpha', 'News', 'handle', ['alpha' => 'asc']],
             '/news/23/category/politics' => ['PUT', '/news/:num/category/:slug', 'News', 'handle', ['num' => 23, 'slug' => 'politics']],
-            '/news/author/bob-walter/id-23' => ['DELETE', '/news/:alpha/:any|any', 'News', 'handle', ['alpha' => 'author', 'any' => 'bob-walter/id-23']],
         ];
 
         foreach ($routes as $path => $config) {
@@ -131,10 +134,10 @@ final class RouterTest extends TestCase
 
     public function testRouterCanParseRegexUrl()
     {
-        $this->routeRegistry->get('/news/:id|([0-9]+)/slug/:slug|([a-zA-Z]+)', 'News', 'index');
-        $this->router->parse('/news/23/slug/politics');
+        $this->routeRegistry->get('/news/:id/tags/:tag', 'News', 'index')->pattern(['id' => '([0-9]+)', 'tag' => '([a-zA-Z]+)']);
+        $this->router->parse('/news/23/tags/politics');
 
-        $this->assertEquals(['id' => '23', 'slug' => 'politics'], $this->router->getRoute()->getParams());
+        $this->assertEquals(['id' => '23', 'tag' => 'politics'], $this->router->getRoute()->getParams());
     }
 
     public function testRouterCanParseComplexUrl()

@@ -13,12 +13,12 @@ class RouteRegistry
         'OPTIONS' => [],
     ];
     private $placeholders = [
-        'any' => '(.*)',
-        'seg' => '([^/]+)',
-        'num' => '([0-9]+)',
-        'slug' => '([a-zA-Z0-9-]+)',
-        'alpha' => '([a-zA-Z]+)',
-        'alnum' => '([a-zA-Z0-9]+)',
+        ':any' => '(.*)',
+        ':seg' => '([^/]+)',
+        ':num' => '([0-9]+)',
+        ':slug' => '([a-zA-Z0-9-]+)',
+        ':alpha' => '([a-zA-Z]+)',
+        ':alnum' => '([a-zA-Z0-9]+)',
     ];
 
     private $options = [
@@ -103,8 +103,8 @@ class RouteRegistry
     {
         $routes = $this->getRoutesForCurrentRequest();
 
-        foreach ($routes as $routeUri) {
-            ['params' => $params, 'regex' => $regex] = $this->compileRegexWithParams($routeUri);
+        foreach ($routes as $routeUri => $route) {
+            ['params' => $params, 'regex' => $regex] = $this->compileRegexWithParams($routeUri, $route->getPattern());
 
             if (preg_match('@^' . $regex. '$@', $path, $matches)) {
                 \array_shift($matches);
@@ -137,7 +137,6 @@ class RouteRegistry
 
     private function add(string $method, string $uri, string $controller, string $action): Route
     {
-
         if (trim($uri) === '') {
             throw new \Exception('Empty route path');
         }
@@ -157,7 +156,7 @@ class RouteRegistry
         return str_replace($search, $replace, $path);
     }
 
-    private function compileRegexWithParams(string $routePattern): array
+    private function compileRegexWithParams(string $routePattern, array $pattern): array
     {
         $params = [];
         $parts = [];
@@ -165,10 +164,10 @@ class RouteRegistry
 
         foreach ($fragments as $fragment) {
             if(strpos($fragment, ':') === 0) {
-                $splits = explode('|', $fragment, 2);
-                $params[] = substr($splits[0], 1);
-                $pattern = $splits[1] ?? 'seg';
-                $parts[] = $this->placeholders[$pattern] ?? $pattern;
+                $param = substr($fragment, 1);
+                $params[] = $param;
+                $registeredPattern = $pattern[$param] ?? ':seg';
+                $parts[] = $this->placeholders[$registeredPattern] ?? $registeredPattern;
             } else {
                 $parts[] = $fragment;
             }
@@ -185,7 +184,8 @@ class RouteRegistry
         $requestMethod = $this->request->method();
         $requestMethod = trim($requestMethod);
         $routes = $this->routes[$requestMethod] ?? [];
-        return \array_keys($routes);
+        return $routes;
+        // return \array_keys($routes);
     }
 
     private function setRouteName(Route $route): void

@@ -86,6 +86,7 @@ class RouteRegistry
 
     // Handle wildcard subdomain
     if ($subdomain && $subdomain !== '*') {
+        $this->subdomain = $subdomain;
         $routeRegistry = new RouteRegistry($this->request, $subdomain);
         $callback($routeRegistry);
     } else {
@@ -117,6 +118,10 @@ class RouteRegistry
 
     public function matches(string $path): false|Route
     {
+        if($this->subdomain && $this->subdomain !== $this->request->subdomain()) {
+            return false;
+        }
+
         $routes = $this->getRoutesForCurrentRequest();
 
         foreach ($routes as $routeUri => $route) {

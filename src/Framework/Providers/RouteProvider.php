@@ -10,9 +10,10 @@ class RouteProvider implements ProviderInterface
     public function register(Container $container)
     {
         $container->register('route', function ($container) {
-            return new RouteRegistry(
-                $container->get('request')
-            );
+            $request = $container->get('request');
+            $subdomain = $request->getSubdomain();
+
+            return new RouteRegistry($request, $subdomain);
         });
 
         $container->alias(RouteRegistry::class, 'route');

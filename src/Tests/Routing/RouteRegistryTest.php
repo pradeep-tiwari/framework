@@ -171,7 +171,7 @@ final class RouteRegistryTest extends TestCase
 
         foreach ($this->verbs as $verb) {
             $request->setMethod($verb);
-
+            
             $this->assertTrue(
                 $routeRegistry->matches('/admin/users/23') instanceof Route,
                 "Route should match group request {$verb} /admin/users/23"

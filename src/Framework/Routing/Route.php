@@ -11,6 +11,7 @@ class Route
     private string $path;
     private string $uri;
     private array $pattern = [];
+    private $subdomain;
 
     /**
      * @var string HTTP method
@@ -144,6 +145,28 @@ class Route
     public function getVerb(): string
     {
         return $this->verb;
+    }
+
+     /**
+     * Set the subdomain for the route.
+     *
+     * @param string|null $subdomain
+     * @return Route
+     */
+    public function setSubdomain(?string $subdomain): self
+    {
+        $this->subdomain = $subdomain;
+        return $this;
+    }
+
+    /**
+     * Get the subdomain for the route.
+     *
+     * @return string|null
+     */
+    public function getSubdomain(): ?string
+    {
+        return $this->subdomain;
     }
 
     public function name(string $name): self

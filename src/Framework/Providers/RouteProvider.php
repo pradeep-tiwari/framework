@@ -11,7 +11,7 @@ class RouteProvider implements ProviderInterface
     {
         $container->register('route', function ($container) {
             $request = $container->get('request');
-            $subdomain = $request->getSubdomain();
+            $subdomain = $request->subdomain();
 
             return new RouteRegistry($request, $subdomain);
         });

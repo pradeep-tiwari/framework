@@ -86,10 +86,11 @@ class RouteRegistry
 
     // Handle wildcard subdomain
     if ($subdomain && $subdomain !== '*') {
-        $this->subdomain = $subdomain;
+        $routeRegistry = new RouteRegistry($this->request, $subdomain);
+        $callback($routeRegistry);
+    } else {
+        $callback($this);
     }
-
-    $callback($this);
 
     $this->options = $oldOptions;
 }

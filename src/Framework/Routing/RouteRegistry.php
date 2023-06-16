@@ -82,11 +82,11 @@ class RouteRegistry
     $this->options['prefix'] = $oldOptions['prefix'] . $this->options['prefix'];
 
     // Extract subdomain from options
-    $this->subdomain = $this->options['subdomain'] ?? '';
+    $subdomain = $this->options['subdomain'] ?? '';
 
     // Handle wildcard subdomain
-    if ($this->subdomain === '*') {
-        $this->subdomain = $this->wildcardSubdomain;
+    if ($subdomain && $subdomain !== '*') {
+        $this->subdomain = $subdomain;
     }
 
     $callback($this);

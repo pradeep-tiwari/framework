@@ -27,18 +27,13 @@ class RouteRegistry
     ];
 
     private $names = [];
-
     private $request;
+    private $resolvingDomain;
 
-    private $subdomain;
-
-    private $wildcardSubdomain = ':subdomain';
-
-    public function __construct(\Lightpack\Http\Request $request, ?string $subdomain = '')
-{
-    $this->request = $request;
-    $this->subdomain = $subdomain;
-}
+    public function __construct(\Lightpack\Http\Request $request)
+    {
+        $this->request = $request;
+    }
 
     public function get(string $uri, string $controller, string $action = 'index'): Route
     {
@@ -75,26 +70,22 @@ class RouteRegistry
         return $this->routes[$method] ?? [];
     }
 
-    public function group(array $options, callable $callback): void
-{
-    $oldOptions = $this->options;
-    $this->options = \array_merge($oldOptions, $options);
-    $this->options['prefix'] = $oldOptions['prefix'] . $this->options['prefix'];
+    public function domain(string $domain): self
+    {
+        $this->resolvingDomain = $domain;
 
-    // Extract subdomain from options
-    $subdomain = $this->options['subdomain'] ?? '';
-
-    // Handle wildcard subdomain
-    if ($subdomain && $subdomain !== '*') {
-        $this->subdomain = $subdomain;
-        $routeRegistry = new RouteRegistry($this->request, $subdomain);
-        $callback($routeRegistry);
-    } else {
-        $callback($this);
+        return $this;
     }
 
-    $this->options = $oldOptions;
-}
+    public function group(array $options, callable $callback): void
+    {
+        $oldOptions = $this->options;
+        $this->options = \array_merge($oldOptions, $options);
+        $this->options['prefix'] = $oldOptions['prefix'] . $this->options['prefix'];
+        $callback($this);
+        $this->resolvingDomain = '';
+        $this->options = $oldOptions;
+    }
 
     public function map(array $verbs, string $route, string $controller, string $action = 'index'): void
     {
@@ -118,8 +109,8 @@ class RouteRegistry
 
     public function matches(string $path): false|Route
     {
-        if($this->subdomain && $this->subdomain !== $this->request->subdomain()) {
-            return false;
+        if($this->request->subdomain()) {
+            $path = $this->request->host() . $path;
         }
 
         $routes = $this->getRoutesForCurrentRequest();
@@ -127,7 +118,7 @@ class RouteRegistry
         foreach ($routes as $routeUri => $route) {
             ['params' => $params, 'regex' => $regex] = $this->compileRegexWithParams($routeUri, $route->getPattern());
 
-            if (preg_match('@^' . $regex. '$@', $path, $matches)) {
+            if (preg_match('@^' . $regex . '$@', $path, $matches)) {
                 \array_shift($matches);
 
                 /** @var Route */
@@ -157,25 +148,19 @@ class RouteRegistry
     }
 
     private function add(string $method, string $uri, string $controller, string $action): Route
-{
-    if (trim($uri) === '') {
-        throw new \Exception('Empty route path');
+    {
+        if (trim($uri) === '') {
+            throw new \Exception('Empty route path');
+        }
+
+        $uri = $this->resolvingDomain . $uri;
+        $route = new Route();
+        $route->setController($controller)->setAction($action)->filter($this->options['filter'])->setUri($uri)->setVerb($method);
+        $route->setDomain($this->resolvingDomain);
+        $this->routes[$method][$uri] = $route;
+
+        return $route;
     }
-
-    $route = new Route();
-    $route->setController($controller)->setAction($action)->filter($this->options['filter'])->setUri($uri)->setVerb($method);
-
-    // Set subdomain for the route
-    if ($this->subdomain === $this->wildcardSubdomain) {
-        $route->setSubdomain($this->wildcardSubdomain);
-    } else {
-        $route->setSubdomain($this->subdomain);
-    }
-
-    $this->routes[$method][$uri] = $route;
-
-    return $route;
-}
 
 
     private function regex(string $path): string
@@ -191,9 +176,9 @@ class RouteRegistry
         $params = [];
         $parts = [];
         $fragments = explode('/', $routePattern);
-
+        
         foreach ($fragments as $fragment) {
-            if(strpos($fragment, ':') === 0) {
+            if (strpos($fragment, ':') === 0) {
                 $param = substr($fragment, 1);
                 $params[] = $param;
                 $registeredPattern = $pattern[$param] ?? ':seg';
@@ -211,28 +196,28 @@ class RouteRegistry
     }
 
     private function getRoutesForCurrentRequest()
-{
-    $requestMethod = $this->request->method();
-    $requestMethod = trim($requestMethod);
-    $routes = $this->routes[$requestMethod] ?? [];
+    {
+        $requestMethod = $this->request->method();
+        $requestMethod = trim($requestMethod);
+        $routes = $this->routes[$requestMethod] ?? [];
 
-    // Filter routes based on subdomain
-    if ($this->subdomain) {
-        $filteredRoutes = [];
-        foreach ($routes as $uri => $route) {
-            if ($route->getSubdomain() === $this->subdomain || $route->getSubdomain() === $this->wildcardSubdomain) {
-                $filteredRoutes[$uri] = $route;
+        // Filter routes based on subdomain
+        if ($this->resolvingDomain) {
+            $filteredRoutes = [];
+            foreach ($routes as $uri => $route) {
+                if ($route->getSubdomain() === $this->resolvingDomain || $route->getSubdomain() === $this->wildcardSubdomain) {
+                    $filteredRoutes[$uri] = $route;
+                }
             }
+            $routes = $filteredRoutes;
         }
-        $routes = $filteredRoutes;
-    }
 
-    return $routes;
-}
+        return $routes;
+    }
 
     private function setRouteName(Route $route): void
     {
-        if(false === $route->hasName()) {
+        if (false === $route->hasName()) {
             return;
         }
 

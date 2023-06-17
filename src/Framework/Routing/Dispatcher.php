@@ -36,10 +36,6 @@ class Dispatcher
         $action = $this->route->getAction();
         $params = $this->route->getParams();
 
-        if(!empty($this->route->getSubdomain())) {
-            $params = array_merge(['subdomain' => $this->route->getSubdomain()], $params);
-        }
-
         if (!\class_exists($controller)) {
             throw new \Lightpack\Exceptions\ControllerNotFoundException(
                 sprintf("Controller Not Found Exception: %s", $controller)

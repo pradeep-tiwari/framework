@@ -4,6 +4,7 @@ namespace Lightpack\Routing;
 
 class Route
 {
+    private string $name;
     private string $controller;
     private string $action;
     private array $filters = [];
@@ -11,7 +12,7 @@ class Route
     private string $path;
     private string $uri;
     private array $pattern = [];
-    private $subdomain;
+    private $domain;
 
     /**
      * @var string HTTP method
@@ -83,6 +84,14 @@ class Route
      */
     public function setParams(array $params): self
     {
+        // Make sure we have resolved the widlcard subdomain in params
+        if(count($params) > 0 && strpos(array_key_first($params), '.') !== false) {
+            $wildcardName = explode('.', array_key_first($params))[0];
+            $wildcardValue = explode('.', reset($params))[0];
+            array_shift($params);
+            $params = array_merge([$wildcardName => $wildcardValue], $params);
+        }
+
         $this->params = $params;
         return $this;
     }
@@ -148,25 +157,25 @@ class Route
     }
 
      /**
-     * Set the subdomain for the route.
+     * Set the domain for the route.
      *
-     * @param string|null $subdomain
+     * @param string|null $domain
      * @return Route
      */
-    public function setSubdomain(?string $subdomain): self
+    public function setDomain(?string $domain): self
     {
-        $this->subdomain = $subdomain;
+        $this->domain = $domain;
         return $this;
     }
 
     /**
-     * Get the subdomain for the route.
+     * Get the domain for the route.
      *
      * @return string|null
      */
-    public function getSubdomain(): ?string
+    public function getDomain(): ?string
     {
-        return $this->subdomain;
+        return $this->domain;
     }
 
     public function name(string $name): self

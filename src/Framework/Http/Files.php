@@ -4,7 +4,7 @@ namespace Lightpack\Http;
 
 class Files
 {
-    private $files;
+    private array $files = [];
 
     public function __construct(array $files = [])
     {
@@ -23,7 +23,7 @@ class Files
             return $this->files;
         }
 
-        return $this->files[$key] ?? null;
+        return $this->files[$key] ?? [];
     }
 
     public function has(string $key)

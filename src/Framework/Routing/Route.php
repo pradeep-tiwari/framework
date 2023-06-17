@@ -4,15 +4,15 @@ namespace Lightpack\Routing;
 
 class Route
 {
-    private string $name;
-    private string $controller;
-    private string $action;
+    private ?string $name = '';
+    private ?string $controller = '';
+    private ?string $action = '';
     private array $filters = [];
     private array $params = [];
-    private string $path;
-    private string $uri;
+    private ?string $path = '/';
+    private ?string $uri = '/';
     private array $pattern = [];
-    private $domain;
+    private ?string $domain = '';
 
     /**
      * @var string HTTP method
@@ -191,7 +191,7 @@ class Route
 
     public function hasName(): bool
     {
-        return isset($this->name);
+        return $this->name !== '';
     }
 
     public function pattern(array $pattern): self

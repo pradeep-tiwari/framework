@@ -109,7 +109,7 @@ class RouteRegistry
 
     public function matches(string $path): false|Route
     {
-        if($this->request->subdomain()) {
+        if ($this->request->subdomain()) {
             $path = $this->request->host() . $path;
         }
 
@@ -147,6 +147,30 @@ class RouteRegistry
         }
     }
 
+    public function toArray(): array
+    {
+        $routeData = [];
+
+        foreach ($this->routes as $method => $routes) {
+            foreach ($routes as $route) {
+                $routeData[$route->getUri()] = [
+                    'method' => $method,
+                    'uri' => $route->getUri(),
+                    'controller' => $route->getController(),
+                    'action' => $route->getAction(),
+                    'filters' => $route->getFilters(),
+                    'params' => $route->getParams(),
+                    'path' => $route->getPath(),
+                    'pattern' => $route->getPattern(),
+                    'domain' => $route->getDomain(),
+                    'name' => $route->getName(),
+                ];
+            }
+        }
+
+        return $routeData;
+    }
+
     private function add(string $method, string $uri, string $controller, string $action): Route
     {
         if (trim($uri) === '') {
@@ -162,7 +186,6 @@ class RouteRegistry
         return $route;
     }
 
-
     private function regex(string $path): string
     {
         $search = \array_keys($this->placeholders);
@@ -176,7 +199,7 @@ class RouteRegistry
         $params = [];
         $parts = [];
         $fragments = explode('/', $routePattern);
-        
+
         foreach ($fragments as $fragment) {
             if (strpos($fragment, ':') === 0) {
                 $param = substr($fragment, 1);

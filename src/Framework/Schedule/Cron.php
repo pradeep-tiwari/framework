@@ -9,9 +9,13 @@ class Cron
     protected string $days;
     protected string $months;
     protected string $weekdays;
+    protected bool $useAlternativeWeekdays = false;
 
     public function __construct(string $cronExpression)
     {
+        // Handle special time strings first
+        $cronExpression = $this->parseSpecialTimeString($cronExpression);
+        
         $cronParts = explode(' ', $cronExpression);
 
         if (count($cronParts) !== 5) {
@@ -23,6 +27,24 @@ class Cron
         $this->days = $cronParts[2];
         $this->months = $cronParts[3];
         $this->weekdays = $cronParts[4];
+    }
+
+    protected function parseSpecialTimeString(string $expression): string 
+    {
+        return match($expression) {
+            '@yearly', '@annually' => '0 0 1 1 *',
+            '@monthly' => '0 0 1 * *',
+            '@weekly' => '0 0 * * 0',
+            '@daily', '@midnight' => '0 0 * * *',
+            '@hourly' => '0 * * * *',
+            default => $expression,
+        };
+    }
+
+    public function useAlternativeWeekdays(bool $use = true): self
+    {
+        $this->useAlternativeWeekdays = $use;
+        return $this;
     }
 
     public function minuteIsDue(\DateTime $currentDateTime): bool
@@ -47,7 +69,14 @@ class Cron
 
     public function weekdayIsDue(\DateTime $currentDateTime): bool
     {
-        return $this->checkIfDue($this->weekdays, (int)$currentDateTime->format('w'));
+        $weekday = (int)$currentDateTime->format('w');
+        
+        // Convert Sunday from 0 to 7 if using alternative weekday format
+        if ($this->useAlternativeWeekdays && $weekday === 0) {
+            $weekday = 7;
+        }
+        
+        return $this->checkIfDue($this->weekdays, $weekday);
     }
 
     public function isDue(\DateTime $currentDateTime): bool
@@ -82,24 +111,21 @@ class Cron
     public function previousDueAt(\DateTime $currentDateTime): \DateTime
     {
         $previousDateTime = clone $currentDateTime;
-        $previousDateTime->modify('-1 minute'); // Start from the current date/time
-
-        while (true) {
-            if (
-                $this->minuteIsDue($previousDateTime) &&
-                $this->hourIsDue($previousDateTime) &&
-                $this->dayIsDue($previousDateTime) &&
-                $this->monthIsDue($previousDateTime) &&
-                $this->weekdayIsDue($previousDateTime)
-            ) {
+        $previousDateTime->modify('-1 minute');
+        
+        $maxIterations = 1440; // Maximum number of minutes in a day
+        while ($maxIterations > 0) {
+            if ($this->isDue($previousDateTime)) {
                 return $previousDateTime;
             }
-
             $previousDateTime->modify('-1 minute');
+            $maxIterations--;
         }
+        
+        throw new \Exception('Unable to determine the previous due date within a reasonable number of iterations');
     }
 
-    protected function checkIfDue($expression, $current)
+    protected function checkIfDue($expression, $current): bool
     {
         if ($expression === '*') {
             return true;
@@ -118,7 +144,10 @@ class Cron
 
         if (strpos($expression, '/') !== false) {
             $parts = explode('/', $expression);
-            if ((int)$current % (int)$parts[1] === 0) {
+            $step = (int)$parts[1];
+            $start = $parts[0] === '*' ? 0 : (int)$parts[0];
+            
+            if ($current >= $start && ($current - $start) % $step === 0) {
                 return true;
             }
         }

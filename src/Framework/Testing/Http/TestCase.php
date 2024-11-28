@@ -4,6 +4,7 @@ namespace Lightpack\Testing\Http;
 
 use Lightpack\Http\Response;
 use PHPUnit\Framework\TestCase as BaseTestCase;
+use Lightpack\Auth\Identity;
 
 class TestCase extends BaseTestCase
 {
@@ -18,6 +19,54 @@ class TestCase extends BaseTestCase
     protected $isJsonRequest = false;
     
     protected $isMultipartFormdata = false;
+
+    /** @var \Lightpack\Auth\Identity */
+    protected $user;
+
+    /**
+     * Set the currently logged in user for the application.
+     *
+     * @param \Lightpack\Auth\Identity $user
+     * @return $this
+     */
+    public function actingAs($user)
+    {
+        $this->user = $user;
+        
+        $_SESSION['auth_user'] = $user;
+        $_SESSION['_logged_in'] = true;
+        $_SESSION['_auth_id'] = $user->getId();
+        
+        return $this;
+    }
+
+    /**
+     * Set bearer token for API authentication
+     *
+     * @param string $token
+     * @return $this
+     */
+    public function withToken(string $token)
+    {
+        $_SERVER['HTTP_AUTHORIZATION'] = 'Bearer ' . $token;
+        
+        return $this;
+    }
+
+    /**
+     * Set remember me cookie for cookie authentication
+     *
+     * @param \Lightpack\Auth\Identity $user
+     * @param string $token
+     * @return $this
+     */
+    public function withRememberToken($user, string $token)
+    {
+        $cookieValue = $user->getId() . '|' . $token;
+        $_COOKIE['remember_token'] = $cookieValue;
+        
+        return $this;
+    }
 
     public function request(string $method, string $route, array $params = []): Response
     {

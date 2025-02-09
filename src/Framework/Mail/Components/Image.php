@@ -15,6 +15,24 @@ class Image extends Component
     ];
 
     /**
+     * Set image source
+     */
+    public function src(string $url): self
+    {
+        $this->attr('src', $url);
+        return $this;
+    }
+
+    /**
+     * Set image alt text
+     */
+    public function alt(string $text): self
+    {
+        $this->attr('alt', $text);
+        return $this;
+    }
+
+    /**
      * Set image width
      */
     public function width(string $width): self
@@ -43,9 +61,16 @@ class Image extends Component
      */
     public function render(): string
     {
-        return <<<HTML
-        <img{$this->renderAttributes()}{$this->renderStyles()}>
-        {$this->renderChildren()}
-        HTML;
+        $styles = array_merge([
+            'max-width' => '100%',
+            'height' => 'auto',
+            'display' => 'block',
+            'margin' => '0 0 16px 0',
+        ], $this->styles);
+
+        $styleAttr = $this->buildStyleAttribute($styles);
+        $attributes = $this->renderAttributes();
+
+        return "<img{$attributes} {$styleAttr}>";
     }
 }

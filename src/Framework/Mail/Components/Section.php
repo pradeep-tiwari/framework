@@ -120,6 +120,15 @@ class Section extends Component
     }
 
     /**
+     * Set background color
+     */
+    public function backgroundColor(string $color): self
+    {
+        $this->style('background-color', $color);
+        return $this;
+    }
+
+    /**
      * Render the section
      */
     public function render(): string

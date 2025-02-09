@@ -117,6 +117,25 @@ abstract class Component
     }
 
     /**
+     * Build the style attribute string
+     */
+    protected function buildStyleAttribute(array $styles = []): string
+    {
+        $allStyles = array_merge($this->styles, $styles);
+        if (empty($allStyles)) {
+            return '';
+        }
+
+        $styleStr = array_map(
+            fn($name, $value) => "{$name}: {$value};",
+            array_keys($allStyles),
+            array_values($allStyles)
+        );
+
+        return 'style="' . implode(' ', $styleStr) . '"';
+    }
+
+    /**
      * Get rendered children
      */
     protected function renderChildren(): string

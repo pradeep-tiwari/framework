@@ -3,13 +3,7 @@
 require_once __DIR__ . '/../../../vendor/autoload.php';
 
 use Lightpack\Mail\Components\Button;
-use Lightpack\Mail\Components\Card;
-use Lightpack\Mail\Components\Divider;
-use Lightpack\Mail\Components\Grid;
 use Lightpack\Mail\Components\Image;
-use Lightpack\Mail\Components\Link;
-use Lightpack\Mail\Components\ListComponent;
-use Lightpack\Mail\Components\Quote;
 use Lightpack\Mail\Components\Section;
 use Lightpack\Mail\Components\Spacer;
 use Lightpack\Mail\Components\Table;
@@ -18,128 +12,95 @@ use Lightpack\Mail\Components\Text;
 // Create header section
 $header = new Section();
 $header->style('background-color', '#ffffff')
-    ->padding(32);
+    ->style('border-bottom', '1px solid #e0e0e0')
+    ->padding(24);
 
-$header->image('https://picsum.photos/200/50', 'Logo');
-$header->spacer(20);
-$header->bold('Welcome to Lightpack Framework')->size(32);
-$header->text('Thank you for choosing our modern PHP framework');
+$header->image('https://picsum.photos/120/30', 'Logo')
+    ->style('margin', '0');
+$header->spacer(16);
+$header->text('INVOICE #INV-2025-001')
+    ->style('font-size', '14px')
+    ->style('font-weight', 'bold')
+    ->style('color', '#1a1a1a');
+$header->text('February 9, 2025')
+    ->style('font-size', '14px')
+    ->style('color', '#666666');
 
 // Create content section
 $content = new Section();
 $content->style('background-color', '#ffffff')
-    ->style('width', '200px')
-    ->style('text-align', 'center')
-    ->padding(32);
+    ->padding(24);
 
-$content->text('Hi John,');
-$content->spacer(20);
-
-$quote = new Quote();
-$quote->content('Lightpack has transformed how we build web applications. Its simplicity and power are unmatched.')
-    ->author('Sarah Johnson', 'Lead Developer at TechCorp')
-    ->borderColor('#007bff');
-$content->add($quote);
-
-$content->spacer(30);
-
-$grid = new Grid();
-$grid->gap(16)
-    ->column(function($col) {
-        $col->add(
-            (new Card())
-                ->title('Fast & Lightweight')
-                ->content('Built for speed and efficiency')
-        );
-    }, 33)
-    ->column(function($col) {
-        $col->add(
-            (new Card())
-                ->title('Modern Architecture')
-                ->content('Using latest PHP features')
-        );
-    }, 33)
-    ->column(function($col) {
-        $col->add(
-            (new Card())
-                ->title('Developer Friendly')
-                ->content('Great developer experience')
-        );
-    }, 34);
-$content->add($grid);
-
-$content->spacer(30);
-$content->text('Key Features:');
-$content->spacer(10);
-
-$list = new ListComponent();
-$list->bulletColor('#007bff')
-    ->items([
-        'Simple and intuitive API',
-        'Powerful routing system',
-        'Database abstraction layer',
-        'Built-in security features',
-        'Extensive documentation',
-    ]);
-$content->add($list);
-
-$content->spacer(30);
-$content->text('Framework Performance:');
-$content->spacer(10);
-
+// Invoice details table
 $table = new Table();
-$table->headers(['Metric', 'Value', 'Comparison'])
+$table->headers(['Item', 'Qty', 'Price', 'Total'])
     ->rows([
-        ['Response Time', '< 50ms', '2x faster'],
-        ['Memory Usage', '< 2MB', '3x lighter'],
-        ['Database Queries', '< 10 per request', 'Optimized'],
+        ['MacBook Pro M3', '1', '$1,999', '$1,999'],
+        ['Magic Keyboard', '1', '$299', '$299'],
+        ['Magic Mouse', '1', '$99', '$99'],
+        ['USB-C Cable', '2', '$19', '$38'],
+        ['Display Adapter', '1', '$69', '$69'],
     ])
-    ->striped()
+    ->style('width', '100%')
+    ->style('margin-bottom', '24px')
+    ->style('font-size', '14px')
+    ->style('font-weight', 'normal')
+    ->style('border-collapse', 'collapse')
     ->headerBgColor('#f8f9fa')
-    ->stripedBgColor('#f8f9fa');
+    ->borderColor('#e0e0e0')
+    ->bordered(true);
+
 $content->add($table);
 
-$content->spacer(30);
-$content->text('Ready to get started? Check out our resources:');
-$content->spacer(20);
+$content->spacer(24);
 
-$docs = new Button();
-$docs->content('Read Documentation')
-    ->href('https://lightpack.com/docs')
+// Subtotal and total
+$content->text('Subtotal: $2,504')
+    ->style('text-align', 'right')
+    ->style('font-size', '14px')
+    ->style('color', '#666666');
+$content->text('Tax (8.25%): $206.58')
+    ->style('text-align', 'right')
+    ->style('font-size', '14px')
+    ->style('color', '#666666');
+$content->text('Total: $2,710.58')
+    ->style('text-align', 'right')
+    ->style('font-size', '14px')
+    ->style('font-weight', 'bold')
+    ->style('color', '#1a1a1a');
+
+$content->spacer(24);
+
+// Payment button
+$pay = new Button();
+$pay->content('Pay Now')
+    ->href('https://lightpack.com/pay/inv-2025-001')
     ->color('#ffffff')
-    ->backgroundColor('#007bff');
-$content->add($docs);
-
-$content->spacer(20);
-
-$community = new Button();
-$community->content('Join Community')
-    ->href('https://lightpack.com/community')
-    ->color('#ffffff')
-    ->backgroundColor('#007bff');
-$content->add($community);
+    ->backgroundColor('#22c55e')
+    ->style('padding', '12px 32px')
+    ->style('font-size', '14px');
+$content->add($pay);
 
 // Create footer section
 $footer = new Section();
-$footer->style('background-color', '#ffffff')
-    ->style('margin-right', '10px')
-    ->padding(32);
+$footer->style('background-color', '#f8f9fa')
+    ->style('border-top', '1px solid #e0e0e0')
+    ->padding(24);
 
-$footer->divider();
-$footer->text('Follow us on:');
-$footer->spacer(10);
-$footer->link('Twitter', 'https://twitter.com/lightpack');
-$footer->link('GitHub', 'https://github.com/lightpack');
-$footer->link('Discord', 'https://discord.gg/lightpack');
-$footer->spacer(20);
-$footer->text(' 2025 Lightpack Framework. All rights reserved.')
-    ->color('#6c757d')
+$footer->text('Thank you for your business!')
+    ->style('font-size', '14px')
+    ->style('color', '#666666')
     ->align('center');
-$footer->spacer(10);
+
+$footer->text('Lightpack Inc. • 123 Tech Street, San Francisco, CA 94105')
+    ->style('font-size', '14px')
+    ->style('color', '#666666')
+    ->align('center');
 
 // Generate email HTML
 $email = new Section();
-$email->add($header)
+$email->asRoot()
+    ->add($header)
     ->add($content)
     ->add($footer);
 

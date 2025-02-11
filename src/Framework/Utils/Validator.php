@@ -73,7 +73,7 @@ class Validator
             'rule' => 'min',
             'params' => [$length],
             'message' => "Minimum length is {$length}",
-            'callback' => fn($value) => strlen((string) $value) >= $length,
+            'callback' => fn($value) => mb_strlen((string) $value) >= $length,
         ];
         return $this;
     }
@@ -84,7 +84,7 @@ class Validator
             'rule' => 'max',
             'params' => [$length],
             'message' => "Maximum length is {$length}",
-            'callback' => fn($value) => strlen((string) $value) <= $length,
+            'callback' => fn($value) => mb_strlen((string) $value) <= $length,
         ];
         return $this;
     }
@@ -162,7 +162,29 @@ class Validator
             'rule' => 'string',
             'params' => [],
             'message' => 'Must be a string',
-            'callback' => fn($value) => is_string($value),
+            'callback' => fn($value) => is_string($value) || (is_numeric($value) && !is_bool($value)),
+        ];
+        return $this;
+    }
+
+    public function alpha(): self
+    {
+        $this->currentRules[] = [
+            'rule' => 'alpha',
+            'params' => [],
+            'message' => 'Must contain only letters',
+            'callback' => fn($value) => is_string($value) && preg_match('/^[\p{L}\p{M}]+$/u', $value),
+        ];
+        return $this;
+    }
+
+    public function alphaNum(): self
+    {
+        $this->currentRules[] = [
+            'rule' => 'alphaNum',
+            'params' => [],
+            'message' => 'Must contain only letters and numbers',
+            'callback' => fn($value) => is_string($value) && preg_match('/^[\p{L}\p{M}\p{N}]+$/u', $value),
         ];
         return $this;
     }

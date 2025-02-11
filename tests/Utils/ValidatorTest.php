@@ -213,7 +213,7 @@ class ValidatorTest extends TestCase
     public function testTypeValidation(): void
     {
         // Test string validation
-        $data = ['name' => 123];
+        $data = ['name' => true];  
         $result = $this->validator->check($data, [
             'name' => $this->validator->rule()->string(),
         ]);
@@ -381,5 +381,65 @@ class ValidatorTest extends TestCase
         $this->assertFalse($result->valid);
         $this->assertArrayHasKey('wrong_new', $result->errors);
         $this->assertArrayNotHasKey('new_password', $result->errors);
+    }
+
+    public function testMultibyteStringValidation(): void
+    {
+        $data = [
+            'name' => 'José',
+            'long_name' => 'あいうえお', // 5 Japanese characters
+            'short_name' => '李', // 1 Chinese character
+        ];
+
+        $result = $this->validator->check($data, [
+            'name' => $this->validator->rule()->string()->min(4),
+            'long_name' => $this->validator->rule()->string()->max(5),
+            'short_name' => $this->validator->rule()->string()->min(2)
+        ]);
+
+        $this->assertFalse($result->valid);
+        $this->assertArrayHasKey('short_name', $result->errors);
+        $this->assertArrayNotHasKey('name', $result->errors);
+        $this->assertArrayNotHasKey('long_name', $result->errors);
+    }
+
+    public function testAlphaValidation(): void
+    {
+        $data = [
+            'name' => 'José',
+            'invalid' => 'John123',
+            'numbers' => '123'
+        ];
+
+        $result = $this->validator->check($data, [
+            'name' => $this->validator->rule()->alpha(),
+            'invalid' => $this->validator->rule()->alpha(),
+            'numbers' => $this->validator->rule()->alpha()
+        ]);
+
+        $this->assertFalse($result->valid);
+        $this->assertArrayHasKey('invalid', $result->errors);
+        $this->assertArrayHasKey('numbers', $result->errors);
+        $this->assertArrayNotHasKey('name', $result->errors);
+    }
+
+    public function testAlphaNumValidation(): void
+    {
+        $data = [
+            'username' => 'José123',
+            'invalid' => 'John_123',
+            'valid' => '123abc'
+        ];
+
+        $result = $this->validator->check($data, [
+            'username' => $this->validator->rule()->alphaNum(),
+            'invalid' => $this->validator->rule()->alphaNum(),
+            'valid' => $this->validator->rule()->alphaNum()
+        ]);
+
+        $this->assertFalse($result->valid);
+        $this->assertArrayHasKey('invalid', $result->errors);
+        $this->assertArrayNotHasKey('username', $result->errors);
+        $this->assertArrayNotHasKey('valid', $result->errors);
     }
 }

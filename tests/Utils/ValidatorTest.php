@@ -68,6 +68,7 @@ class ValidatorTest extends TestCase
 
     public function testWildcardValidation(): void
     {
+        // Test 1: Basic array validation with required and min length
         $data = [
             'skills' => ['', 'php', '']
         ];
@@ -79,6 +80,68 @@ class ValidatorTest extends TestCase
         $this->assertFalse($result->valid);
         $this->assertArrayHasKey('skills.0', $result->errors);
         $this->assertArrayHasKey('skills.2', $result->errors);
+
+        // Test 2: Complex nested array with multiple validations
+        $data = [
+            'users' => [
+                ['name' => 'Jo', 'email' => 'invalid-email', 'age' => '17'],
+                ['name' => 'Jane', 'email' => 'jane@example.com', 'age' => '25'],
+                ['name' => '', 'email' => '', 'age' => 'not-numeric']
+            ]
+        ];
+
+        $result = $this->validator->check($data, [
+            'users.*.name' => $this->validator->rule()->required()->min(3),
+            'users.*.email' => $this->validator->rule()->required()->email(),
+            'users.*.age' => $this->validator->rule()->required()->numeric(),
+        ]);
+
+        $this->assertFalse($result->valid);
+        $this->assertArrayHasKey('users.0.name', $result->errors);
+        $this->assertArrayHasKey('users.0.email', $result->errors);
+        $this->assertArrayHasKey('users.2.name', $result->errors);
+        $this->assertArrayHasKey('users.2.email', $result->errors);
+        $this->assertArrayHasKey('users.2.age', $result->errors);
+
+        // Test 3: Array with custom validation and transformation
+        $data = [
+            'scores' => ['85', '90', '110', '75']
+        ];
+
+        $result = $this->validator->check($data, [
+            'scores.*' => $this->validator->rule()
+                ->required()
+                ->numeric()
+                ->transform(fn($value) => (int) $value)
+                ->custom(fn($value) => $value <= 100, 'Score must not exceed 100'),
+        ]);
+
+        $this->assertFalse($result->valid);
+        $this->assertArrayHasKey('scores.2', $result->errors);
+        $this->assertEquals('Score must not exceed 100', $result->errors['scores.2']);
+        $this->assertIsInt($data['scores'][0]);
+
+        // Test 4: Valid complex data
+        $data = [
+            'contacts' => [
+                ['email' => 'john@example.com', 'phone' => '1234567890'],
+                ['email' => 'jane@example.com', 'phone' => '9876543210']
+            ]
+        ];
+
+        $emailValidator = new Validator();
+        $phoneValidator = new Validator();
+
+        $result = $this->validator->check($data, [
+            'contacts.*.email' => $emailValidator->rule()->required()->email(),
+            'contacts.*.phone' => $phoneValidator->rule()
+                ->required()
+                ->numeric()
+                ->custom(fn($value) => strlen((string) $value) === 10, 'Phone must be exactly 10 digits'),
+        ]);
+
+        $this->assertTrue($result->valid);
+        $this->assertEmpty($result->errors);
     }
 
     public function testCustomMessage(): void

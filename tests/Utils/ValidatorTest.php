@@ -209,4 +209,141 @@ class ValidatorTest extends TestCase
         $this->assertArrayHasKey('user.profile.name', $result->errors);
         $this->assertArrayHasKey('user.profile.age', $result->errors);
     }
+
+    public function testTypeValidation(): void
+    {
+        // Test string validation
+        $data = ['name' => 123];
+        $result = $this->validator->check($data, [
+            'name' => $this->validator->rule()->string(),
+        ]);
+        $this->assertFalse($result->valid);
+
+        // Test int validation
+        $data = ['age' => '25'];
+        $result = $this->validator->check($data, [
+            'age' => $this->validator->rule()->int(),
+        ]);
+        $this->assertTrue($result->valid);
+
+        // Test float validation
+        $data = ['price' => '99.99'];
+        $result = $this->validator->check($data, [
+            'price' => $this->validator->rule()->float(),
+        ]);
+        $this->assertTrue($result->valid);
+
+        // Test bool validation
+        $data = ['active' => 'true'];
+        $result = $this->validator->check($data, [
+            'active' => $this->validator->rule()->bool(),
+        ]);
+        $this->assertTrue($result->valid);
+
+        // Test array validation
+        $data = ['items' => 'not-array'];
+        $result = $this->validator->check($data, [
+            'items' => $this->validator->rule()->array(),
+        ]);
+        $this->assertFalse($result->valid);
+    }
+
+    public function testDateValidation(): void
+    {
+        // Test date without format
+        $data = ['created' => '2025-02-11'];
+        $result = $this->validator->check($data, [
+            'created' => $this->validator->rule()->date(),
+        ]);
+        $this->assertTrue($result->valid);
+
+        // Test date with format
+        $data = ['birthday' => '11/02/2025'];
+        $result = $this->validator->check($data, [
+            'birthday' => $this->validator->rule()->date('d/m/Y'),
+        ]);
+        $this->assertTrue($result->valid);
+
+        // Test invalid date
+        $data = ['invalid' => 'not-a-date'];
+        $result = $this->validator->check($data, [
+            'invalid' => $this->validator->rule()->date(),
+        ]);
+        $this->assertFalse($result->valid);
+    }
+
+    public function testUrlValidation(): void
+    {
+        $data = [
+            'valid' => 'https://example.com',
+            'invalid' => 'not-a-url',
+        ];
+
+        $result = $this->validator->check($data, [
+            'valid' => $this->validator->rule()->url(),
+            'invalid' => $this->validator->rule()->url(),
+        ]);
+
+        $this->assertFalse($result->valid);
+        $this->assertArrayHasKey('invalid', $result->errors);
+        $this->assertArrayNotHasKey('valid', $result->errors);
+    }
+
+    public function testBetweenValidation(): void
+    {
+        $data = [
+            'valid' => '15',
+            'invalid' => '25',
+            'non_numeric' => 'abc'
+        ];
+
+        $validRule = (new Validator())->rule()->between(10, 20);
+        $invalidRule = (new Validator())->rule()->between(0, 10);
+        $nonNumericRule = (new Validator())->rule()->between(0, 10);
+
+        $result = (new Validator())->check($data, [
+            'valid' => $validRule,
+            'invalid' => $invalidRule,
+            'non_numeric' => $nonNumericRule
+        ]);
+
+        $this->assertFalse($result->valid);
+        $this->assertArrayHasKey('invalid', $result->errors);
+        $this->assertArrayHasKey('non_numeric', $result->errors);
+        $this->assertArrayNotHasKey('valid', $result->errors);
+    }
+
+    public function testUniqueValidation(): void
+    {
+        $data = [
+            'valid' => [1, 2, 3],
+            'invalid' => [1, 2, 2, 3],
+        ];
+
+        $result = $this->validator->check($data, [
+            'valid' => $this->validator->rule()->array()->unique(),
+            'invalid' => $this->validator->rule()->array()->unique(),
+        ]);
+
+        $this->assertFalse($result->valid);
+        $this->assertArrayHasKey('invalid', $result->errors);
+        $this->assertArrayNotHasKey('valid', $result->errors);
+    }
+
+    public function testNullableValidation(): void
+    {
+        $data = [
+            'empty' => '',
+            'null' => null,
+            'value' => 'test',
+        ];
+
+        $result = $this->validator->check($data, [
+            'empty' => $this->validator->rule()->nullable()->string(),
+            'null' => $this->validator->rule()->nullable()->string(),
+            'value' => $this->validator->rule()->nullable()->string(),
+        ]);
+
+        $this->assertTrue($result->valid);
+    }
 }

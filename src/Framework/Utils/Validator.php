@@ -156,6 +156,134 @@ class Validator
         throw new \BadMethodCallException("Rule '{$name}' not found");
     }
 
+    public function string(): self
+    {
+        $this->currentRules[] = [
+            'rule' => 'string',
+            'params' => [],
+            'message' => 'Must be a string',
+            'callback' => fn($value) => is_string($value),
+        ];
+        return $this;
+    }
+
+    public function int(): self
+    {
+        $this->currentRules[] = [
+            'rule' => 'int',
+            'params' => [],
+            'message' => 'Must be an integer',
+            'callback' => fn($value) => is_int($value) || (is_string($value) && ctype_digit($value)),
+        ];
+        return $this;
+    }
+
+    public function float(): self
+    {
+        $this->currentRules[] = [
+            'rule' => 'float',
+            'params' => [],
+            'message' => 'Must be a float',
+            'callback' => fn($value) => is_float($value) || (is_string($value) && is_numeric($value) && str_contains($value, '.')),
+        ];
+        return $this;
+    }
+
+    public function bool(): self
+    {
+        $this->currentRules[] = [
+            'rule' => 'bool',
+            'params' => [],
+            'message' => 'Must be a boolean',
+            'callback' => fn($value) => is_bool($value) || in_array($value, [0, 1, '0', '1', 'true', 'false'], true),
+        ];
+        return $this;
+    }
+
+    public function array(): self
+    {
+        $this->currentRules[] = [
+            'rule' => 'array',
+            'params' => [],
+            'message' => 'Must be an array',
+            'callback' => fn($value) => is_array($value),
+        ];
+        return $this;
+    }
+
+    public function date(?string $format = null): self
+    {
+        $this->currentRules[] = [
+            'rule' => 'date',
+            'params' => [$format],
+            'message' => $format ? "Must be a valid date in format: {$format}" : 'Must be a valid date',
+            'callback' => function($value) use ($format) {
+                if ($format) {
+                    $date = \DateTime::createFromFormat($format, $value);
+                    return $date && $date->format($format) === $value;
+                }
+                return strtotime($value) !== false;
+            },
+        ];
+        return $this;
+    }
+
+    public function url(): self
+    {
+        $this->currentRules[] = [
+            'rule' => 'url',
+            'params' => [],
+            'message' => 'Must be a valid URL',
+            'callback' => fn($value) => filter_var($value, FILTER_VALIDATE_URL) !== false,
+        ];
+        return $this;
+    }
+
+    public function between(int|float $min, int|float $max): self
+    {
+        $this->currentRules[] = [
+            'rule' => 'between',
+            'params' => [$min, $max],
+            'message' => "Must be between {$min} and {$max}",
+            'callback' => function($value) use ($min, $max) {
+                if (!is_numeric($value)) {
+                    return false;
+                }
+                $numericValue = (float) $value;
+                return $numericValue >= $min && $numericValue <= $max;
+            },
+        ];
+        return $this;
+    }
+
+    public function unique(): self
+    {
+        $this->currentRules[] = [
+            'rule' => 'unique',
+            'params' => [],
+            'message' => 'Values must be unique',
+            'callback' => function($value) {
+                if (!is_array($value)) {
+                    return true;
+                }
+                return count($value) === count(array_unique($value));
+            },
+        ];
+        return $this;
+    }
+
+    public function nullable(): self
+    {
+        $this->currentRules[] = [
+            'rule' => 'nullable',
+            'params' => [],
+            'message' => '',
+            'callback' => fn($value) => true, // Always pass validation
+            'nullable' => true,
+        ];
+        return $this;
+    }
+
     private function validateField(string $field, $value, $rules): void
     {
         if ($rules instanceof self) {
@@ -163,6 +291,16 @@ class Validator
         }
 
         foreach ($rules as $rule) {
+            // Handle nullable values
+            if ($value === null || $value === '') {
+                if (isset($rule['nullable']) && $rule['nullable']) {
+                    continue;
+                }
+                if ($rule['rule'] !== 'required') {
+                    continue;
+                }
+            }
+
             if (isset($rule['transform']) && $rule['transform']) {
                 $value = $rule['callback']($value, ...$rule['params']);
                 $parts = explode('.', $field);

@@ -346,4 +346,22 @@ class ValidatorTest extends TestCase
 
         $this->assertTrue($result->valid);
     }
+
+    public function testSameValidation(): void
+    {
+        $data = [
+            'password' => 'secret123',
+            'confirm_password' => 'secret123',
+            'wrong_confirm' => 'different'
+        ];
+
+        $result = $this->validator->check($data, [
+            'confirm_password' => $this->validator->rule()->same('password'),
+            'wrong_confirm' => $this->validator->rule()->same('password')
+        ]);
+
+        $this->assertFalse($result->valid);
+        $this->assertArrayHasKey('wrong_confirm', $result->errors);
+        $this->assertArrayNotHasKey('confirm_password', $result->errors);
+    }
 }

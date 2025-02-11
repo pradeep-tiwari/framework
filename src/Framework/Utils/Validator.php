@@ -284,6 +284,17 @@ class Validator
         return $this;
     }
 
+    public function same(string $field): self
+    {
+        $this->currentRules[] = [
+            'rule' => 'same',
+            'params' => [$field],
+            'message' => "Must match {$field}",
+            'callback' => fn($value) => $value === $this->arr->get($field, $this->data),
+        ];
+        return $this;
+    }
+
     private function validateField(string $field, $value, $rules): void
     {
         if ($rules instanceof self) {

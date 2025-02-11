@@ -339,6 +339,17 @@ class Validator
         return $this;
     }
 
+    public function notIn(array $values): self
+    {
+        $this->currentRules[] = [
+            'rule' => 'notIn',
+            'params' => [$values],
+            'message' => "Must not be one of: " . implode(', ', $values),
+            'callback' => fn($value) => !in_array($value, $values, true),
+        ];
+        return $this;
+    }
+
     private function validateField(string $field, $value, $rules): void
     {
         if ($rules instanceof self) {

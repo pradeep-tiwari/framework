@@ -462,4 +462,24 @@ class ValidatorTest extends TestCase
         $this->assertArrayNotHasKey('color', $result->errors);
         $this->assertArrayNotHasKey('valid', $result->errors);
     }
+
+    public function testNotInValidation(): void
+    {
+        $data = [
+            'color' => 'red',
+            'invalid' => 'orange',
+            'valid' => 'blue'
+        ];
+
+        $result = $this->validator->check($data, [
+            'color' => $this->validator->rule()->notIn(['red', 'green', 'blue']),
+            'invalid' => $this->validator->rule()->notIn(['red', 'green', 'blue']),
+            'valid' => $this->validator->rule()->notIn(['red', 'green', 'blue'])
+        ]);
+
+        $this->assertFalse($result->valid);
+        $this->assertArrayNotHasKey('invalid', $result->errors);
+        $this->assertArrayHasKey('color', $result->errors);
+        $this->assertArrayHasKey('valid', $result->errors);
+    }
 }

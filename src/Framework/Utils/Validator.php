@@ -328,6 +328,17 @@ class Validator
         return $this;
     }
 
+    public function in(array $values): self
+    {
+        $this->currentRules[] = [
+            'rule' => 'in',
+            'params' => [$values],
+            'message' => "Must be one of: " . implode(', ', $values),
+            'callback' => fn($value) => in_array($value, $values, true),
+        ];
+        return $this;
+    }
+
     private function validateField(string $field, $value, $rules): void
     {
         if ($rules instanceof self) {

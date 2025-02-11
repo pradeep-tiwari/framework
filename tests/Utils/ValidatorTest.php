@@ -482,4 +482,24 @@ class ValidatorTest extends TestCase
         $this->assertArrayHasKey('color', $result->errors);
         $this->assertArrayHasKey('valid', $result->errors);
     }
+
+    public function testRegexValidation(): void
+    {
+        $data = [
+            'valid' => 'abcdef',
+            'invalid' => '@#$%^&',
+            'empty' => ''
+        ];
+
+        $result = $this->validator->check($data, [
+            'valid' => $this->validator->rule()->required()->regex('/^[a-f0-9]{6}$/i'),
+            'invalid' => $this->validator->rule()->required()->regex('/^[a-f0-9]{6}$/i'),
+            'empty' => $this->validator->rule()->required()->regex('/^[a-f0-9]{6}$/i')
+        ]);
+
+        $this->assertFalse($result->valid);
+        $this->assertArrayNotHasKey('valid', $result->errors);
+        $this->assertArrayHasKey('invalid', $result->errors);
+        $this->assertArrayHasKey('empty', $result->errors);
+    }
 }

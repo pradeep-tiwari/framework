@@ -350,6 +350,17 @@ class Validator
         return $this;
     }
 
+    public function regex(string $pattern): self
+    {
+        $this->currentRules[] = [
+            'rule' => 'regex',
+            'params' => [$pattern],
+            'message' => "Must match pattern: {$pattern}",
+            'callback' => fn($value) => preg_match($pattern, $value) === 1,
+        ];
+        return $this;
+    }
+
     private function validateField(string $field, $value, $rules): void
     {
         if ($rules instanceof self) {

@@ -364,4 +364,22 @@ class ValidatorTest extends TestCase
         $this->assertArrayHasKey('wrong_confirm', $result->errors);
         $this->assertArrayNotHasKey('confirm_password', $result->errors);
     }
+
+    public function testDifferentValidation(): void
+    {
+        $data = [
+            'current_password' => 'secret123',
+            'new_password' => 'newpass456',
+            'wrong_new' => 'secret123'
+        ];
+
+        $result = $this->validator->check($data, [
+            'new_password' => $this->validator->rule()->different('current_password'),
+            'wrong_new' => $this->validator->rule()->different('current_password')
+        ]);
+
+        $this->assertFalse($result->valid);
+        $this->assertArrayHasKey('wrong_new', $result->errors);
+        $this->assertArrayNotHasKey('new_password', $result->errors);
+    }
 }

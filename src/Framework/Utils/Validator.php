@@ -295,6 +295,17 @@ class Validator
         return $this;
     }
 
+    public function different(string $field): self
+    {
+        $this->currentRules[] = [
+            'rule' => 'different',
+            'params' => [$field],
+            'message' => "Must be different from {$field}",
+            'callback' => fn($value) => $value !== $this->arr->get($field, $this->data),
+        ];
+        return $this;
+    }
+
     private function validateField(string $field, $value, $rules): void
     {
         if ($rules instanceof self) {

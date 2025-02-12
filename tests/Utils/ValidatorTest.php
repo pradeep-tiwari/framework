@@ -20,50 +20,56 @@ class ValidatorTest extends TestCase
     {
         $data = ['name' => 'John'];
         
-        $result = $this->validator->check($data, [
-            'name' => $this->validator->rule()->required()->min(2),
-        ]);
+        $result = $this->validator
+            ->field('name')
+                ->required()
+                ->min(2)
+            ->validate($data);
 
-        $this->assertTrue($result->valid);
-        $this->assertEmpty($result->errors);
+        $this->assertTrue($result->isValid());
+        $this->assertEmpty($result->getErrors());
     }
 
     public function testFailedValidation(): void
     {
         $data = ['name' => 'J'];
         
-        $result = $this->validator->check($data, [
-            'name' => $this->validator->rule()->required()->min(2),
-        ]);
+        $result = $this->validator
+            ->field('name')
+                ->required()
+                ->min(2)
+            ->validate($data);
 
-        $this->assertFalse($result->valid);
-        $this->assertArrayHasKey('name', $result->errors);
+        $this->assertFalse($result->isValid());
+        $this->assertArrayHasKey('name', $result->getErrors());
     }
 
     public function testEmailValidation(): void
     {
         $data = ['email' => 'invalid'];
         
-        $result = $this->validator->check($data, [
-            'email' => $this->validator->rule()->required()->email(),
-        ]);
+        $result = $this->validator
+            ->field('email')
+                ->required()
+                ->email()
+            ->validate($data);
 
-        $this->assertFalse($result->valid);
-        $this->assertArrayHasKey('email', $result->errors);
+        $this->assertFalse($result->isValid());
+        $this->assertArrayHasKey('email', $result->getErrors());
     }
 
     public function testCustomValidation(): void
     {
         $data = ['age' => 15];
         
-        $result = $this->validator->check($data, [
-            'age' => $this->validator->rule()
+        $result = $this->validator
+            ->field('age')
                 ->required()
-                ->custom(fn($value) => $value >= 18, 'Must be 18 or older'),
-        ]);
+                ->custom(fn($value) => $value >= 18, 'Must be 18 or older')
+            ->validate($data);
 
-        $this->assertFalse($result->valid);
-        $this->assertEquals('Must be 18 or older', $result->errors['age']);
+        $this->assertFalse($result->isValid());
+        $this->assertEquals('Must be 18 or older', $result->getErrors()['age']);
     }
 
     public function testWildcardValidation(): void
@@ -73,13 +79,15 @@ class ValidatorTest extends TestCase
             'skills' => ['', 'php', '']
         ];
         
-        $result = $this->validator->check($data, [
-            'skills.*' => $this->validator->rule()->required()->min(2),
-        ]);
+        $result = $this->validator
+            ->field('skills.*')
+                ->required()
+                ->min(2)
+            ->validate($data);
 
-        $this->assertFalse($result->valid);
-        $this->assertArrayHasKey('skills.0', $result->errors);
-        $this->assertArrayHasKey('skills.2', $result->errors);
+        $this->assertFalse($result->isValid());
+        $this->assertArrayHasKey('skills.0', $result->getErrors());
+        $this->assertArrayHasKey('skills.2', $result->getErrors());
 
         // Test 2: Complex nested array with multiple validations
         $data = [
@@ -90,35 +98,42 @@ class ValidatorTest extends TestCase
             ]
         ];
 
-        $result = $this->validator->check($data, [
-            'users.*.name' => $this->validator->rule()->required()->min(3),
-            'users.*.email' => $this->validator->rule()->required()->email(),
-            'users.*.age' => $this->validator->rule()->required()->numeric(),
-        ]);
+        $validator = new Validator();
+        $result = $validator
+            ->field('users.*.name')
+                ->required()
+                ->min(3)
+            ->field('users.*.email')
+                ->required()
+                ->email()
+            ->field('users.*.age')
+                ->required()
+                ->numeric()
+            ->validate($data);
 
-        $this->assertFalse($result->valid);
-        $this->assertArrayHasKey('users.0.name', $result->errors);
-        $this->assertArrayHasKey('users.0.email', $result->errors);
-        $this->assertArrayHasKey('users.2.name', $result->errors);
-        $this->assertArrayHasKey('users.2.email', $result->errors);
-        $this->assertArrayHasKey('users.2.age', $result->errors);
+        $this->assertFalse($result->isValid());
+        $this->assertArrayHasKey('users.0.name', $result->getErrors());
+        $this->assertArrayHasKey('users.0.email', $result->getErrors());
+        $this->assertArrayHasKey('users.2.name', $result->getErrors());
+        $this->assertArrayHasKey('users.2.email', $result->getErrors());
+        $this->assertArrayHasKey('users.2.age', $result->getErrors());
 
         // Test 3: Array with custom validation and transformation
         $data = [
             'scores' => ['85', '90', '110', '75']
         ];
 
-        $result = $this->validator->check($data, [
-            'scores.*' => $this->validator->rule()
+        $result = $this->validator
+            ->field('scores.*')
                 ->required()
                 ->numeric()
                 ->transform(fn($value) => (int) $value)
-                ->custom(fn($value) => $value <= 100, 'Score must not exceed 100'),
-        ]);
+                ->custom(fn($value) => $value <= 100, 'Score must not exceed 100')
+            ->validate($data);
 
-        $this->assertFalse($result->valid);
-        $this->assertArrayHasKey('scores.2', $result->errors);
-        $this->assertEquals('Score must not exceed 100', $result->errors['scores.2']);
+        $this->assertFalse($result->isValid());
+        $this->assertArrayHasKey('scores.2', $result->getErrors());
+        $this->assertEquals('Score must not exceed 100', $result->getErrors()['scores.2']);
         $this->assertIsInt($data['scores'][0]);
 
         // Test 4: Valid complex data
@@ -129,19 +144,19 @@ class ValidatorTest extends TestCase
             ]
         ];
 
-        $emailValidator = new Validator();
-        $phoneValidator = new Validator();
-
-        $result = $this->validator->check($data, [
-            'contacts.*.email' => $emailValidator->rule()->required()->email(),
-            'contacts.*.phone' => $phoneValidator->rule()
+        $validator = new Validator();
+        $result = $validator
+            ->field('contacts.*.email')
+                ->required()
+                ->email()
+            ->field('contacts.*.phone')
                 ->required()
                 ->numeric()
-                ->custom(fn($value) => strlen((string) $value) === 10, 'Phone must be exactly 10 digits'),
-        ]);
+                ->custom(fn($value) => strlen((string) $value) === 10, 'Phone must be exactly 10 digits')
+            ->validate($data);
 
-        $this->assertTrue($result->valid);
-        $this->assertEmpty($result->errors);
+        $this->assertTrue($result->isValid());
+        $this->assertEmpty($result->getErrors());
     }
 
     public function testCustomMessage(): void
@@ -149,24 +164,26 @@ class ValidatorTest extends TestCase
         $data = ['name' => ''];
         $message = 'Name is required!';
         
-        $result = $this->validator->check($data, [
-            'name' => $this->validator->rule()->required()->message($message),
-        ]);
+        $result = $this->validator
+            ->field('name')
+                ->required()
+                ->message($message)
+            ->validate($data);
 
-        $this->assertFalse($result->valid);
-        $this->assertEquals($message, $result->errors['name']);
+        $this->assertFalse($result->isValid());
+        $this->assertEquals($message, $result->getErrors()['name']);
     }
 
     public function testTransformation(): void
     {
         $data = ['name' => ' john '];
         
-        $this->validator->check($data, [
-            'name' => $this->validator->rule()
+        $this->validator
+            ->field('name')
                 ->required()
                 ->transform(fn($value) => trim($value))
-                ->min(4),
-        ]);
+                ->min(4)
+            ->validate($data);
 
         $this->assertEquals('john', $data['name']);
     }
@@ -179,12 +196,14 @@ class ValidatorTest extends TestCase
 
         $data = ['code' => 'abc'];
         
-        $result = $this->validator->check($data, [
-            'code' => $this->validator->rule()->required()->uppercase(),
-        ]);
+        $result = $this->validator
+            ->field('code')
+                ->required()
+                ->uppercase()
+            ->validate($data);
 
-        $this->assertFalse($result->valid);
-        $this->assertEquals('Must be uppercase', $result->errors['code']);
+        $this->assertFalse($result->isValid());
+        $this->assertEquals('Must be uppercase', $result->getErrors()['code']);
     }
 
     public function testNestedValidation(): void
@@ -198,78 +217,87 @@ class ValidatorTest extends TestCase
             ]
         ];
         
-        $result = $this->validator->check($data, [
-            'user.profile.name' => $this->validator->rule()->required(),
-            'user.profile.age' => $this->validator->rule()
+        $result = $this->validator
+            ->field('user.profile.name')
                 ->required()
-                ->custom(fn($value) => $value >= 18),
-        ]);
+            ->field('user.profile.age')
+                ->required()
+                ->custom(fn($value) => $value >= 18)
+            ->validate($data);
 
-        $this->assertFalse($result->valid);
-        $this->assertArrayHasKey('user.profile.name', $result->errors);
-        $this->assertArrayHasKey('user.profile.age', $result->errors);
+        $this->assertFalse($result->isValid());
+        $this->assertArrayHasKey('user.profile.name', $result->getErrors());
+        $this->assertArrayHasKey('user.profile.age', $result->getErrors());
     }
 
     public function testTypeValidation(): void
     {
         // Test string validation
         $data = ['name' => true];  
-        $result = $this->validator->check($data, [
-            'name' => $this->validator->rule()->string(),
-        ]);
-        $this->assertFalse($result->valid);
+        $result = $this->validator
+            ->field('name')
+                ->string()
+            ->validate($data);
+        $this->assertFalse($result->isValid());
 
         // Test int validation
         $data = ['age' => '25'];
-        $result = $this->validator->check($data, [
-            'age' => $this->validator->rule()->int(),
-        ]);
-        $this->assertTrue($result->valid);
+        $result = $this->validator
+            ->field('age')
+                ->int()
+            ->validate($data);
+        $this->assertTrue($result->isValid());
 
         // Test float validation
         $data = ['price' => '99.99'];
-        $result = $this->validator->check($data, [
-            'price' => $this->validator->rule()->float(),
-        ]);
-        $this->assertTrue($result->valid);
+        $result = $this->validator
+            ->field('price')
+                ->float()
+            ->validate($data);
+        $this->assertTrue($result->isValid());
 
         // Test bool validation
         $data = ['active' => 'true'];
-        $result = $this->validator->check($data, [
-            'active' => $this->validator->rule()->bool(),
-        ]);
-        $this->assertTrue($result->valid);
+        $result = $this->validator
+            ->field('active')
+                ->bool()
+            ->validate($data);
+        $this->assertTrue($result->isValid());
 
         // Test array validation
         $data = ['items' => 'not-array'];
-        $result = $this->validator->check($data, [
-            'items' => $this->validator->rule()->array(),
-        ]);
-        $this->assertFalse($result->valid);
+        $result = $this->validator
+            ->field('items')
+                ->array()
+            ->validate($data);
+        $this->assertFalse($result->isValid());
     }
 
     public function testDateValidation(): void
     {
         // Test date without format
         $data = ['created' => '2025-02-11'];
-        $result = $this->validator->check($data, [
-            'created' => $this->validator->rule()->date(),
-        ]);
-        $this->assertTrue($result->valid);
+        $result = $this->validator
+            ->field('created')
+                ->date()
+            ->validate($data);
+        $this->assertTrue($result->isValid());
 
         // Test date with format
         $data = ['birthday' => '11/02/2025'];
-        $result = $this->validator->check($data, [
-            'birthday' => $this->validator->rule()->date('d/m/Y'),
-        ]);
-        $this->assertTrue($result->valid);
+        $result = $this->validator
+            ->field('birthday')
+                ->date('d/m/Y')
+            ->validate($data);
+        $this->assertTrue($result->isValid());
 
         // Test invalid date
         $data = ['invalid' => 'not-a-date'];
-        $result = $this->validator->check($data, [
-            'invalid' => $this->validator->rule()->date(),
-        ]);
-        $this->assertFalse($result->valid);
+        $result = $this->validator
+            ->field('invalid')
+                ->date()
+            ->validate($data);
+        $this->assertFalse($result->isValid());
     }
 
     public function testUrlValidation(): void
@@ -279,14 +307,16 @@ class ValidatorTest extends TestCase
             'invalid' => 'not-a-url',
         ];
 
-        $result = $this->validator->check($data, [
-            'valid' => $this->validator->rule()->url(),
-            'invalid' => $this->validator->rule()->url(),
-        ]);
+        $result = $this->validator
+            ->field('valid')
+                ->url()
+            ->field('invalid')
+                ->url()
+            ->validate($data);
 
-        $this->assertFalse($result->valid);
-        $this->assertArrayHasKey('invalid', $result->errors);
-        $this->assertArrayNotHasKey('valid', $result->errors);
+        $this->assertFalse($result->isValid());
+        $this->assertArrayHasKey('invalid', $result->getErrors());
+        $this->assertArrayNotHasKey('valid', $result->getErrors());
     }
 
     public function testBetweenValidation(): void
@@ -297,20 +327,19 @@ class ValidatorTest extends TestCase
             'non_numeric' => 'abc'
         ];
 
-        $validRule = (new Validator())->rule()->between(10, 20);
-        $invalidRule = (new Validator())->rule()->between(0, 10);
-        $nonNumericRule = (new Validator())->rule()->between(0, 10);
+        $result = $this->validator
+            ->field('valid')
+                ->between(10, 20)
+            ->field('invalid')
+                ->between(0, 10)
+            ->field('non_numeric')
+                ->between(0, 10)
+            ->validate($data);
 
-        $result = (new Validator())->check($data, [
-            'valid' => $validRule,
-            'invalid' => $invalidRule,
-            'non_numeric' => $nonNumericRule
-        ]);
-
-        $this->assertFalse($result->valid);
-        $this->assertArrayHasKey('invalid', $result->errors);
-        $this->assertArrayHasKey('non_numeric', $result->errors);
-        $this->assertArrayNotHasKey('valid', $result->errors);
+        $this->assertFalse($result->isValid());
+        $this->assertArrayHasKey('invalid', $result->getErrors());
+        $this->assertArrayHasKey('non_numeric', $result->getErrors());
+        $this->assertArrayNotHasKey('valid', $result->getErrors());
     }
 
     public function testUniqueValidation(): void
@@ -320,14 +349,18 @@ class ValidatorTest extends TestCase
             'invalid' => [1, 2, 2, 3],
         ];
 
-        $result = $this->validator->check($data, [
-            'valid' => $this->validator->rule()->array()->unique(),
-            'invalid' => $this->validator->rule()->array()->unique(),
-        ]);
+        $result = $this->validator
+            ->field('valid')
+                ->array()
+                ->unique()
+            ->field('invalid')
+                ->array()
+                ->unique()
+            ->validate($data);
 
-        $this->assertFalse($result->valid);
-        $this->assertArrayHasKey('invalid', $result->errors);
-        $this->assertArrayNotHasKey('valid', $result->errors);
+        $this->assertFalse($result->isValid());
+        $this->assertArrayHasKey('invalid', $result->getErrors());
+        $this->assertArrayNotHasKey('valid', $result->getErrors());
     }
 
     public function testNullableValidation(): void
@@ -338,13 +371,19 @@ class ValidatorTest extends TestCase
             'value' => 'test',
         ];
 
-        $result = $this->validator->check($data, [
-            'empty' => $this->validator->rule()->nullable()->string(),
-            'null' => $this->validator->rule()->nullable()->string(),
-            'value' => $this->validator->rule()->nullable()->string(),
-        ]);
+        $result = $this->validator
+            ->field('empty')
+                ->nullable()
+                ->string()
+            ->field('null')
+                ->nullable()
+                ->string()
+            ->field('value')
+                ->nullable()
+                ->string()
+            ->validate($data);
 
-        $this->assertTrue($result->valid);
+        $this->assertTrue($result->isValid());
     }
 
     public function testSameValidation(): void
@@ -355,14 +394,16 @@ class ValidatorTest extends TestCase
             'wrong_confirm' => 'different'
         ];
 
-        $result = $this->validator->check($data, [
-            'confirm_password' => $this->validator->rule()->same('password'),
-            'wrong_confirm' => $this->validator->rule()->same('password')
-        ]);
+        $result = $this->validator
+            ->field('confirm_password')
+                ->same('password')
+            ->field('wrong_confirm')
+                ->same('password')
+            ->validate($data);
 
-        $this->assertFalse($result->valid);
-        $this->assertArrayHasKey('wrong_confirm', $result->errors);
-        $this->assertArrayNotHasKey('confirm_password', $result->errors);
+        $this->assertFalse($result->isValid());
+        $this->assertArrayHasKey('wrong_confirm', $result->getErrors());
+        $this->assertArrayNotHasKey('confirm_password', $result->getErrors());
     }
 
     public function testDifferentValidation(): void
@@ -373,14 +414,16 @@ class ValidatorTest extends TestCase
             'wrong_new' => 'secret123'
         ];
 
-        $result = $this->validator->check($data, [
-            'new_password' => $this->validator->rule()->different('current_password'),
-            'wrong_new' => $this->validator->rule()->different('current_password')
-        ]);
+        $result = $this->validator
+            ->field('new_password')
+                ->different('current_password')
+            ->field('wrong_new')
+                ->different('current_password')
+            ->validate($data);
 
-        $this->assertFalse($result->valid);
-        $this->assertArrayHasKey('wrong_new', $result->errors);
-        $this->assertArrayNotHasKey('new_password', $result->errors);
+        $this->assertFalse($result->isValid());
+        $this->assertArrayHasKey('wrong_new', $result->getErrors());
+        $this->assertArrayNotHasKey('new_password', $result->getErrors());
     }
 
     public function testMultibyteStringValidation(): void
@@ -391,16 +434,22 @@ class ValidatorTest extends TestCase
             'short_name' => '李', // 1 Chinese character
         ];
 
-        $result = $this->validator->check($data, [
-            'name' => $this->validator->rule()->string()->min(4),
-            'long_name' => $this->validator->rule()->string()->max(5),
-            'short_name' => $this->validator->rule()->string()->min(2)
-        ]);
+        $result = $this->validator
+            ->field('name')
+                ->string()
+                ->min(4)
+            ->field('long_name')
+                ->string()
+                ->max(5)
+            ->field('short_name')
+                ->string()
+                ->min(2)
+            ->validate($data);
 
-        $this->assertFalse($result->valid);
-        $this->assertArrayHasKey('short_name', $result->errors);
-        $this->assertArrayNotHasKey('name', $result->errors);
-        $this->assertArrayNotHasKey('long_name', $result->errors);
+        $this->assertFalse($result->isValid());
+        $this->assertArrayHasKey('short_name', $result->getErrors());
+        $this->assertArrayNotHasKey('name', $result->getErrors());
+        $this->assertArrayNotHasKey('long_name', $result->getErrors());
     }
 
     public function testAlphaValidation(): void
@@ -411,16 +460,19 @@ class ValidatorTest extends TestCase
             'numbers' => '123'
         ];
 
-        $result = $this->validator->check($data, [
-            'name' => $this->validator->rule()->alpha(),
-            'invalid' => $this->validator->rule()->alpha(),
-            'numbers' => $this->validator->rule()->alpha()
-        ]);
+        $result = $this->validator
+            ->field('name')
+                ->alpha()
+            ->field('invalid')
+                ->alpha()
+            ->field('numbers')
+                ->alpha()
+            ->validate($data);
 
-        $this->assertFalse($result->valid);
-        $this->assertArrayHasKey('invalid', $result->errors);
-        $this->assertArrayHasKey('numbers', $result->errors);
-        $this->assertArrayNotHasKey('name', $result->errors);
+        $this->assertFalse($result->isValid());
+        $this->assertArrayHasKey('invalid', $result->getErrors());
+        $this->assertArrayHasKey('numbers', $result->getErrors());
+        $this->assertArrayNotHasKey('name', $result->getErrors());
     }
 
     public function testAlphaNumValidation(): void
@@ -431,16 +483,19 @@ class ValidatorTest extends TestCase
             'valid' => '123abc'
         ];
 
-        $result = $this->validator->check($data, [
-            'username' => $this->validator->rule()->alphaNum(),
-            'invalid' => $this->validator->rule()->alphaNum(),
-            'valid' => $this->validator->rule()->alphaNum()
-        ]);
+        $result = $this->validator
+            ->field('username')
+                ->alphaNum()
+            ->field('invalid')
+                ->alphaNum()
+            ->field('valid')
+                ->alphaNum()
+            ->validate($data);
 
-        $this->assertFalse($result->valid);
-        $this->assertArrayHasKey('invalid', $result->errors);
-        $this->assertArrayNotHasKey('username', $result->errors);
-        $this->assertArrayNotHasKey('valid', $result->errors);
+        $this->assertFalse($result->isValid());
+        $this->assertArrayHasKey('invalid', $result->getErrors());
+        $this->assertArrayNotHasKey('username', $result->getErrors());
+        $this->assertArrayNotHasKey('valid', $result->getErrors());
     }
 
     public function testInValidation(): void
@@ -451,16 +506,19 @@ class ValidatorTest extends TestCase
             'valid' => 'blue'
         ];
 
-        $result = $this->validator->check($data, [
-            'color' => $this->validator->rule()->in(['red', 'green', 'blue']),
-            'invalid' => $this->validator->rule()->in(['red', 'green', 'blue']),
-            'valid' => $this->validator->rule()->in(['red', 'green', 'blue'])
-        ]);
+        $result = $this->validator
+            ->field('color')
+                ->in(['red', 'green', 'blue'])
+            ->field('invalid')
+                ->in(['red', 'green', 'blue'])
+            ->field('valid')
+                ->in(['red', 'green', 'blue'])
+            ->validate($data);
 
-        $this->assertFalse($result->valid);
-        $this->assertArrayHasKey('invalid', $result->errors);
-        $this->assertArrayNotHasKey('color', $result->errors);
-        $this->assertArrayNotHasKey('valid', $result->errors);
+        $this->assertFalse($result->isValid());
+        $this->assertArrayHasKey('invalid', $result->getErrors());
+        $this->assertArrayNotHasKey('color', $result->getErrors());
+        $this->assertArrayNotHasKey('valid', $result->getErrors());
     }
 
     public function testNotInValidation(): void
@@ -471,16 +529,19 @@ class ValidatorTest extends TestCase
             'valid' => 'blue'
         ];
 
-        $result = $this->validator->check($data, [
-            'color' => $this->validator->rule()->notIn(['red', 'green', 'blue']),
-            'invalid' => $this->validator->rule()->notIn(['red', 'green', 'blue']),
-            'valid' => $this->validator->rule()->notIn(['red', 'green', 'blue'])
-        ]);
+        $result = $this->validator
+            ->field('color')
+                ->notIn(['red', 'green', 'blue'])
+            ->field('invalid')
+                ->notIn(['red', 'green', 'blue'])
+            ->field('valid')
+                ->notIn(['red', 'green', 'blue'])
+            ->validate($data);
 
-        $this->assertFalse($result->valid);
-        $this->assertArrayNotHasKey('invalid', $result->errors);
-        $this->assertArrayHasKey('color', $result->errors);
-        $this->assertArrayHasKey('valid', $result->errors);
+        $this->assertFalse($result->isValid());
+        $this->assertArrayNotHasKey('invalid', $result->getErrors());
+        $this->assertArrayHasKey('color', $result->getErrors());
+        $this->assertArrayHasKey('valid', $result->getErrors());
     }
 
     public function testRegexValidation(): void
@@ -491,15 +552,21 @@ class ValidatorTest extends TestCase
             'empty' => ''
         ];
 
-        $result = $this->validator->check($data, [
-            'valid' => $this->validator->rule()->required()->regex('/^[a-f0-9]{6}$/i'),
-            'invalid' => $this->validator->rule()->required()->regex('/^[a-f0-9]{6}$/i'),
-            'empty' => $this->validator->rule()->required()->regex('/^[a-f0-9]{6}$/i')
-        ]);
+        $result = $this->validator
+            ->field('valid')
+                ->required()
+                ->regex('/^[a-f0-9]{6}$/i')
+            ->field('invalid')
+                ->required()
+                ->regex('/^[a-f0-9]{6}$/i')
+            ->field('empty')
+                ->required()
+                ->regex('/^[a-f0-9]{6}$/i')
+            ->validate($data);
 
-        $this->assertFalse($result->valid);
-        $this->assertArrayNotHasKey('valid', $result->errors);
-        $this->assertArrayHasKey('invalid', $result->errors);
-        $this->assertArrayHasKey('empty', $result->errors);
+        $this->assertFalse($result->isValid());
+        $this->assertArrayNotHasKey('valid', $result->getErrors());
+        $this->assertArrayHasKey('invalid', $result->getErrors());
+        $this->assertArrayHasKey('empty', $result->getErrors());
     }
 }

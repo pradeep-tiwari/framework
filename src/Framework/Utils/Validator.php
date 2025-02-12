@@ -6,10 +6,12 @@ namespace Lightpack\Utils;
 
 class Validator
 {
-    private array $currentRules = [];
-    private array $customRules = [];
+    private array $rules = [];
     private array $data = [];
     private array $errors = [];
+    private array $customRules = [];
+    private string $currentField = '';
+    private bool $valid = true;
     private ?Arr $arr = null;
 
     public function __construct()
@@ -17,37 +19,60 @@ class Validator
         $this->arr = new Arr;
     }
 
-    public function rule(): self
+    public function field(string $field): self 
     {
-        $this->currentRules = [];
+        $this->currentField = $field;
+        if (!isset($this->rules[$field])) {
+            $this->rules[$field] = [];
+        }
         return $this;
     }
 
-    public function check(array &$data, array $rules): object
+    public function validate(array &$data): self
     {
         $this->data = &$data;
         $this->errors = [];
-
-        foreach ($rules as $field => $rule) {
+        $this->valid = true;
+        
+        foreach ($this->rules as $field => $rules) {
             $value = $this->arr->get($field, $data);
             
             if (str_contains($field, '*')) {
-                $this->validateWildcard($field, $value, $rule);
+                $this->validateWildcard($field, $value, $rules);
                 continue;
             }
 
-            $this->validateField($field, $value, $rule);
+            $this->validateField($field, $value, $rules);
         }
-
-        return (object) [
-            'valid' => empty($this->errors),
-            'errors' => $this->errors,
-        ];
+        
+        return $this;
     }
+
+    public function isValid(): bool
+    {
+        return $this->valid;
+    }
+
+    public function getErrors(): array
+    {
+        return $this->errors;
+    }
+
+    public function getFieldErrors(string $field): array
+    {
+        return [$this->errors[$field]] ?? [];
+    }
+
+    public function getData(): array
+    {
+        return $this->data;
+    }
+
+    // Validation Rules
 
     public function required(): self
     {
-        $this->currentRules[] = [
+        $this->rules[$this->currentField][] = [
             'rule' => 'required',
             'params' => [],
             'message' => 'Field is required',
@@ -58,7 +83,7 @@ class Validator
 
     public function email(): self
     {
-        $this->currentRules[] = [
+        $this->rules[$this->currentField][] = [
             'rule' => 'email',
             'params' => [],
             'message' => 'Invalid email format',
@@ -69,7 +94,7 @@ class Validator
 
     public function min(int $length): self
     {
-        $this->currentRules[] = [
+        $this->rules[$this->currentField][] = [
             'rule' => 'min',
             'params' => [$length],
             'message' => "Minimum length is {$length}",
@@ -80,7 +105,7 @@ class Validator
 
     public function max(int $length): self
     {
-        $this->currentRules[] = [
+        $this->rules[$this->currentField][] = [
             'rule' => 'max',
             'params' => [$length],
             'message' => "Maximum length is {$length}",
@@ -91,7 +116,7 @@ class Validator
 
     public function numeric(): self
     {
-        $this->currentRules[] = [
+        $this->rules[$this->currentField][] = [
             'rule' => 'numeric',
             'params' => [],
             'message' => 'Must be numeric',
@@ -100,65 +125,9 @@ class Validator
         return $this;
     }
 
-    public function custom(callable $callback, string $message = 'Validation failed'): self
-    {
-        $this->currentRules[] = [
-            'rule' => 'custom',
-            'params' => [],
-            'message' => $message,
-            'callback' => $callback,
-        ];
-        return $this;
-    }
-
-    public function message(string $message): self
-    {
-        if (!empty($this->currentRules)) {
-            $lastRule = &$this->currentRules[count($this->currentRules) - 1];
-            $lastRule['message'] = $message;
-        }
-        return $this;
-    }
-
-    public function transform(callable $callback): self
-    {
-        $this->currentRules[] = [
-            'rule' => 'transform',
-            'params' => [],
-            'message' => '',
-            'callback' => $callback,
-            'transform' => true,
-        ];
-        return $this;
-    }
-
-    public function addRule(string $name, callable $callback, string $message = 'Validation failed'): void
-    {
-        $this->customRules[$name] = [
-            'callback' => $callback,
-            'message' => $message,
-        ];
-    }
-
-    public function __call(string $name, array $arguments): self
-    {
-        if (isset($this->customRules[$name])) {
-            $rule = $this->customRules[$name];
-            $this->currentRules[] = [
-                'rule' => $name,
-                'params' => $arguments,
-                'message' => $rule['message'],
-                'callback' => $rule['callback'],
-            ];
-            return $this;
-        }
-
-        throw new \BadMethodCallException("Rule '{$name}' not found");
-    }
-
     public function string(): self
     {
-        $this->currentRules[] = [
+        $this->rules[$this->currentField][] = [
             'rule' => 'string',
             'params' => [],
             'message' => 'Must be a string',
@@ -169,7 +138,7 @@ class Validator
 
     public function alpha(): self
     {
-        $this->currentRules[] = [
+        $this->rules[$this->currentField][] = [
             'rule' => 'alpha',
             'params' => [],
             'message' => 'Must contain only letters',
@@ -180,7 +149,7 @@ class Validator
 
     public function alphaNum(): self
     {
-        $this->currentRules[] = [
+        $this->rules[$this->currentField][] = [
             'rule' => 'alphaNum',
             'params' => [],
             'message' => 'Must contain only letters and numbers',
@@ -191,7 +160,7 @@ class Validator
 
     public function int(): self
     {
-        $this->currentRules[] = [
+        $this->rules[$this->currentField][] = [
             'rule' => 'int',
             'params' => [],
             'message' => 'Must be an integer',
@@ -202,7 +171,7 @@ class Validator
 
     public function float(): self
     {
-        $this->currentRules[] = [
+        $this->rules[$this->currentField][] = [
             'rule' => 'float',
             'params' => [],
             'message' => 'Must be a float',
@@ -213,7 +182,7 @@ class Validator
 
     public function bool(): self
     {
-        $this->currentRules[] = [
+        $this->rules[$this->currentField][] = [
             'rule' => 'bool',
             'params' => [],
             'message' => 'Must be a boolean',
@@ -224,7 +193,7 @@ class Validator
 
     public function array(): self
     {
-        $this->currentRules[] = [
+        $this->rules[$this->currentField][] = [
             'rule' => 'array',
             'params' => [],
             'message' => 'Must be an array',
@@ -235,7 +204,7 @@ class Validator
 
     public function date(?string $format = null): self
     {
-        $this->currentRules[] = [
+        $this->rules[$this->currentField][] = [
             'rule' => 'date',
             'params' => [$format],
             'message' => $format ? "Must be a valid date in format: {$format}" : 'Must be a valid date',
@@ -252,7 +221,7 @@ class Validator
 
     public function url(): self
     {
-        $this->currentRules[] = [
+        $this->rules[$this->currentField][] = [
             'rule' => 'url',
             'params' => [],
             'message' => 'Must be a valid URL',
@@ -263,7 +232,7 @@ class Validator
 
     public function between(int|float $min, int|float $max): self
     {
-        $this->currentRules[] = [
+        $this->rules[$this->currentField][] = [
             'rule' => 'between',
             'params' => [$min, $max],
             'message' => "Must be between {$min} and {$max}",
@@ -280,7 +249,7 @@ class Validator
 
     public function unique(): self
     {
-        $this->currentRules[] = [
+        $this->rules[$this->currentField][] = [
             'rule' => 'unique',
             'params' => [],
             'message' => 'Values must be unique',
@@ -296,11 +265,11 @@ class Validator
 
     public function nullable(): self
     {
-        $this->currentRules[] = [
+        $this->rules[$this->currentField][] = [
             'rule' => 'nullable',
             'params' => [],
             'message' => '',
-            'callback' => fn($value) => true, // Always pass validation
+            'callback' => fn($value) => true,
             'nullable' => true,
         ];
         return $this;
@@ -308,7 +277,7 @@ class Validator
 
     public function same(string $field): self
     {
-        $this->currentRules[] = [
+        $this->rules[$this->currentField][] = [
             'rule' => 'same',
             'params' => [$field],
             'message' => "Must match {$field}",
@@ -319,7 +288,7 @@ class Validator
 
     public function different(string $field): self
     {
-        $this->currentRules[] = [
+        $this->rules[$this->currentField][] = [
             'rule' => 'different',
             'params' => [$field],
             'message' => "Must be different from {$field}",
@@ -330,7 +299,7 @@ class Validator
 
     public function in(array $values): self
     {
-        $this->currentRules[] = [
+        $this->rules[$this->currentField][] = [
             'rule' => 'in',
             'params' => [$values],
             'message' => "Must be one of: " . implode(', ', $values),
@@ -341,7 +310,7 @@ class Validator
 
     public function notIn(array $values): self
     {
-        $this->currentRules[] = [
+        $this->rules[$this->currentField][] = [
             'rule' => 'notIn',
             'params' => [$values],
             'message' => "Must not be one of: " . implode(', ', $values),
@@ -352,7 +321,7 @@ class Validator
 
     public function regex(string $pattern): self
     {
-        $this->currentRules[] = [
+        $this->rules[$this->currentField][] = [
             'rule' => 'regex',
             'params' => [$pattern],
             'message' => "Must match pattern: {$pattern}",
@@ -361,14 +330,65 @@ class Validator
         return $this;
     }
 
-    private function validateField(string $field, $value, $rules): void
+    public function custom(callable $callback, string $message = 'Validation failed'): self
     {
-        if ($rules instanceof self) {
-            $rules = $rules->currentRules;
+        $this->rules[$this->currentField][] = [
+            'rule' => 'custom',
+            'params' => [],
+            'message' => $message,
+            'callback' => $callback,
+        ];
+        return $this;
+    }
+
+    public function transform(callable $callback): self
+    {
+        $this->rules[$this->currentField][] = [
+            'rule' => 'transform',
+            'params' => [],
+            'message' => '',
+            'callback' => $callback,
+            'transform' => true,
+        ];
+        return $this;
+    }
+
+    public function message(string $message): self
+    {
+        if (!empty($this->rules[$this->currentField])) {
+            $lastRule = &$this->rules[$this->currentField][count($this->rules[$this->currentField]) - 1];
+            $lastRule['message'] = $message;
+        }
+        return $this;
+    }
+
+    public function addRule(string $name, callable $callback, string $message = 'Validation failed'): void
+    {
+        $this->customRules[$name] = [
+            'callback' => $callback,
+            'message' => $message,
+        ];
+    }
+
+    public function __call(string $name, array $arguments): self
+    {
+        if (isset($this->customRules[$name])) {
+            $rule = $this->customRules[$name];
+            $this->rules[$this->currentField][] = [
+                'rule' => $name,
+                'params' => $arguments,
+                'message' => $rule['message'],
+                'callback' => $rule['callback'],
+            ];
+            return $this;
         }
 
+        throw new \BadMethodCallException("Rule '{$name}' not found");
+    }
+
+    private function validateField(string $field, $value, array $rules): void
+    {
         foreach ($rules as $rule) {
-            // Handle nullable values
             if ($value === null || $value === '') {
                 if (isset($rule['nullable']) && $rule['nullable']) {
                     continue;
@@ -399,12 +419,13 @@ class Validator
             
             if ($valid === false) {
                 $this->errors[$field] = $rule['message'];
+                $this->valid = false;
                 break;
             }
         }
     }
 
-    private function validateWildcard(string $field, $values, $rules): void
+    private function validateWildcard(string $field, $values, array $rules): void
     {
         if (!is_array($values)) {
             return;

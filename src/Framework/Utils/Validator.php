@@ -146,6 +146,22 @@ class Validator
         return $this;
     }
 
+    public function length(int $length): self
+    {
+        $this->rules[$this->currentField][] = [
+            'rule' => 'length',
+            'params' => [$length],
+            'message' => "Length must be exactly {$length} characters",
+            'callback' => function($value) use ($length) {
+                if ($value === null) {
+                    return false;
+                }
+                return mb_strlen((string) $value) === $length;
+            },
+        ];
+        return $this;
+    }
+
     public function numeric(): self
     {
         $this->rules[$this->currentField][] = [
@@ -186,6 +202,17 @@ class Validator
             'params' => [],
             'message' => 'Must contain only letters and numbers',
             'callback' => fn($value) => is_string($value) && preg_match('/^[\p{L}\p{M}\p{N}]+$/u', $value),
+        ];
+        return $this;
+    }
+
+    public function slug(): self
+    {
+        $this->rules[$this->currentField][] = [
+            'rule' => 'slug',
+            'params' => [],
+            'message' => 'Must be a valid URL slug (lowercase letters, numbers, and hyphens only)',
+            'callback' => fn($value) => is_string($value) && preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $value),
         ];
         return $this;
     }
@@ -251,6 +278,50 @@ class Validator
         return $this;
     }
 
+    public function before(string $date, ?string $format = null): self
+    {
+        $this->rules[$this->currentField][] = [
+            'rule' => 'before',
+            'params' => [$date, $format],
+            'message' => $format 
+                ? "Date must be before {$date} (format: {$format})" 
+                : "Date must be before {$date}",
+            'callback' => function($value) use ($date, $format) {
+                if ($format) {
+                    $valueDate = \DateTime::createFromFormat($format, $value);
+                    $compareDate = \DateTime::createFromFormat($format, $date);
+                    return $valueDate && $compareDate && $valueDate->format($format) === $value && $valueDate < $compareDate;
+                }
+                $valueTime = strtotime($value);
+                $compareTime = strtotime($date);
+                return $valueTime !== false && $compareTime !== false && $valueTime < $compareTime;
+            },
+        ];
+        return $this;
+    }
+
+    public function after(string $date, ?string $format = null): self
+    {
+        $this->rules[$this->currentField][] = [
+            'rule' => 'after',
+            'params' => [$date, $format],
+            'message' => $format 
+                ? "Date must be after {$date} (format: {$format})" 
+                : "Date must be after {$date}",
+            'callback' => function($value) use ($date, $format) {
+                if ($format) {
+                    $valueDate = \DateTime::createFromFormat($format, $value);
+                    $compareDate = \DateTime::createFromFormat($format, $date);
+                    return $valueDate && $compareDate && $valueDate->format($format) === $value && $valueDate > $compareDate;
+                }
+                $valueTime = strtotime($value);
+                $compareTime = strtotime($date);
+                return $valueTime !== false && $compareTime !== false && $valueTime > $compareTime;
+            },
+        ];
+        return $this;
+    }
+
     public function url(): self
     {
         $this->rules[$this->currentField][] = [
@@ -258,6 +329,31 @@ class Validator
             'params' => [],
             'message' => 'Must be a valid URL',
             'callback' => fn($value) => filter_var($value, FILTER_VALIDATE_URL) !== false,
+        ];
+        return $this;
+    }
+
+    public function ip(?string $version = null): self
+    {
+        $message = match($version) {
+            'v4' => 'Must be a valid IPv4 address',
+            'v6' => 'Must be a valid IPv6 address',
+            null => 'Must be a valid IP address',
+            default => throw new \InvalidArgumentException("Invalid IP version: {$version}. Use 'v4', 'v6' or null."),
+        };
+
+        $callback = match($version) {
+            'v4' => fn($value) => filter_var($value, FILTER_VALIDATE_IP, ['flags' => FILTER_FLAG_IPV4]) !== false,
+            'v6' => fn($value) => filter_var($value, FILTER_VALIDATE_IP, ['flags' => FILTER_FLAG_IPV6]) !== false,
+            null => fn($value) => filter_var($value, FILTER_VALIDATE_IP) !== false,
+            default => fn($value) => false,
+        };
+
+        $this->rules[$this->currentField][] = [
+            'rule' => 'ip',
+            'params' => [$version],
+            'message' => $message,
+            'callback' => $callback,
         ];
         return $this;
     }
@@ -420,22 +516,27 @@ class Validator
 
     private function validateField(string $field, $value, array $rules): void
     {
+        $fieldErrors = [];
+
         foreach ($rules as $rule) {
             // For boolean fields, false is a valid value
             if ($rule['rule'] === 'bool' && is_bool($value)) {
                 $valid = $rule['callback']($value, ...$rule['params']);
                 if ($valid === false) {
-                    $this->errors[$field] = $rule['message'];
-                    $this->valid = false;
+                    $fieldErrors[$rule['rule']] = $rule['message'];
                 }
                 continue;
             }
 
-            if ($value === null || $value === '') {
+            // Only consider truly empty values (null or empty string)
+            $isEmpty = $value === null || $value === '';
+            
+            if ($isEmpty) {
                 if (isset($rule['nullable']) && $rule['nullable']) {
                     continue;
                 }
-                if (!in_array($rule['rule'], ['required', 'requiredIf'])) {
+                // Don't skip length rule for empty values
+                if (!in_array($rule['rule'], ['required', 'requiredIf', 'length'])) {
                     continue;
                 }
             }
@@ -460,10 +561,13 @@ class Validator
             $valid = $rule['callback']($value, ...$rule['params']);
             
             if ($valid === false) {
-                $this->errors[$field] = $rule['message'];
-                $this->valid = false;
-                break;
+                $fieldErrors[$rule['rule']] = $rule['message'];
             }
+        }
+
+        if (!empty($fieldErrors)) {
+            $this->valid = false;
+            $this->errors[$field] = reset($fieldErrors);
         }
     }
 

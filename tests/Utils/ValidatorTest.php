@@ -753,4 +753,183 @@ class ValidatorTest extends TestCase
         $this->assertFalse($result->isValid());
         $this->assertArrayHasKey('payment.card.cvv', $result->getErrors());
     }
+
+    public function testLengthValidation(): void
+    {
+        $data = [
+            'phone' => '1234567890',      // Valid: exactly 10 chars
+            'code' => '123',              // Valid: exactly 3 chars
+            'pin' => '12345',             // Invalid: not 4 chars
+            'empty' => '',                // Invalid: not 1 char
+            'null' => null,               // Invalid: not 2 chars
+        ];
+
+        $result = $this->validator
+            ->field('phone')->length(10)
+            ->field('code')->length(3)
+            ->field('pin')->length(4)
+            ->field('empty')->length(1)
+            ->field('null')->length(2)
+            ->validate($data);
+
+        $this->assertFalse($result->isValid());
+        $errors = $result->getErrors();
+        
+        $this->assertArrayNotHasKey('phone', $errors);
+        $this->assertArrayNotHasKey('code', $errors);
+        $this->assertArrayHasKey('pin', $errors);
+        $this->assertArrayHasKey('empty', $errors);
+        $this->assertArrayHasKey('null', $errors);
+        $this->assertEquals('Length must be exactly 4 characters', $errors['pin']);
+        $this->assertEquals('Length must be exactly 1 characters', $errors['empty']);
+        $this->assertEquals('Length must be exactly 2 characters', $errors['null']);
+
+        // Test with non-string values
+        $data = [
+            'number' => 123,              // Valid: 3 chars when cast to string
+            'bool' => true,               // Invalid: not 5 chars when cast to string
+        ];
+
+        $result = $this->validator
+            ->field('number')->length(3)
+            ->field('bool')->length(5)
+            ->validate($data);
+
+        $this->assertFalse($result->isValid());
+        $errors = $result->getErrors();
+        
+        $this->assertArrayNotHasKey('number', $errors);
+        $this->assertArrayHasKey('bool', $errors);
+        $this->assertEquals('Length must be exactly 5 characters', $errors['bool']);
+    }
+
+    public function testIpValidation(): void
+    {
+        $data = [
+            'ipv4' => '192.168.1.1',             // Valid IPv4
+            'ipv6' => '2001:0db8:85a3:0000:0000:8a2e:0370:7334',  // Valid IPv6
+            'invalid_ip' => '256.256.256.256',    // Invalid IP
+            'not_ip' => 'hello',                  // Not an IP
+        ];
+
+        $result = $this->validator
+            ->field('ipv4')
+                ->ip('v4')                        // IPv4 only
+            ->field('ipv6')
+                ->ip('v6')                        // IPv6 only
+            ->field('invalid_ip')
+                ->ip()                            // Any IP version
+            ->field('not_ip')
+                ->ip()                            // Any IP version
+            ->validate($data);
+
+        $this->assertFalse($result->isValid());
+        $errors = $result->getErrors();
+        
+        $this->assertArrayNotHasKey('ipv4', $errors);
+        $this->assertArrayNotHasKey('ipv6', $errors);
+        $this->assertArrayHasKey('invalid_ip', $errors);
+        $this->assertArrayHasKey('not_ip', $errors);
+        $this->assertEquals('Must be a valid IP address', $errors['invalid_ip']);
+        $this->assertEquals('Must be a valid IP address', $errors['not_ip']);
+
+        // Test IPv6 with IPv4 validation
+        $data = ['mixed' => '2001:0db8:85a3:0000:0000:8a2e:0370:7334'];
+        $result = $this->validator
+            ->field('mixed')
+            ->ip('v4')
+            ->validate($data);
+
+        $this->assertFalse($result->isValid());
+        $errors = $result->getErrors();
+        $this->assertArrayHasKey('mixed', $errors);
+        $this->assertEquals('Must be a valid IPv4 address', $errors['mixed']);
+    }
+
+    public function testSlugValidation(): void
+    {
+        $data = [
+            'valid1' => 'hello-world',           // Valid
+            'valid2' => 'my-blog-post-123',      // Valid
+            'invalid1' => 'Hello World',         // Invalid: spaces and uppercase
+            'invalid2' => 'hello--world',        // Invalid: consecutive hyphens
+            'invalid3' => '-hello-world',        // Invalid: starts with hyphen
+            'invalid4' => 'hello-world-',        // Invalid: ends with hyphen
+            'invalid5' => 'hello_world',         // Invalid: underscore
+            'invalid6' => 'héllo-world',         // Invalid: special characters
+        ];
+
+        $result = $this->validator
+            ->field('valid1')->slug()
+            ->field('valid2')->slug()
+            ->field('invalid1')->slug()
+            ->field('invalid2')->slug()
+            ->field('invalid3')->slug()
+            ->field('invalid4')->slug()
+            ->field('invalid5')->slug()
+            ->field('invalid6')->slug()
+            ->validate($data);
+
+        $this->assertFalse($result->isValid());
+        $errors = $result->getErrors();
+        
+        $this->assertArrayNotHasKey('valid1', $errors);
+        $this->assertArrayNotHasKey('valid2', $errors);
+        $this->assertArrayHasKey('invalid1', $errors);
+        $this->assertArrayHasKey('invalid2', $errors);
+        $this->assertArrayHasKey('invalid3', $errors);
+        $this->assertArrayHasKey('invalid4', $errors);
+        $this->assertArrayHasKey('invalid5', $errors);
+        $this->assertArrayHasKey('invalid6', $errors);
+    }
+
+    public function testDateBeforeAfterValidation(): void
+    {
+        $data = [
+            'past_date' => '2023-01-01',
+            'future_date' => '2025-12-31',
+            'custom_date' => '31-12-2024',
+            'invalid_date' => 'not-a-date',
+        ];
+
+        $result = $this->validator
+            ->field('past_date')
+                ->before('2024-01-01')
+            ->field('future_date')
+                ->after('2025-01-01')
+            ->field('custom_date')
+                ->before('01-01-2025', 'd-m-Y')
+            ->field('invalid_date')
+                ->before('2024-01-01')
+            ->validate($data);
+
+        $this->assertFalse($result->isValid());
+        $errors = $result->getErrors();
+        
+        $this->assertArrayNotHasKey('past_date', $errors);
+        $this->assertArrayNotHasKey('future_date', $errors);
+        $this->assertArrayNotHasKey('custom_date', $errors);
+        $this->assertArrayHasKey('invalid_date', $errors);
+
+        // Test invalid dates
+        $data = [
+            'too_late' => '2024-12-31',
+            'too_early' => '2023-01-01',
+        ];
+
+        $result = $this->validator
+            ->field('too_late')
+                ->before('2024-01-01')
+            ->field('too_early')
+                ->after('2024-01-01')
+            ->validate($data);
+
+        $this->assertFalse($result->isValid());
+        $errors = $result->getErrors();
+        
+        $this->assertArrayHasKey('too_late', $errors);
+        $this->assertArrayHasKey('too_early', $errors);
+        $this->assertEquals('Date must be before 2024-01-01', $errors['too_late']);
+        $this->assertEquals('Date must be after 2024-01-01', $errors['too_early']);
+    }
 }

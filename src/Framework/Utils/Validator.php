@@ -76,7 +76,7 @@ class Validator
             'rule' => 'required',
             'params' => [],
             'message' => 'Field is required',
-            'callback' => fn($value) => !empty($value),
+            'callback' => fn($value) => $value !== null && $value !== '' || is_bool($value),
         ];
         return $this;
     }
@@ -186,7 +186,7 @@ class Validator
             'rule' => 'bool',
             'params' => [],
             'message' => 'Must be a boolean',
-            'callback' => fn($value) => is_bool($value) || in_array($value, [0, 1, '0', '1', 'true', 'false'], true),
+            'callback' => fn($value) => is_bool($value) || in_array($value, [0, 1, '0', '1', 'true', 'false', true, false], false),
         ];
         return $this;
     }
@@ -389,6 +389,16 @@ class Validator
     private function validateField(string $field, $value, array $rules): void
     {
         foreach ($rules as $rule) {
+            // For boolean fields, false is a valid value
+            if ($rule['rule'] === 'bool' && is_bool($value)) {
+                $valid = $rule['callback']($value, ...$rule['params']);
+                if ($valid === false) {
+                    $this->errors[$field] = $rule['message'];
+                    $this->valid = false;
+                }
+                continue;
+            }
+
             if ($value === null || $value === '') {
                 if (isset($rule['nullable']) && $rule['nullable']) {
                     continue;

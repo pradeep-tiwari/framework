@@ -681,4 +681,76 @@ class ValidatorTest extends TestCase
         $this->assertTrue($result->isValid());
         $this->assertEmpty($result->getErrors());
     }
+
+    public function testRequiredIfValidation(): void
+    {
+        $data = [
+            'shipping_method' => 'pickup',
+            'pickup_location' => null,  
+            'delivery_address' => null  
+        ];
+
+        $result = $this->validator
+            ->field('pickup_location')
+            ->requiredIf('shipping_method', 'pickup')
+            ->field('delivery_address')
+            ->requiredIf('shipping_method', 'delivery')
+            ->validate($data);
+
+        $this->assertFalse($result->isValid());
+        $this->assertArrayHasKey('pickup_location', $result->getErrors());
+        $this->assertArrayNotHasKey('delivery_address', $result->getErrors());
+
+        $data = [
+            'has_company' => true,
+            'company_name' => null,  
+            'company_tax_id' => null 
+        ];
+
+        $result = $this->validator
+            ->field('company_name')
+            ->requiredIf('has_company')
+            ->field('company_tax_id')
+            ->requiredIf('has_company')
+            ->validate($data);
+
+        $this->assertFalse($result->isValid());
+        $this->assertArrayHasKey('company_name', $result->getErrors());
+        $this->assertArrayHasKey('company_tax_id', $result->getErrors());
+
+        $data = [
+            'has_company' => false,
+            'company_name' => null,  
+            'shipping_method' => 'delivery',
+            'pickup_location' => null 
+        ];
+
+        $result = $this->validator
+            ->field('company_name')
+            ->requiredIf('has_company')
+            ->field('pickup_location')
+            ->requiredIf('shipping_method', 'pickup')
+            ->validate($data);
+
+        $this->assertTrue($result->isValid());
+        $this->assertEmpty($result->getErrors());
+
+        $data = [
+            'payment' => [
+                'method' => 'card',
+                'card' => [
+                    'number' => '4242424242424242',
+                    'cvv' => null  
+                ]
+            ]
+        ];
+
+        $result = $this->validator
+            ->field('payment.card.cvv')
+            ->requiredIf('payment.method', 'card')
+            ->validate($data);
+
+        $this->assertFalse($result->isValid());
+        $this->assertArrayHasKey('payment.card.cvv', $result->getErrors());
+    }
 }

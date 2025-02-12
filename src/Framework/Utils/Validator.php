@@ -45,6 +45,10 @@ class Validator
             $this->validateField($field, $value, $rules);
         }
         
+        // Reset rules after validation
+        $this->rules = [];
+        $this->currentField = '';
+        
         return $this;
     }
 
@@ -77,6 +81,34 @@ class Validator
             'params' => [],
             'message' => 'Field is required',
             'callback' => fn($value) => $value !== null && $value !== '' || is_bool($value),
+        ];
+        return $this;
+    }
+
+    public function requiredIf(string $field, mixed $value = null): self
+    {
+        $this->rules[$this->currentField][] = [
+            'rule' => 'requiredIf',
+            'params' => [$field, $value],
+            'message' => 'Field is required',
+            'callback' => function($fieldValue) use ($field, $value) {
+                $dependentValue = $this->arr->get($field, $this->data);
+                
+                // If no specific value is provided, check if dependent field is truthy
+                if ($value === null) {
+                    $required = $dependentValue === true || $dependentValue === 1 || $dependentValue === '1';
+                } else {
+                    $required = $dependentValue === $value;
+                }
+
+                // If not required, any value is valid
+                if (!$required) {
+                    return true;
+                }
+
+                // If required, must have a non-null value
+                return $fieldValue !== null;
+            },
         ];
         return $this;
     }
@@ -403,7 +435,7 @@ class Validator
                 if (isset($rule['nullable']) && $rule['nullable']) {
                     continue;
                 }
-                if ($rule['rule'] !== 'required') {
+                if (!in_array($rule['rule'], ['required', 'requiredIf'])) {
                     continue;
                 }
             }

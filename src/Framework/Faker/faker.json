@@ -1,0 +1,28 @@
+{
+    "firstName": [
+        "John", "Jane", "Mike", "Sarah", "David", "Lisa", "Tom", "Emma", "James", "Mary",
+        "Robert", "Patricia", "Michael", "Linda", "William", "Elizabeth", "Richard", "Susan"
+    ],
+    "lastName": [
+        "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis",
+        "Rodriguez", "Martinez", "Hernandez", "Lopez", "Gonzalez", "Wilson", "Anderson"
+    ],
+    "domain": [
+        "example.com", "test.com", "demo.com", "sample.net", "mock.org"
+    ],
+    "tld": [
+        "com", "net", "org", "io", "dev"
+    ],
+    "city": [
+        "New York", "London", "Tokyo", "Paris", "Mumbai", "Shanghai", "Dubai",
+        "Singapore", "Sydney", "Toronto", "Berlin", "Madrid", "Rome", "Moscow"
+    ],
+    "country": [
+        "USA", "UK", "Japan", "France", "India", "China", "UAE", "Singapore",
+        "Australia", "Canada", "Germany", "Spain", "Italy", "Russia"
+    ],
+    "word": [
+        "lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "elit",
+        "sed", "do", "eiusmod", "tempor", "incididunt", "labore", "magna", "aliqua"
+    ]
+}

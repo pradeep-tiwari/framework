@@ -3,43 +3,33 @@
 namespace Lightpack\Faker;
 
 /**
- * Faker - A lightweight fake data generator
- * 
+ * Faker class for generating fake data
+ *
  * @method string firstName()     Returns a random first name
  * @method string lastName()      Returns a random last name
- * @method string company()       Returns a random company name
- * @method string jobTitle()      Returns a random job title
- * @method string domain()        Returns a random domain name
- * @method string tld()          Returns a random top-level domain
- * @method string city()         Returns a random city name
- * @method string country()      Returns a random country name
- * @method string street()       Returns a random street name
- * @method string buildingNumber() Returns a random building number
- * @method string phoneArea()    Returns a random phone area code
- * @method string word()         Returns a random word
- * 
- * @method self seed(int $seed)  Set a seed for reproducible results
- * @method self unique()         Ensure values are unique
- * 
- * Methods with special formatting:
- * @method string email()        Returns a random email address
- * @method string username()     Returns a random username
- * @method string password(int $length = 12) Returns a random password
- * @method string phone()        Returns a random phone number
+ * @method string email()         Returns a random email address
+ * @method string username()      Returns a random username
+ * @method string password()      Returns a random password
+ * @method string phone()         Returns a random phone number
  * @method string url()          Returns a random URL
  * @method string ipv4()         Returns a random IPv4 address
  * @method string slug()         Returns a URL-friendly slug
  * @method string address()      Returns a full address
- * @method string text(int $words = 10) Returns random text
- * @method string paragraph(int $sentences = 3) Returns random paragraphs
- * @method string title()        Returns a random title
- * @method string markdown()     Returns random markdown text
  * @method string uuid()         Returns a UUID v4
  * @method string hash(int $length = 32) Returns a random hash
  * @method string token()        Returns a random token
  * @method string pastDate(string $format = 'Y-m-d') Returns a past date
  * @method string futureDate(string $format = 'Y-m-d') Returns a future date
  * @method string time()         Returns a random time
+ * 
+ * Content Generation Methods:
+ * @method string article(string $format = 'text')  Returns a full article in text or HTML format
+ * @method string text(string $format = 'text')    Returns a paragraph in text or HTML format
+ * @method string title(string $format = 'text')    Returns a title in text or HTML format
+ * @method string intro(string $format = 'text')    Returns an intro in text or HTML format
+ * @method string conclusion(string $format = 'text') Returns a conclusion in text or HTML format
+ * @method string markdown()     Returns content in markdown format
+ * @method string html()         Returns content in HTML format
  */
 class Faker 
 {
@@ -122,50 +112,13 @@ class Faker
 
     public function slug(): string
     {
-        $words = [];
-        for ($i = 0; $i < mt_rand(3, 6); $i++) {
-            $words[] = $this->word();
-        }
-        return strtolower(str_replace(' ', '-', implode('-', $words)));
+        return strtolower(str_replace(' ', '-', $this->title()));
     }
 
     public function address(): string
     {
         return $this->buildingNumber() . ' ' . $this->street() . ', ' . 
                $this->city() . ', ' . $this->country();
-    }
-
-    public function text(int $words = 10): string 
-    {
-        $text = [];
-        for ($i = 0; $i < $words; $i++) {
-            $text[] = $this->word();
-        }
-        return ucfirst(implode(' ', $text)) . '.';
-    }
-
-    public function paragraph(int $sentences = 3): string
-    {
-        $paragraph = [];
-        for ($i = 0; $i < $sentences; $i++) {
-            $paragraph[] = $this->text(mt_rand(5, 10));
-        }
-        return implode(' ', $paragraph);
-    }
-
-    public function title(): string
-    {
-        return ucwords($this->text(mt_rand(3, 6)));
-    }
-
-    public function markdown(): string
-    {
-        return "# " . $this->title() . "\n\n" .
-               $this->paragraph() . "\n\n" .
-               "## " . $this->title() . "\n\n" .
-               "* " . $this->text() . "\n" .
-               "* " . $this->text() . "\n" .
-               "* " . $this->text() . "\n";
     }
 
     public function uuid(): string
@@ -206,7 +159,92 @@ class Faker
         return sprintf('%02d:%02d:%02d', 
             mt_rand(0, 23), mt_rand(0, 59), mt_rand(0, 59));
     }
-    
+
+    // Content Generation
+    public function article(string $format = 'text'): string
+    {
+        $title = $this->pick($this->data['textTitle']);
+        $intro = $this->pick($this->data['textIntro']);
+        $body = $this->pick($this->data['textBody']);
+        $conclusion = $this->pick($this->data['textConclusion']);
+
+        if ($format === 'html') {
+            return "<article>" .
+                   "<h1>{$title}</h1>" .
+                   "<div class=\"intro\"><p>{$intro}</p></div>" .
+                   "<div class=\"body\">{$this->formatHtmlParagraphs($body)}</div>" .
+                   "<div class=\"conclusion\"><p>{$conclusion}</p></div>" .
+                   "</article>";
+        }
+
+        return "# {$title}\n\n" .
+               "{$intro}\n\n" .
+               "{$body}\n\n" .
+               "{$conclusion}";
+    }
+
+    public function text(string $format = 'text'): string
+    {
+        $text = $this->pick($this->data['textBody']);
+        return $format === 'html' ? $this->formatHtmlParagraphs($text) : $text;
+    }
+
+    public function title(string $format = 'text'): string
+    {
+        $text = $this->pick($this->data['textTitle']);
+        return $format === 'html' ? "<h1>{$text}</h1>" : $text;
+    }
+
+    public function intro(string $format = 'text'): string
+    {
+        $text = $this->pick($this->data['textIntro']);
+        return $format === 'html' ? "<p class=\"intro\">{$text}</p>" : $text;
+    }
+
+    public function conclusion(string $format = 'text'): string
+    {
+        $text = $this->pick($this->data['textConclusion']);
+        return $format === 'html' ? "<p class=\"conclusion\">{$text}</p>" : $text;
+    }
+
+    public function markdown(): string
+    {
+        return "# " . $this->title() . "\n\n" .
+               $this->intro() . "\n\n" .
+               "## Overview\n\n" .
+               $this->text() . "\n\n" .
+               "## Details\n\n" .
+               $this->text() . "\n\n" .
+               "## Summary\n\n" .
+               $this->conclusion();
+    }
+
+    public function html(): string
+    {
+        return "<article class=\"content\">" .
+               $this->title('html') .
+               "<div class=\"content-body\">" .
+               $this->intro('html') .
+               "<h2>Overview</h2>" .
+               $this->text('html') .
+               "<h2>Details</h2>" .
+               $this->text('html') .
+               "<h2>Summary</h2>" .
+               $this->conclusion('html') .
+               "</div></article>";
+    }
+
+    private function formatHtmlParagraphs(string $text): string
+    {
+        // Split text by double newlines and wrap each paragraph in <p> tags
+        $paragraphs = explode("\n\n", $text);
+        $html = '';
+        foreach ($paragraphs as $p) {
+            $html .= "<p>" . trim($p) . "</p>";
+        }
+        return $html;
+    }
+
     private function pick(array $array): string 
     {
         $value = $array[array_rand($array)];

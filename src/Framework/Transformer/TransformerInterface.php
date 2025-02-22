@@ -12,5 +12,5 @@ interface TransformerInterface
     /**
      * Transform a collection of items
      */
-    public function collection(array $items): array;
+    public function collection(?array $items): array;
 }

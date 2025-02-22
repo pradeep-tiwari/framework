@@ -2,10 +2,13 @@
 
 namespace Lightpack\Http;
 
+use Lightpack\Container\Container;
 use Lightpack\Exceptions\FileUploadException;
 
 class UploadedFile
 {
+    /** @var Lightpack\Storage\Storage */
+    private $storage;
     private $name;
     private $size;
     private $type;
@@ -14,6 +17,7 @@ class UploadedFile
 
     public function __construct($file)
     {
+        $this->storage = Container::getInstance()->get('storage');
         $this->name = $file['name'];
         $this->size = $file['size'];
         $this->type = $file['type'];
@@ -87,6 +91,9 @@ class UploadedFile
         return empty($this->getName());
     }
 
+    /**
+     * @deprecated Use method store()
+     */
     public function move(string $destination, string $name = null): void
     {
         if (is_dir($destination)) {
@@ -98,6 +105,13 @@ class UploadedFile
         }
 
         $this->processUpload($name ?? $this->name, $destination);
+    }
+
+    public function store(string $destination, string $name = null): bool
+    {
+        $destination = trim($destination, '\\/') . '/' . ($name ?? $this->name);
+        
+        return $this->storage->move($this->tmpName, $destination);
     }
 
     private function processUpload(string $name, string $destination): void

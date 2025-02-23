@@ -19,7 +19,7 @@ class Auth
         return $this->manager->getAuthToken();
     }
 
-    public function viaToken(): ?Identity
+    public function viaToken(): ?AuthIdentity
     {
         $identity = $this->manager->verify('bearer');
 
@@ -69,7 +69,7 @@ class Auth
         return $this->manager->getAuthId();
     }
 
-    public function user(): ?Identity
+    public function user(): ?AuthIdentity
     {
         return $this->manager->getAuthUser();
     }
@@ -90,7 +90,7 @@ class Auth
         return $isGuest;
     }
 
-    public function attempt(): ?Identity
+    public function attempt(): ?AuthIdentity
     {
         return $this->manager->attempt();
     }
@@ -123,7 +123,7 @@ class Auth
      * @param Identity $user The user to login as
      * @return self For method chaining
      */
-    public function loginAs(Identity $user): self
+    public function loginAs(AuthIdentity $user): self
     {
         $this->manager->setIdentity($user);
         $this->manager->populateSession();

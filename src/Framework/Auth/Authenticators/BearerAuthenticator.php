@@ -4,6 +4,7 @@ namespace Lightpack\Auth\Authenticators;
 
 use Lightpack\Auth\AbstractAuthenticator;
 use Lightpack\Auth\Identity;
+use Lightpack\Auth\Models\AuthToken;
 
 class BearerAuthenticator extends AbstractAuthenticator
 {
@@ -15,8 +16,12 @@ class BearerAuthenticator extends AbstractAuthenticator
             return null;
         }
 
-        $tokenHash = hash_hmac('sha1', $token, '');
+        $authToken = AuthToken::verify($token);
+        
+        if (!$authToken) {
+            return null;
+        }
 
-        return $this->identifier->findByAuthToken($tokenHash);
+        return $this->identifier->findById($authToken->getUserId());
     }
 }

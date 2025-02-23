@@ -3,7 +3,7 @@
 namespace Lightpack\Auth\Identifiers;
 
 use Lightpack\Auth\Identifier;
-use Lightpack\Auth\Identity;
+use Lightpack\Auth\AuthIdentity;
 use Lightpack\Auth\Models\AuthUser;
 
 class DefaultIdentifier implements Identifier
@@ -13,7 +13,7 @@ class DefaultIdentifier implements Identifier
         // ...
     }
 
-    public function findById($id): ?Identity
+    public function findById($id): ?AuthIdentity
     {
         $user = $this->user->find($id);
 
@@ -24,7 +24,7 @@ class DefaultIdentifier implements Identifier
         return $user;
     }
 
-    public function findByAuthToken(string $token): ?Identity
+    public function findByAuthToken(string $token): ?AuthIdentity
     {
         $user = $this->user->query()->where('api_token', '=', $token)->one();
 
@@ -35,7 +35,7 @@ class DefaultIdentifier implements Identifier
         return $user;
     }
 
-    public function findByRememberToken($id, string $token): ?Identity
+    public function findByRememberToken($id, string $token): ?AuthIdentity
     {
         $user = $this->user->query()->where('id', '=', $id)->one();
 
@@ -50,7 +50,7 @@ class DefaultIdentifier implements Identifier
         return $user;
     }
 
-    public function findByCredentials(array $credentials): ?Identity
+    public function findByCredentials(array $credentials): ?AuthIdentity
     {
         $user = $this->user->query()->where('email', '=', $credentials['email'])->one();
 

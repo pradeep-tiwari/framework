@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 use PHPUnit\Framework\TestCase;
 use Lightpack\Auth\Auth;
-use Lightpack\Auth\Identity;
+use Lightpack\Auth\AuthIdentity;
+use Lightpack\Auth\Identifier;
 use Lightpack\Session\Session;
 use Lightpack\Http\Request;
 use Lightpack\Container\Container;
@@ -113,7 +114,7 @@ class AuthTest extends TestCase
         $this->assertFalse($this->auth->isGuest());
         
         $user = $this->auth->user();
-        $this->assertInstanceOf(Identity::class, $user);
+        $this->assertInstanceOf(AuthIdentity::class, $user);
         $this->assertEquals(1, $user->getId());
         $this->assertEquals('test@example.com', $user->getEmail());
     }
@@ -182,49 +183,62 @@ class AuthTest extends TestCase
             
         $identity = $this->auth->viaToken();
         
-        $this->assertInstanceOf(Identity::class, $identity);
+        $this->assertInstanceOf(AuthIdentity::class, $identity);
         $this->assertEquals(1, $identity->getId());
     }
 }
 
 // Test classes
-class TestUser implements Identity 
+class TestUser implements AuthIdentity 
 {
     private $id = 1;
     private $email = 'test@example.com';
-    private $password = 'hashed_password';
-    private $authToken;
     private $rememberToken;
-    
+    private $authToken;
+    private $tokens = [];
+
     public function getId(): mixed { return $this->id; }
-    public function getEmail(): string { return $this->email; }
-    public function getPassword(): string { return $this->password; }
-    public function getAuthToken(): ?string { return $this->authToken; }
+    public function getEmail() { return $this->email; }
+    public function getAuthToken() { return $this->authToken; }
     public function setAuthToken($token): void { $this->authToken = $token; }
     public function getRememberToken(): ?string { return $this->rememberToken; }
     public function setRememberToken($token): void { $this->rememberToken = $token; }
+    
+    public function tokens() {
+        return $this->tokens;
+    }
+    
+    public function createToken(string $name, ?string $expiresAt = null): string {
+        $token = bin2hex(random_bytes(32));
+        $this->tokens[] = [
+            'name' => $name,
+            'token' => $token,
+            'expires_at' => $expiresAt,
+        ];
+        return $token;
+    }
 }
 
-class TestIdentifier implements Lightpack\Auth\Identifier
+class TestIdentifier implements Identifier
 {
     public function __construct(private TestUser $model) {}
     
-    public function findById($id): ?Identity
+    public function findById($id): ?AuthIdentity
     {
         return $this->model;
     }
     
-    public function findByCredentials(array $credentials): ?Identity
+    public function findByCredentials(array $credentials): ?AuthIdentity
     {
         return $this->model;
     }
 
-    public function findByAuthToken(string $token): ?Identity 
+    public function findByAuthToken(string $token): ?AuthIdentity 
     {
         return $this->model;
     }
 
-    public function findByRememberToken($id, string $token): ?Identity
+    public function findByRememberToken($id, string $token): ?AuthIdentity
     {
         return $this->model;
     }

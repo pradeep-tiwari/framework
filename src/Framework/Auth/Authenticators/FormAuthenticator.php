@@ -3,11 +3,11 @@
 namespace Lightpack\Auth\Authenticators;
 
 use Lightpack\Auth\AbstractAuthenticator;
-use Lightpack\Auth\Identity;
+use Lightpack\Auth\AuthIdentity;
 
 class FormAuthenticator extends AbstractAuthenticator
 {
-    public function verify(): ?Identity
+    public function verify(): ?AuthIdentity
     {
         $credentials = request()->input();
 

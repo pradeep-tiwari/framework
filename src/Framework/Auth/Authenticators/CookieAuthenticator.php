@@ -2,12 +2,12 @@
 
 namespace Lightpack\Auth\Authenticators;
 
-use Lightpack\Auth\Identity;
+use Lightpack\Auth\AuthIdentity;
 use Lightpack\Auth\AbstractAuthenticator;
 
 class CookieAuthenticator extends AbstractAuthenticator
 {
-    public function verify(): ?Identity
+    public function verify(): ?AuthIdentity
     {
         $rememberTokenField = $this->config['fields.remember_token'];
 

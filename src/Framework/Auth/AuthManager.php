@@ -15,8 +15,8 @@ class AuthManager
 
     protected $driver;
 
-    /** @var Identity|null */
-    protected static ?Identity $identity = null;
+    /** @var AuthIdentity|null */
+    protected static ?AuthIdentity $identity = null;
 
     protected static $authenticators = [
         'bearer' => BearerAuthenticator::class,
@@ -35,7 +35,7 @@ class AuthManager
      * Set the current identity
      * Used internally by auth system
      */
-    public function setIdentity(Identity $identity): void 
+    public function setIdentity(AuthIdentity $identity): void 
     {
         self::$identity = $identity;
     }
@@ -44,14 +44,7 @@ class AuthManager
         self::$identity = null;
     }
 
-    public function getAuthToken()
-    {
-        if(self::$identity) {
-            return self::$identity->getAuthToken();
-        }
-    }
-
-    public function viaToken(): ?Identity
+    public function viaToken(): ?AuthIdentity
     {
         $identity = $this->verify('bearer');
 
@@ -73,7 +66,7 @@ class AuthManager
         }
     }
 
-    public function getAuthUser(): ?Identity
+    public function getAuthUser(): ?AuthIdentity
     {
         if(!self::$identity) {
             if(session()->get('_logged_in')) {
@@ -110,7 +103,7 @@ class AuthManager
         return redirect()->to($url);
     }
 
-    public function attempt(): ?Identity
+    public function attempt(): ?AuthIdentity
     {
         $identity = $this->verify('form');
 
@@ -204,9 +197,10 @@ class AuthManager
 
         if (request()->input($rememberTokenField)) {
             $fields[$rememberTokenField] = $this->generateRememberToken();
-        } else {
-            $fields[$apiTokenField] = $this->hashToken($this->generateApiToken());
-        }
+        } 
+        // else {
+        //     $fields[$apiTokenField] = $this->hashToken($this->generateApiToken());
+        // }
 
         /** @var Identifier */
         $identifier = $this->getIdentifier();
@@ -223,15 +217,6 @@ class AuthManager
         $identifier = $this->getIdentifier();
         
         $identifier->updateLogin(self::$identity->getId(), $fields);
-    }
-
-    protected function generateApiToken()
-    {
-        $token = self::$identity->getId() . '|' . bin2hex(random_bytes(16));
-
-        self::$identity->setAuthToken($token);
-
-        return $token;
     }
 
     protected function generateRememberToken()
@@ -257,7 +242,7 @@ class AuthManager
         return $this;
     }
 
-    public function verify(string $authenticatorType): ?Identity
+    public function verify(string $authenticatorType): ?AuthIdentity
     {
         $identity = $this->getAuthenticator($authenticatorType)->verify();
 

@@ -13,6 +13,7 @@ use Lightpack\Http\Cookie;
 use Lightpack\Http\Redirect;
 use Lightpack\Utils\Url;
 use Lightpack\Session\DriverInterface;
+use Lightpack\Database\DB;
 
 class AuthTest extends TestCase
 {
@@ -24,6 +25,8 @@ class AuthTest extends TestCase
     private Redirect $redirect;
     private Url $url;
     private DriverInterface $sessionDriver;
+    private $config;
+    private DB $db;
 
     protected function setUp(): void
     {
@@ -59,6 +62,31 @@ class AuthTest extends TestCase
         Container::getInstance()->instance('redirect', $this->redirect);
         Container::getInstance()->instance('url', $this->url);
         
+        // Mock config
+        $this->config = new class {
+            private $values = [];
+            
+            public function __construct() {
+                $this->values = [
+                    'app.key' => 'test_key',
+                    'app.name' => 'TestApp',
+                ];
+            }
+            
+            public function get($key, $default = null) {
+                return $this->values[$key] ?? $default;
+            }
+            
+            public function set($key, $value) {
+                $this->values[$key] = $value;
+            }
+        };
+        Container::getInstance()->instance('config', $this->config);
+
+        // Mock database
+        $this->db = $this->createMock(DB::class);
+        Container::getInstance()->instance('db', $this->db);
+
         // Setup auth config
         $config = [
             'default' => [
@@ -178,8 +206,15 @@ class AuthTest extends TestCase
             ->method('bearerToken')
             ->willReturn('test_token');
             
-        // Mock token hash
-        $tokenHash = hash_hmac('sha1', 'test_token', '');
+        // Mock database query for token verification
+        $token = $this->createMock(\Lightpack\Auth\Models\AuthToken::class);
+        $token->method('verify')
+            ->with('test_token')
+            ->willReturn($token);
+        $token->method('getUserId')
+            ->willReturn(1);
+            
+        Container::getInstance(\Lightpack\Auth\Models\AuthToken::class, $token);
             
         $identity = $this->auth->viaToken();
         

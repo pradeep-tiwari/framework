@@ -51,16 +51,20 @@ class AuthUser extends Model implements Identity
         return $this->hasMany(AccessToken::class, 'user_id');
     }
 
-    public function createToken(string $name, array $abilities = ['*'], ?string $expiresAt = null)
+    public function createToken(string $name, array $abilities = ['*'], ?string $expiresAt = null): AccessToken
     {
         $token = bin2hex(random_bytes(40));
-        
-        return $this->accessTokens()->insert([
-            'name' => $name,
-            'token' => hash('sha256', $token),
-            'abilities' => $abilities,
-            'expires_at' => $expiresAt,
-        ]);
+
+        $accessToken = new AccessToken;
+
+        $accessToken->user_id = $this->id;
+        $accessToken->name = $name;
+        $accessToken->token = hash('sha256', $token);
+        $accessToken->abilities = json_encode($abilities);
+        $accessToken->expires_at = $expiresAt;
+        $accessToken->save;
+
+        return $accessToken;
     }
 
     public function tokens()

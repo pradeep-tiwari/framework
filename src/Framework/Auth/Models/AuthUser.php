@@ -53,16 +53,19 @@ class AuthUser extends Model implements Identity
 
     public function createToken(string $name, array $abilities = ['*'], ?string $expiresAt = null): AccessToken
     {
-        $token = bin2hex(random_bytes(40));
+        $plainTextToken = bin2hex(random_bytes(40));
 
         $accessToken = new AccessToken;
 
         $accessToken->user_id = $this->id;
         $accessToken->name = $name;
-        $accessToken->token = hash('sha256', $token);
+        $accessToken->token = hash('sha256', $plainTextToken);
         $accessToken->abilities = json_encode($abilities);
         $accessToken->expires_at = $expiresAt;
-        $accessToken->save;
+        $accessToken->save();
+
+        // Set the plain text token temporarily for the response
+        $accessToken->plainTextToken = $plainTextToken;
 
         return $accessToken;
     }

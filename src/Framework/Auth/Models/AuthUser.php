@@ -4,6 +4,7 @@ namespace Lightpack\Auth\Models;
 
 use Lightpack\Auth\Identity;
 use Lightpack\Database\Lucid\Model;
+use Lightpack\Auth\Models\AccessToken;
 
 class AuthUser extends Model implements Identity
 {
@@ -15,7 +16,6 @@ class AuthUser extends Model implements Identity
 
     protected $hidden = [
         'password',
-        'api_token',
         'remember_token',
     ];
 
@@ -44,5 +44,37 @@ class AuthUser extends Model implements Identity
     {
         $this->remember_token = $token;
         $this->save();
+    }
+
+    public function accessTokens()
+    {
+        return $this->hasMany(AccessToken::class, 'user_id');
+    }
+
+    public function createToken(string $name, array $abilities = ['*'], ?string $expiresAt = null)
+    {
+        $token = bin2hex(random_bytes(40));
+        
+        return $this->accessTokens()->insert([
+            'name' => $name,
+            'token' => hash('sha256', $token),
+            'abilities' => $abilities,
+            'expires_at' => $expiresAt,
+        ]);
+    }
+
+    public function tokens()
+    {
+        return $this->accessTokens;
+    }
+
+    public function deleteToken($tokenId)
+    {
+        return $this->accessTokens()->where('id', $tokenId)->delete();
+    }
+
+    public function tokenCan(string $ability): bool
+    {
+        return $this->currentAccessToken && $this->currentAccessToken->can($ability);
     }
 }

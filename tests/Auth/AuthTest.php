@@ -5,6 +5,7 @@ declare(strict_types=1);
 use PHPUnit\Framework\TestCase;
 use Lightpack\Auth\Auth;
 use Lightpack\Auth\Identity;
+use Lightpack\Auth\Models\AccessToken;
 use Lightpack\Session\Session;
 use Lightpack\Http\Request;
 use Lightpack\Container\Container;
@@ -169,22 +170,6 @@ class AuthTest extends TestCase
         $this->assertTrue($this->auth->isGuest());
         $this->assertNull($this->auth->user());
     }
-
-    public function testCanLoginViaToken()
-    {
-        // Mock bearer token
-        $this->request->expects($this->once())
-            ->method('bearerToken')
-            ->willReturn('test_token');
-            
-        // Mock token hash
-        $tokenHash = hash_hmac('sha1', 'test_token', '');
-            
-        $identity = $this->auth->viaToken();
-        
-        $this->assertInstanceOf(Identity::class, $identity);
-        $this->assertEquals(1, $identity->getId());
-    }
 }
 
 // Test classes
@@ -199,10 +184,14 @@ class TestUser implements Identity
     public function getId(): mixed { return $this->id; }
     public function getEmail(): string { return $this->email; }
     public function getPassword(): string { return $this->password; }
-    public function getAuthToken(): ?string { return $this->authToken; }
-    public function setAuthToken($token): void { $this->authToken = $token; }
     public function getRememberToken(): ?string { return $this->rememberToken; }
-    public function setRememberToken($token): void { $this->rememberToken = $token; }
+    public function setRememberToken(string $token): void { $this->rememberToken = $token; }
+    public function accessTokens() { return []; }
+    public function createToken(string $name, array $abilities = ['*'], ?string $expiresAt = null): AccessToken 
+    {
+        return new AccessToken();
+    }
+    public function deleteTokens(?string $tokenId = ''): void {}
 }
 
 class TestIdentifier implements Lightpack\Auth\Identifier

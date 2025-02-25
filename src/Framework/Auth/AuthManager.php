@@ -204,8 +204,6 @@ class AuthManager
 
         if (request()->input($rememberTokenField)) {
             $fields[$rememberTokenField] = $this->generateRememberToken();
-        } else {
-            $fields[$apiTokenField] = $this->hashToken($this->generateApiToken());
         }
 
         /** @var Identifier */
@@ -223,15 +221,6 @@ class AuthManager
         $identifier = $this->getIdentifier();
         
         $identifier->updateLogin(self::$identity->getId(), $fields);
-    }
-
-    protected function generateApiToken()
-    {
-        $token = self::$identity->getId() . '|' . bin2hex(random_bytes(16));
-
-        self::$identity->setAuthToken($token);
-
-        return $token;
     }
 
     protected function generateRememberToken()

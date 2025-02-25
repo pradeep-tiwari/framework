@@ -24,20 +24,9 @@ class AuthUser extends Model implements Identity
         return $this->id;
     }
 
-    public function getAuthToken(): ?string
-    {
-        return $this->api_token;
-    }
-
     public function getRememberToken(): ?string
     {
         return $this->remember_token;
-    }
-
-    public function setAuthToken(string $token): void
-    {
-        $this->api_token = $token;
-        $this->save();
     }
 
     public function setRememberToken(string $token): void
@@ -70,6 +59,9 @@ class AuthUser extends Model implements Identity
         return $accessToken;
     }
 
+    /**
+     * @deprecated use accessTokens() method.
+     */
     public function tokens()
     {
         return $this->accessTokens;

@@ -36,5 +36,5 @@ interface Identity
     /**
      * Delete an access token assigned to the user.
      */
-    public function deleteToken($tokenId);
+    public function deleteTokens(?string $tokenId = '');
 }

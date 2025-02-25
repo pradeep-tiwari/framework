@@ -44,13 +44,6 @@ class AuthManager
         self::$identity = null;
     }
 
-    public function getAuthToken()
-    {
-        if(self::$identity) {
-            return self::$identity->getAuthToken();
-        }
-    }
-
     public function viaToken(): ?Identity
     {
         $identity = $this->verify('bearer');

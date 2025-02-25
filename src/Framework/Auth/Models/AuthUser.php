@@ -67,9 +67,11 @@ class AuthUser extends Model implements Identity
         return $this->accessTokens;
     }
 
-    public function deleteToken($tokenId)
+    public function deleteToken($token)
     {
-        return $this->accessTokens()->where('id', $tokenId)->delete();
+        $tokenHash = hash('sha256', $token);
+        
+        AccessToken::query()->where('token', $tokenHash)->delete();
     }
 
     public function tokenCan(string $ability): bool

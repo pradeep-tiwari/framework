@@ -22,6 +22,7 @@ class BearerAuthenticator extends AbstractAuthenticator
             ->where('token', $tokenHash)
             ->whereNull('expires_at')
             ->orWhere('expires_at', '>', date('Y-m-d H:i:s'))
+            ->orderBy('id', 'DESC')
             ->one();
 
         if (!$accessToken) {

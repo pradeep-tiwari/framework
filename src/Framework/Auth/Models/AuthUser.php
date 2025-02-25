@@ -59,14 +59,6 @@ class AuthUser extends Model implements Identity
         return $accessToken;
     }
 
-    /**
-     * @deprecated use accessTokens() method.
-     */
-    public function tokens()
-    {
-        return $this->accessTokens;
-    }
-
     public function deleteTokens(?string $token = '')
     {
         if(!$token) {

@@ -189,7 +189,6 @@ class AuthManager
 
     public function updateLogin()
     {
-        $apiTokenField = $this->normalizedConfig['fields.api_token'];
         $lastLoginField = $this->normalizedConfig['fields.last_login_at'];
         $rememberTokenField = $this->normalizedConfig['fields.remember_token'];
 
@@ -225,11 +224,6 @@ class AuthManager
         self::$identity->setRememberToken($cookie);
 
         return $rememberToken;
-    }
-
-    protected function hashToken(string $token): string
-    {
-        return hash_hmac('sha1', $token, '');
     }
 
     public function extend(string $type, string $authenticatorClass): self

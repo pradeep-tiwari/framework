@@ -24,6 +24,8 @@ class AccessToken extends Model
     
     public function can(string $ability): bool
     {
+        $this->abilities = json_decode($this->abilities, true);
+        
         if (in_array('*', $this->abilities)) {
             return true;
         }

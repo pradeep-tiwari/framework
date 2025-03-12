@@ -94,33 +94,60 @@ class Output
             header('Content-Type: text/html; charset=UTF-8');
         }
 
-        $hasErrors = !empty($data['exceptions']);
-        
-        $html = '<div class="debug-panel' . ($hasErrors ? ' has-errors' : '') . '">';
-        
-        if (!$hasErrors) {
-            $html .= '<div class="debug-toggle" title="Toggle Debug Panel">Debug</div>';
-        }
-        
+        $html = '<div class="debug-panel">';
+        $html .= '<div class="debug-toggle" title="Toggle Debug Panel"><span class="debug-icon">🐛</span> Debug</div>';
         $html .= '<div class="debug-content">';
         
         // Environment
         $html .= self::htmlSection('Environment', function() use ($data) {
             $output = '<div class="debug-grid">';
-            foreach ($data['environment'] as $key => $value) {
-                if ($key === 'execution_time') {
-                    $value .= ' ms';
-                } elseif (strpos($key, 'memory') !== false) {
-                    $value = $value . ' MB';
-                }
-                $output .= "<div class='debug-item'><span>" . ucwords(str_replace('_', ' ', $key)) . ":</span> <span>$value</span></div>";
-            }
+            
+            // Performance metrics
+            $output .= '<div class="metric-group"><h4>Performance</h4>';
+            $output .= "<div class='debug-item'><span>Execution Time:</span> <span class='value-highlight'>{$data['environment']['execution_time']} ms</span></div>";
+            $output .= "<div class='debug-item'><span>Memory Usage:</span> <span class='value-highlight'>{$data['environment']['memory_usage']} MB</span></div>";
+            $output .= "<div class='debug-item'><span>Peak Memory:</span> <span class='value-highlight'>{$data['environment']['peak_memory']} MB</span></div>";
+            $output .= "<div class='debug-item'><span>Query Count:</span> <span class='value-highlight'>{$data['environment']['query_count']}</span></div>";
+            $output .= "<div class='debug-item'><span>Included Files:</span> <span class='value-highlight'>{$data['environment']['included_files']}</span></div>";
+            $output .= "<div class='debug-item'><span>Session Size:</span> <span class='value-highlight'>{$data['environment']['session_size']} KB</span></div>";
+            $output .= '</div>';
+            
+            // Request info
+            $output .= '<div class="metric-group"><h4>Request</h4>';
+            $output .= "<div class='debug-item'><span>Method:</span> <span class='method-{$data['environment']['request_method']}'>{$data['environment']['request_method']}</span></div>";
+            $output .= "<div class='debug-item'><span>URI:</span> <span>{$data['environment']['request_uri']}</span></div>";
+            $output .= '</div>';
+            
+            // System info
+            $output .= '<div class="metric-group"><h4>System</h4>';
+            $output .= "<div class='debug-item'><span>PHP Version:</span> <span>{$data['environment']['php_version']}</span></div>";
+            $output .= "<div class='debug-item'><span>Server:</span> <span>{$data['environment']['server']}</span></div>";
+            $output .= '</div>';
+            
             $output .= '</div>';
             return $output;
         });
 
+        // Database Queries
+        if (!empty($data['queries'])) {
+            $html .= self::htmlSection('Database', function() use ($data) {
+                $output = '<div class="debug-queries">';
+                foreach ($data['queries'] as $query) {
+                    $output .= "<div class='query-item'>";
+                    $output .= "<div class='query-text'>{$query['query']}</div>";
+                    $output .= "<div class='query-meta'>";
+                    $output .= "<span>Time: {$query['time']} ms</span>";
+                    $output .= "<span>Rows: {$query['rows']}</span>";
+                    $output .= "</div>";
+                    $output .= "</div>";
+                }
+                $output .= '</div>';
+                return $output;
+            });
+        }
+
         // Exceptions
-        if ($hasErrors) {
+        if (!empty($data['exceptions'])) {
             $html .= self::htmlSection('Exceptions', function() use ($data) {
                 $output = '';
                 foreach ($data['exceptions'] as $exception) {
@@ -168,7 +195,7 @@ class Output
     {
         return "
             <div class='debug-section'>
-                <div class='debug-title'>$title</div>
+                <h3>$title</h3>
                 <div class='debug-content'>{$content()}</div>
             </div>
         ";
@@ -185,7 +212,7 @@ class Output
                 right: 0;
                 background: #1a1a1a;
                 color: #fff;
-                font-family: monospace;
+                font-family: system-ui, -apple-system, sans-serif;
                 font-size: 12px;
                 z-index: 9999;
                 max-height: 80vh;
@@ -200,25 +227,29 @@ class Output
                 transform: translateY(calc(100% - 30px));
             }
             .debug-toggle {
-                background: #e74c3c;
+                background: #2c3e50;
                 color: white;
                 padding: 5px 15px;
                 cursor: pointer;
-                font-weight: bold;
+                font-weight: 500;
                 display: inline-block;
                 border-radius: 3px 3px 0 0;
                 position: absolute;
                 top: -25px;
                 left: 20px;
+                transition: background 0.2s;
             }
             .debug-toggle:hover {
-                background: #c0392b;
+                background: #34495e;
+            }
+            .debug-icon {
+                margin-right: 4px;
             }
             .debug-content {
                 padding: 20px;
                 overflow-y: auto;
                 max-height: calc(80vh - 30px);
-                border-top: 2px solid #e74c3c;
+                border-top: 2px solid #2c3e50;
             }
             .debug-panel.has-errors .debug-content {
                 max-height: none;
@@ -226,29 +257,70 @@ class Output
             }
             .debug-section {
                 margin-bottom: 20px;
+                background: #242424;
+                border-radius: 6px;
+                overflow: hidden;
             }
-            .debug-title {
-                color: #e74c3c;
+            .debug-section h3 {
+                margin: 0;
+                padding: 10px 15px;
+                background: #2c3e50;
+                color: white;
                 font-size: 14px;
-                font-weight: bold;
-                margin-bottom: 10px;
-                padding-bottom: 5px;
-                border-bottom: 1px solid #333;
+                font-weight: 500;
             }
             .debug-grid {
                 display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 10px;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 20px;
+                padding: 15px;
+            }
+            .metric-group {
+                background: #2a2a2a;
+                border-radius: 4px;
+                padding: 12px;
+            }
+            .metric-group h4 {
+                margin: 0 0 10px 0;
+                color: #3498db;
+                font-size: 13px;
+                font-weight: 500;
             }
             .debug-item {
-                background: #2c2c2c;
-                padding: 10px;
-                border-radius: 3px;
-                margin-bottom: 10px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 4px 0;
+                border-bottom: 1px solid #333;
             }
-            .debug-item span:first-child {
-                color: #3498db;
-                margin-right: 5px;
+            .debug-item:last-child {
+                border-bottom: none;
+            }
+            .value-highlight {
+                color: #2ecc71;
+                font-weight: 500;
+            }
+            .method-GET { color: #3498db; }
+            .method-POST { color: #2ecc71; }
+            .method-PUT { color: #f1c40f; }
+            .method-DELETE { color: #e74c3c; }
+            .query-item {
+                background: #2a2a2a;
+                margin: 10px;
+                padding: 12px;
+                border-radius: 4px;
+            }
+            .query-text {
+                color: #e74c3c;
+                margin-bottom: 8px;
+                font-family: monospace;
+            }
+            .query-meta {
+                color: #7f8c8d;
+                font-size: 11px;
+            }
+            .query-meta span {
+                margin-right: 15px;
             }
             .debug-exception {
                 margin-bottom: 15px;

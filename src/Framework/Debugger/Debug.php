@@ -98,9 +98,15 @@ class Debug
                 'peak_memory' => round(memory_get_peak_usage() / 1024 / 1024, 2),
                 'php_version' => PHP_VERSION,
                 'server' => $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown',
+                'request_method' => $_SERVER['REQUEST_METHOD'] ?? 'Unknown',
+                'request_uri' => $_SERVER['REQUEST_URI'] ?? 'Unknown',
+                'query_count' => count(self::$queries),
+                'included_files' => count(get_included_files()),
+                'session_size' => isset($_SESSION) ? round(strlen(serialize($_SESSION)) / 1024, 2) : 0,
             ],
             'exceptions' => self::$exceptions,
             'data' => self::$data,
+            'queries' => self::$queries,
         ];
     }
 

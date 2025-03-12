@@ -94,20 +94,33 @@ class Output
             header('Content-Type: text/html; charset=UTF-8');
         }
 
-        $html = '<div class="debug-panel">';
+        $hasErrors = !empty($data['exceptions']);
+        
+        $html = '<div class="debug-panel' . ($hasErrors ? ' has-errors' : '') . '">';
+        
+        if (!$hasErrors) {
+            $html .= '<div class="debug-toggle" title="Toggle Debug Panel">Debug</div>';
+        }
+        
+        $html .= '<div class="debug-content">';
         
         // Environment
         $html .= self::htmlSection('Environment', function() use ($data) {
             $output = '<div class="debug-grid">';
             foreach ($data['environment'] as $key => $value) {
-                $output .= "<div class='debug-item'><span>" . ucfirst($key) . ":</span> <span>$value</span></div>";
+                if ($key === 'execution_time') {
+                    $value .= ' ms';
+                } elseif (strpos($key, 'memory') !== false) {
+                    $value = $value . ' MB';
+                }
+                $output .= "<div class='debug-item'><span>" . ucwords(str_replace('_', ' ', $key)) . ":</span> <span>$value</span></div>";
             }
             $output .= '</div>';
             return $output;
         });
 
         // Exceptions
-        if (!empty($data['exceptions'])) {
+        if ($hasErrors) {
             $html .= self::htmlSection('Exceptions', function() use ($data) {
                 $output = '';
                 foreach ($data['exceptions'] as $exception) {
@@ -123,7 +136,7 @@ class Output
 
         // Debug data
         if (!empty($data['data'])) {
-            $html .= self::htmlSection('Debug Data', function() use ($data) {
+            $html .= self::htmlSection('Debug Log', function() use ($data) {
                 $output = '';
                 foreach ($data['data'] as $item) {
                     $output .= "<div class='debug-item'>";
@@ -143,8 +156,10 @@ class Output
             });
         }
 
-        $html .= '</div>';
+        $html .= '</div>'; // debug-content
+        $html .= '</div>'; // debug-panel
         $html .= self::getStyles();
+        $html .= self::getScript();
         
         echo $html;
     }
@@ -174,9 +189,40 @@ class Output
                 font-size: 12px;
                 z-index: 9999;
                 max-height: 80vh;
+                transition: transform 0.3s ease;
+            }
+            .debug-panel.has-errors {
+                top: 0;
+                max-height: none;
                 overflow-y: auto;
-                border-top: 2px solid #e74c3c;
+            }
+            .debug-panel:not(.has-errors).collapsed {
+                transform: translateY(calc(100% - 30px));
+            }
+            .debug-toggle {
+                background: #e74c3c;
+                color: white;
+                padding: 5px 15px;
+                cursor: pointer;
+                font-weight: bold;
+                display: inline-block;
+                border-radius: 3px 3px 0 0;
+                position: absolute;
+                top: -25px;
+                left: 20px;
+            }
+            .debug-toggle:hover {
+                background: #c0392b;
+            }
+            .debug-content {
                 padding: 20px;
+                overflow-y: auto;
+                max-height: calc(80vh - 30px);
+                border-top: 2px solid #e74c3c;
+            }
+            .debug-panel.has-errors .debug-content {
+                max-height: none;
+                border-top: none;
             }
             .debug-section {
                 margin-bottom: 20px;
@@ -244,6 +290,28 @@ class Output
                 color: #2ecc71;
             }
         </style>
+        ";
+    }
+
+    private static function getScript(): string
+    {
+        return "
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const panel = document.querySelector('.debug-panel');
+                const toggle = document.querySelector('.debug-toggle');
+                
+                // Only add collapse functionality if there are no errors
+                if (!panel.classList.contains('has-errors')) {
+                    // Start collapsed
+                    panel.classList.add('collapsed');
+                    
+                    toggle.addEventListener('click', function() {
+                        panel.classList.toggle('collapsed');
+                    });
+                }
+            });
+        </script>
         ";
     }
 

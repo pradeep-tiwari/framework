@@ -45,8 +45,7 @@ final class App
         $container = Container::getInstance();
         $logger = $container->get('logger');
         $environment = $container->get('config')->get('app.env');
-        $exceptionRenderer = new ExceptionRenderer($environment);
-        $handler = new Handler($logger, $exceptionRenderer, $environment);
+        $handler = new Handler($logger, $environment);
 
         set_exception_handler([$handler, 'handleException']);
         set_error_handler([$handler, 'handleError']);

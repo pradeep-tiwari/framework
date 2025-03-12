@@ -92,18 +92,15 @@ class Debug
     public static function getDebugData(): array 
     {
         return [
-            'data' => self::$data,
-            'queries' => self::$queries,
-            'files' => self::$files,
-            'exceptions' => self::$exceptions,
-            'trace' => self::$trace,
             'environment' => [
-                'execution_time' => round((microtime(true) - self::$startTime) * 1000, 2),
-                'memory_usage' => self::formatBytes(memory_get_usage(true)),
-                'peak_memory' => self::formatBytes(memory_get_peak_usage(true)),
+                'execution_time' => number_format((microtime(true) - $_SERVER['REQUEST_TIME_FLOAT']) * 1000, 2),
+                'memory_usage' => round(memory_get_usage() / 1024 / 1024, 2),
+                'peak_memory' => round(memory_get_peak_usage() / 1024 / 1024, 2),
                 'php_version' => PHP_VERSION,
-                'server' => $_SERVER['SERVER_SOFTWARE'] ?? 'CLI',
+                'server' => $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown',
             ],
+            'exceptions' => self::$exceptions,
+            'data' => self::$data,
         ];
     }
 

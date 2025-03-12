@@ -22,14 +22,11 @@ class Handler
     private $environment;
     private $hasRendered = false;
 
-    public function __construct(
-        Logger $logger,
-        ExceptionRenderer $exceptionRenderer,
-        string $environment = 'development'
-    ) {
+    public function __construct(Logger $logger, string $environment = 'development')
+    {
         $this->logger = $logger;
-        $this->exceptionRenderer = $exceptionRenderer;
         $this->environment = $environment;
+        $this->exceptionRenderer = new ExceptionRenderer($environment);
     }
 
     public function handleError(int $code, string $message, string $file, int $line)
@@ -64,6 +61,10 @@ class Handler
                 $error['file'],
                 $error['line']
             );
+        } else if ($this->environment === 'development' && !$this->hasRendered && PHP_SAPI !== 'cli') {
+            // For normal requests in development, show debug panel
+            Output::render(Debug::getDebugData());
+            $this->hasRendered = true;
         }
     }
 

@@ -90,6 +90,10 @@ class Output
 
     private static function renderHtml(array $data): void 
     {
+        if (!headers_sent()) {
+            header('Content-Type: text/html; charset=UTF-8');
+        }
+
         $html = '<div class="debug-panel">';
         
         // Environment
@@ -117,31 +121,14 @@ class Output
             });
         }
 
-        // Queries
-        if (!empty($data['queries'])) {
-            $html .= self::htmlSection('Database Queries', function() use ($data) {
-                $output = '';
-                foreach ($data['queries'] as $query) {
-                    $output .= "<div class='debug-query'>";
-                    $output .= "<pre class='debug-sql'>{$query['query']}</pre>";
-                    $output .= "<div class='debug-info'>Time: {$query['time']}ms</div>";
-                    if (!empty($query['bindings'])) {
-                        $output .= "<div class='debug-info'>Bindings: " . htmlspecialchars(json_encode($query['bindings'])) . "</div>";
-                    }
-                    $output .= "</div>";
-                }
-                return $output;
-            });
-        }
-
-        // Debug Data
+        // Debug data
         if (!empty($data['data'])) {
             $html .= self::htmlSection('Debug Data', function() use ($data) {
                 $output = '';
                 foreach ($data['data'] as $item) {
                     $output .= "<div class='debug-item'>";
                     if ($item['type'] === 'dump') {
-                        $output .= "<div class='debug-info'>Dump at {$item['file']}:{$item['line']}</div>";
+                        $output .= "<div class='debug-info'>Variable Dump at {$item['file']}:{$item['line']}</div>";
                         $output .= "<pre>" . htmlspecialchars(print_r($item['value'], true)) . "</pre>";
                     } else {
                         $output .= "<div class='debug-info'>Log at {$item['file']}:{$item['line']}</div>";
@@ -189,16 +176,18 @@ class Output
                 max-height: 80vh;
                 overflow-y: auto;
                 border-top: 2px solid #e74c3c;
+                padding: 20px;
             }
             .debug-section {
-                padding: 15px;
-                border-bottom: 1px solid #333;
+                margin-bottom: 20px;
             }
             .debug-title {
                 color: #e74c3c;
                 font-size: 14px;
                 font-weight: bold;
                 margin-bottom: 10px;
+                padding-bottom: 5px;
+                border-bottom: 1px solid #333;
             }
             .debug-grid {
                 display: grid;
@@ -207,21 +196,24 @@ class Output
             }
             .debug-item {
                 background: #2c2c2c;
-                padding: 8px;
+                padding: 10px;
                 border-radius: 3px;
+                margin-bottom: 10px;
             }
             .debug-item span:first-child {
                 color: #3498db;
+                margin-right: 5px;
             }
             .debug-exception {
                 margin-bottom: 15px;
                 background: #2c2c2c;
-                padding: 10px;
+                padding: 15px;
                 border-radius: 3px;
             }
             .debug-error {
                 color: #e74c3c;
                 font-weight: bold;
+                margin-bottom: 10px;
             }
             .debug-info {
                 color: #95a5a6;
@@ -229,21 +221,14 @@ class Output
                 margin: 5px 0;
             }
             .debug-trace {
-                margin: 5px 0;
-                padding: 8px;
+                margin: 10px 0;
+                padding: 10px;
                 background: #363636;
                 border-radius: 3px;
                 overflow-x: auto;
-            }
-            .debug-query {
-                margin-bottom: 10px;
-                background: #2c2c2c;
-                padding: 10px;
-                border-radius: 3px;
-            }
-            .debug-sql {
-                margin: 5px 0;
-                color: #2ecc71;
+                color: #7f8c8d;
+                font-size: 11px;
+                line-height: 1.4;
             }
             .debug-message {
                 color: #f1c40f;
@@ -253,6 +238,10 @@ class Output
                 margin: 5px 0;
                 white-space: pre-wrap;
                 word-wrap: break-word;
+                background: #363636;
+                padding: 10px;
+                border-radius: 3px;
+                color: #2ecc71;
             }
         </style>
         ";

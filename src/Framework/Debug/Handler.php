@@ -13,6 +13,7 @@ use Lightpack\Exceptions\ValidationException;
 use Lightpack\Logger\Logger;
 use Lightpack\Debugger\Debug;
 use Lightpack\Debugger\Output;
+use Lightpack\Exceptions\HttpException;
 
 class Handler
 {
@@ -64,11 +65,6 @@ class Handler
                 $error['line']
             );
         }
-
-        if ($this->environment === 'development' && !$this->hasRendered) {
-            Output::render(Debug::getDebugData());
-            $this->hasRendered = true;
-        }
     }
 
     public function handleException(Throwable $exc)
@@ -87,6 +83,18 @@ class Handler
 
         if ($this->environment === 'development') {
             Debug::exception($exc);
+            
+            // Set appropriate HTTP status code
+            $statusCode = $exc instanceof HttpException ? $exc->getCode() : 500;
+            if (!headers_sent()) {
+                header("HTTP/1.1 $statusCode", true, $statusCode);
+            }
+            
+            if (!$this->hasRendered) {
+                Output::render(Debug::getDebugData());
+                $this->hasRendered = true;
+            }
+            return;
         }
 
         if ($exc instanceof Exception) {
@@ -108,6 +116,13 @@ class Handler
 
         if ($this->environment === 'development') {
             Debug::exception($exc);
+            
+            // Set appropriate HTTP status code
+            $statusCode = $exc instanceof HttpException ? $exc->getCode() : 500;
+            if (!headers_sent()) {
+                header("HTTP/1.1 $statusCode", true, $statusCode);
+            }
+            
             if (!$this->hasRendered) {
                 Output::render(Debug::getDebugData());
                 $this->hasRendered = true;

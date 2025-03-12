@@ -46,7 +46,7 @@ final class App
         $logger = $container->get('logger');
         $environment = $container->get('config')->get('app.env');
         $exceptionRenderer = new ExceptionRenderer($environment);
-        $handler = new Handler($logger, $exceptionRenderer);
+        $handler = new Handler($logger, $exceptionRenderer, $environment);
 
         set_exception_handler([$handler, 'handleException']);
         set_error_handler([$handler, 'handleError']);
@@ -104,6 +104,7 @@ final class App
             \Lightpack\Providers\CryptoProvider::class,
             \Lightpack\Providers\ScheduleProvider::class,
             \Lightpack\Providers\ValidationProvider::class,
+            \Lightpack\Providers\DebugProvider::class,
         ];
     }
 

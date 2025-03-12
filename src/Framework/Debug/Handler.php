@@ -11,18 +11,23 @@ use Lightpack\Container\Container;
 use Lightpack\Debug\ExceptionRenderer;
 use Lightpack\Exceptions\ValidationException;
 use Lightpack\Logger\Logger;
+use Lightpack\Debugger\Debug;
+use Lightpack\Debugger\Output;
 
 class Handler
 {
     private $logger;
     private $exceptionRenderer;
+    private $environment;
 
     public function __construct(
         Logger $logger,
-        ExceptionRenderer $exceptionRenderer
+        ExceptionRenderer $exceptionRenderer,
+        string $environment = 'development'
     ) {
         $this->logger = $logger;
         $this->exceptionRenderer = $exceptionRenderer;
+        $this->environment = $environment;
     }
 
     public function handleError(int $code, string $message, string $file, int $line)
@@ -34,6 +39,14 @@ class Handler
             $file,
             $line
         );
+
+        if ($this->environment === 'development') {
+            Debug::log($message, [
+                'code' => $code,
+                'file' => $file,
+                'line' => $line,
+            ]);
+        }
 
         $this->logAndRenderException($exc);
     }
@@ -50,6 +63,10 @@ class Handler
                 $error['line']
             );
         }
+
+        if ($this->environment === 'development') {
+            Output::render(Debug::getDebugData());
+        }
     }
 
     public function handleException(Throwable $exc)
@@ -64,6 +81,10 @@ class Handler
 
         if ($exc instanceof ValidationException) {
             return Container::getInstance()->get('redirect')->send();
+        }
+
+        if ($this->environment === 'development') {
+            Debug::exception($exc);
         }
 
         if ($exc instanceof Exception) {
@@ -82,6 +103,12 @@ class Handler
                 'trace' => $exc->getTraceAsString(),
             ],
         ]);
-        $this->exceptionRenderer->render($exc, $type);
+
+        if ($this->environment === 'development') {
+            Debug::exception($exc);
+            Output::render(Debug::getDebugData());
+        } else {
+            $this->exceptionRenderer->render($exc, $type);
+        }
     }
 }

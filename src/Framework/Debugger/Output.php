@@ -33,52 +33,51 @@ class Output
     private static function renderCli(array $data): void 
     {
         // Environment info
-        self::cliHeader('Environment');
+        self::cliHeader('Debug Information');
+        
+        // Performance metrics
         foreach ($data['environment'] as $key => $value) {
-            self::cliLine(str_pad(ucfirst($key) . ':', 20) . $value);
+            self::cliMetric(str_pad(ucwords(str_replace('_', ' ', $key)) . ':', 20) . $value);
         }
-
+        
         // Exceptions
         if (!empty($data['exceptions'])) {
-            self::cliHeader('Exceptions');
+            self::cliHeader('Exception');
             foreach ($data['exceptions'] as $exception) {
                 self::cliError($exception['message']);
-                self::cliLine('File: ' . $exception['file'] . ':' . $exception['line']);
-                self::cliLine('Trace:');
-                self::cliLine($exception['trace']);
-                self::cliLine('');
-            }
-        }
-
-        // Queries
-        if (!empty($data['queries'])) {
-            self::cliHeader('Database Queries');
-            foreach ($data['queries'] as $query) {
-                self::cliSuccess($query['query']);
-                self::cliLine('Time: ' . $query['time'] . 'ms');
-                if (!empty($query['bindings'])) {
-                    self::cliLine('Bindings: ' . json_encode($query['bindings']));
-                }
-                self::cliLine('');
+                self::cliInfo('File: ' . $exception['file'] . ':' . $exception['line']);
+                self::cliInfo('Stack Trace:');
+                self::cliTrace($exception['trace']);
             }
         }
 
         // Debug data
         if (!empty($data['data'])) {
-            self::cliHeader('Debug Data');
+            self::cliHeader('Debug Log');
             foreach ($data['data'] as $item) {
                 if ($item['type'] === 'dump') {
-                    self::cliLine('Dump at ' . $item['file'] . ':' . $item['line']);
-                    print_r($item['value']);
-                    self::cliLine('');
+                    self::cliInfo('Variable Dump at ' . $item['file'] . ':' . $item['line']);
+                    self::cliDump($item['value']);
                 } else {
-                    self::cliLine('Log at ' . $item['file'] . ':' . $item['line']);
-                    self::cliLine('Message: ' . $item['message']);
+                    self::cliInfo('Log at ' . $item['file'] . ':' . $item['line']);
+                    self::cliMessage($item['message']);
                     if (!empty($item['context'])) {
-                        self::cliLine('Context: ' . json_encode($item['context']));
+                        self::cliContext($item['context']);
                     }
-                    self::cliLine('');
                 }
+            }
+        }
+        
+        // Queries
+        if (!empty($data['queries'])) {
+            self::cliHeader('Database Queries');
+            foreach ($data['queries'] as $query) {
+                self::cliSuccess($query['query']);
+                self::cliInfo('Time: ' . $query['time'] . 'ms');
+                if (!empty($query['bindings'])) {
+                    self::cliInfo('Bindings: ' . json_encode($query['bindings']));
+                }
+                echo "\n";
             }
         }
     }
@@ -261,21 +260,53 @@ class Output
 
     private static function cliHeader(string $text): void 
     {
-        fwrite(STDERR, "\n\033[1;31m=== $text ===\033[0m\n");
+        fwrite(STDERR, "\n\033[1;36m=== $text ===\033[0m\n");
     }
 
-    private static function cliLine(string $text): void 
+    private static function cliMetric(string $text): void 
     {
-        fwrite(STDERR, "$text\n");
+        fwrite(STDERR, "\033[0;33m$text\033[0m\n");
+    }
+
+    private static function cliInfo(string $text): void 
+    {
+        fwrite(STDERR, "\033[0;37m$text\033[0m\n");
     }
 
     private static function cliError(string $text): void 
     {
-        fwrite(STDERR, "\033[0;31m$text\033[0m\n");
+        fwrite(STDERR, "\033[1;31m$text\033[0m\n");
     }
 
     private static function cliSuccess(string $text): void 
     {
         fwrite(STDERR, "\033[0;32m$text\033[0m\n");
+    }
+
+    private static function cliMessage(string $text): void 
+    {
+        fwrite(STDERR, "\033[1;33m$text\033[0m\n");
+    }
+
+    private static function cliContext(array $context): void 
+    {
+        fwrite(STDERR, "\033[0;36m" . json_encode($context, JSON_PRETTY_PRINT) . "\033[0m\n");
+    }
+
+    private static function cliTrace(string $trace): void 
+    {
+        $lines = explode("\n", $trace);
+        foreach ($lines as $line) {
+            if (trim($line)) {
+                fwrite(STDERR, "\033[0;90m$line\033[0m\n");
+            }
+        }
+    }
+
+    private static function cliDump($value): void 
+    {
+        fwrite(STDERR, "\033[0;36m");
+        var_dump($value);
+        fwrite(STDERR, "\033[0m");
     }
 }

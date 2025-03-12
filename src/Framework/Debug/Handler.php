@@ -19,6 +19,7 @@ class Handler
     private $logger;
     private $exceptionRenderer;
     private $environment;
+    private $hasRendered = false;
 
     public function __construct(
         Logger $logger,
@@ -64,8 +65,9 @@ class Handler
             );
         }
 
-        if ($this->environment === 'development') {
+        if ($this->environment === 'development' && !$this->hasRendered) {
             Output::render(Debug::getDebugData());
+            $this->hasRendered = true;
         }
     }
 
@@ -106,7 +108,10 @@ class Handler
 
         if ($this->environment === 'development') {
             Debug::exception($exc);
-            Output::render(Debug::getDebugData());
+            if (!$this->hasRendered) {
+                Output::render(Debug::getDebugData());
+                $this->hasRendered = true;
+            }
         } else {
             $this->exceptionRenderer->render($exc, $type);
         }

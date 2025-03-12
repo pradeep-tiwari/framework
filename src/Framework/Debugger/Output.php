@@ -4,6 +4,19 @@ namespace Lightpack\Debugger;
 
 class Output 
 {
+    private static $templatePath;
+    private static $environment = 'development';
+
+    public static function setEnvironment(string $environment): void 
+    {
+        self::$environment = $environment;
+    }
+
+    public static function setTemplatePath(string $path): void 
+    {
+        self::$templatePath = $path;
+    }
+
     private static function isCli(): bool 
     {
         return PHP_SAPI === 'cli';
@@ -21,7 +34,38 @@ class Output
             return;
         }
 
+        if (self::$environment === 'production' && !empty($data['exceptions'])) {
+            self::renderProductionError($data['exceptions'][0]);
+            return;
+        }
+
         self::renderHtml($data);
+    }
+
+    private static function renderProductionError(array $exception): void 
+    {
+        $code = $exception['code'] ?: 500;
+        $message = self::$environment === 'production' 
+            ? 'An error occurred. Please try again later.' 
+            : $exception['message'];
+
+        if (!headers_sent()) {
+            http_response_code($code);
+            header('Content-Type: text/html; charset=UTF-8');
+        }
+
+        $templateFile = self::$templatePath ?? __DIR__ . '/templates/production.php';
+        
+        if (file_exists($templateFile)) {
+            extract(['code' => $code, 'message' => $message]);
+            require $templateFile;
+            return;
+        }
+
+        // Fallback minimal error page
+        echo '<!DOCTYPE html><html><head><title>Error</title></head><body>';
+        echo "<h1>Error $code</h1><p>" . htmlspecialchars($message) . '</p>';
+        echo '</body></html>';
     }
 
     private static function isJsonRequest(): bool 

@@ -43,11 +43,20 @@ final class App
     public static function bootDebugHandler()
     {
         $container = Container::getInstance();
-        $logger = $container->get('logger');
-        $environment = $container->get('config')->get('app.env');
-        $handler = new Handler($logger, $environment);
+        $config = $container->get('config');
+        $environment = $config->get('app.env');
 
-        set_exception_handler([$handler, 'handleException']);
+        // Initialize new debugger
+        $templatePath = $config->get('app.error_template');
+        \Lightpack\Debugger\Debug::init($environment, $templatePath);
+        
+        // Set logger for production errors
+        $logger = $container->get('logger');
+        \Lightpack\Debugger\Debug::setLogger([$logger, 'error']);
+
+        // For backward compatibility, still initialize old handler
+        // but let new debugger handle exceptions first
+        $handler = new Handler($logger, $environment);
         set_error_handler([$handler, 'handleError']);
         register_shutdown_function([$handler, 'handleShutdown']);
     }

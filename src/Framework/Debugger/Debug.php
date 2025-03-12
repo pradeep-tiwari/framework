@@ -12,14 +12,26 @@ class Debug
     private static $files = [];
     private static $trace = [];
     private static $exceptions = [];
-    private static $environment;
+    private static $environment = 'development';
+    private static $logger;
 
-    public static function init(string $environment = 'development'): void 
+    public static function init(string $environment = 'development', string $templatePath = null): void 
     {
         self::$startTime = microtime(true);
         self::$environment = $environment;
+        Output::setEnvironment($environment);
+        
+        if ($templatePath) {
+            Output::setTemplatePath($templatePath);
+        }
+
+        self::registerHandlers();
         self::captureFiles();
-        self::captureEnvironment();
+    }
+
+    public static function setLogger(callable $logger): void 
+    {
+        self::$logger = $logger;
     }
 
     public static function dump($var): void 
@@ -57,6 +69,10 @@ class Debug
             'line' => $trace['line'],
             'time' => microtime(true),
         ];
+
+        if (self::$logger) {
+            call_user_func(self::$logger, $message, $context);
+        }
     }
 
     public static function query(string $query, float $time, array $bindings = []): void 
@@ -75,18 +91,31 @@ class Debug
 
     public static function exception(Throwable $e): void 
     {
-        if (self::$environment !== 'development') {
-            return;
-        }
-
-        self::$exceptions[] = [
+        $data = [
             'message' => $e->getMessage(),
-            'code' => $e->getCode(),
+            'code' => $e->getCode() ?: 500,
             'file' => $e->getFile(),
             'line' => $e->getLine(),
             'trace' => $e->getTraceAsString(),
             'time' => microtime(true),
         ];
+
+        self::$exceptions[] = $data;
+
+        if (self::$logger && self::$environment === 'production') {
+            call_user_func(self::$logger, $e->getMessage(), [
+                'exception' => get_class($e),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+        }
+
+        if (!headers_sent() && self::$environment === 'production') {
+            http_response_code($data['code']);
+        }
+
+        Output::render(self::getDebugData());
+        exit(1);
     }
 
     public static function getDebugData(): array 
@@ -101,7 +130,39 @@ class Debug
             ],
             'exceptions' => self::$exceptions,
             'data' => self::$data,
+            'queries' => self::$queries,
         ];
+    }
+
+    private static function registerHandlers(): void 
+    {
+        set_error_handler(function(int $code, string $message, string $file, int $line) {
+            if (!(error_reporting() & $code)) {
+                return;
+            }
+
+            throw new \ErrorException($message, $code, $code, $file, $line);
+        });
+
+        set_exception_handler([self::class, 'exception']);
+
+        register_shutdown_function(function() {
+            $error = error_get_last();
+            
+            if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+                self::exception(new \ErrorException(
+                    $error['message'], 
+                    $error['type'], 
+                    $error['type'], 
+                    $error['file'], 
+                    $error['line']
+                ));
+            }
+
+            if (self::$environment === 'development' && empty(self::$exceptions)) {
+                Output::render(self::getDebugData());
+            }
+        });
     }
 
     private static function captureFiles(): void 
@@ -114,36 +175,5 @@ class Debug
                 'modified' => filemtime($file),
             ];
         }
-    }
-
-    private static function captureEnvironment(): void 
-    {
-        register_shutdown_function(function() {
-            if (self::$environment !== 'development') {
-                return;
-            }
-
-            $error = error_get_last();
-            if ($error) {
-                self::$exceptions[] = [
-                    'type' => 'Fatal Error',
-                    'message' => $error['message'],
-                    'file' => $error['file'],
-                    'line' => $error['line'],
-                    'time' => microtime(true),
-                ];
-            }
-        });
-    }
-
-    private static function formatBytes(int $bytes): string 
-    {
-        $units = ['B', 'KB', 'MB', 'GB'];
-        $bytes = max($bytes, 0);
-        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
-        $pow = min($pow, count($units) - 1);
-        $bytes /= pow(1024, $pow);
-        
-        return round($bytes, 2) . ' ' . $units[$pow];
     }
 }

@@ -10,10 +10,14 @@ class DebugProvider
 {
     public function register(Container $container): void 
     {
-        $environment = $container->get('config')->get('app.env');
+        $config = $container->get('config');
+        $environment = $config->get('app.env');
+        $templatePath = $config->get('app.error_template');
+        $logger = $container->get('logger');
         
         // Initialize debugger
-        Debug::init($environment);
+        Debug::init($environment, $templatePath);
+        Debug::setLogger([$logger, 'error']);
         
         // Register debugger in container
         $container->register('debugger', function() {

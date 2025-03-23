@@ -157,9 +157,22 @@ class Collection implements IteratorAggregate, Countable, JsonSerializable, Arra
 
     public function filter(Closure $callback): Collection
     {
-        $items = array_filter($this->items, $callback);
-        $items = array_values($items);
+        $items = [];
+        foreach ($this->items as $key => $value) {
+            if ($callback($value, $key)) {
+                $items[$key] = $value;
+            }
+        }
 
+        return new static($items);
+    }
+
+    public function map(Closure $callback): self 
+    {
+        $items = [];
+        foreach ($this->items as $key => $value) {
+            $items[$key] = $callback($value, $key);
+        }
         return new static($items);
     }
 
@@ -258,8 +271,10 @@ class Collection implements IteratorAggregate, Countable, JsonSerializable, Arra
 
     public function each(Closure $callback): self
     {
-        foreach ($this->items as $item) {
-            $callback($item);
+        foreach ($this->items as $key => $item) {
+            if ($callback($item, $key) === false) {
+                break;
+            }
         }
 
         return $this;

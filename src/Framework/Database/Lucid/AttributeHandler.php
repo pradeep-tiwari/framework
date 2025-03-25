@@ -29,6 +29,16 @@ class AttributeHandler
      */
     protected CastHandler $castHandler;
 
+    /**
+     * @var bool Whether to use soft deletes
+     */
+    protected $softDelete = false;
+
+    /**
+     * @var string Column name for soft delete timestamp
+     */
+    protected $deletedAt = 'deleted_at';
+
     public function __construct()
     {
         $this->data = new \stdClass;
@@ -184,5 +194,24 @@ class AttributeHandler
         }
 
         $this->data->created_at = $now;
+    }
+
+    public function setSoftDelete(bool $flag): void 
+    {
+        $this->softDelete = $flag;
+    }
+
+    public function softDelete(): void 
+    {
+        if ($this->softDelete) {
+            $this->set($this->deletedAt, date('Y-m-d H:i:s'));
+        }
+    }
+
+    public function restore(): void 
+    {
+        if ($this->softDelete) {
+            $this->set($this->deletedAt, null);
+        }
     }
 }

@@ -84,6 +84,11 @@ class Model implements JsonSerializable
     protected $transformer = null;
 
     /**
+     * @var bool Enable soft deletes for this model
+     */
+    protected $softDelete = false;
+
+    /**
      * Constructor.
      *
      * @param [int|string] $id
@@ -94,6 +99,7 @@ class Model implements JsonSerializable
         $this->attributes->setHidden($this->hidden);
         $this->attributes->setTimestamps($this->timestamps);
         $this->attributes->setCasts($this->casts);
+        $this->attributes->setSoftDelete($this->softDelete);
 
         $this->relations = new RelationHandler($this);
 
@@ -247,8 +253,56 @@ class Model implements JsonSerializable
 
         $query = $this->query();
         $this->beforeDelete($query);
-        $query->where($this->primaryKey, '=', $this->attributes->get($this->primaryKey))->delete();
+
+        if ($this->softDelete) {
+            $this->attributes->softDelete();
+            $this->save();
+        } else {
+            $query->where($this->primaryKey, '=', $this->attributes->get($this->primaryKey))->delete();
+        }
+
         $this->afterDelete();
+    }
+
+    public function destroy($id = null): void 
+    {
+        $originalSoftDelete = $this->softDelete;
+        $this->softDelete = false;
+        
+        $this->delete($id);
+        
+        $this->softDelete = $originalSoftDelete;
+    }
+
+    public function restore(): void
+    {
+        if (!$this->softDelete) {
+            return;
+        }
+
+        $this->attributes->restore();
+        $this->save();
+    }
+
+    public function withDeleted(): Builder
+    {
+        $originalSoftDelete = $this->softDelete;
+        $this->softDelete = false;
+        $builder = self::query();
+        $this->softDelete = $originalSoftDelete;    
+
+        return $builder;
+    }
+
+    public function onlyDeleted(): Builder
+    {
+        $originalSoftDelete = $this->softDelete;
+        $this->softDelete = false;
+        $builder = self::query();
+        $builder->whereNotNull('deleted_at');
+        $this->softDelete = $originalSoftDelete;    
+
+        return $builder;
     }
 
     public function lastInsertId()
@@ -293,7 +347,9 @@ class Model implements JsonSerializable
 
     protected function applyScope(Query $query)
     {
-        // ...
+        if ($this->softDelete) {
+            $query->whereNull('deleted_at');
+        }
     }
 
     protected function beforeSave()

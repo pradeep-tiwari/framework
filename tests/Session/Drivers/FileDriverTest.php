@@ -1,7 +1,9 @@
 <?php
 
+namespace Lightpack\Tests\Session\Drivers;
+
 use PHPUnit\Framework\TestCase;
-use Lightpack\SessionStore\Drivers\FileDriver;
+use Lightpack\Session\Drivers\FileDriver;
 
 class FileDriverTest extends TestCase
 {

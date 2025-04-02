@@ -2,24 +2,34 @@
 
 namespace Lightpack\Providers;
 
+use Lightpack\Config\Config;
 use Lightpack\Session\Session;
 use Lightpack\Container\Container;
 use Lightpack\Session\DriverInterface;
 use Lightpack\Session\Drivers\ArrayDriver;
-use Lightpack\Session\Drivers\DefaultDriver;
+use Lightpack\Session\Drivers\CacheDriver;
+use Lightpack\Session\Drivers\FileDriver;
+use Lightpack\Session\Drivers\NativeDriver;
 
 class SessionProvider implements ProviderInterface
 {
     public function register(Container $container)
     {
         $container->register('session', function ($container) {
-
             /** @var \Lightpack\Http\Request */
             $request = $container->get('request');
 
-            $session = new Session($this->getDriver());
+            $config = $container->get('config');
 
-            if($request->isGet()) {
+            $session = new Session(
+                $this->getDriver($config),
+                $this->getSecret(),
+                $config->get('session.name')
+            );
+
+            $session->start();
+
+            if ($request->isGet()) {
                 $session->set('_previous_url', $request->fullUrl());
             }
 
@@ -29,27 +39,45 @@ class SessionProvider implements ProviderInterface
         $container->alias(Session::class, 'session');
     }
 
-    protected function getDriverClassname(): string
+    protected function getDriver(Config $config): DriverInterface
     {
-        $sessionDriver = get_env('SESSION_DRIVER', 'default');
+        $sessionDriver = $config->get('session.driver');
 
-        if ($sessionDriver === 'default') {
-            return DefaultDriver::class;
+        if ($sessionDriver === 'native') {
+            return new NativeDriver();
         }
 
         if ($sessionDriver === 'array') {
-            return ArrayDriver::class;
+            return new ArrayDriver();
+        }
+
+        if ($sessionDriver === 'file') {
+            return new FileDriver(
+                $config->get('session.file.path'),
+                $config->get('session.file.lifetime'),
+            );
+        }
+
+        if ($sessionDriver === 'cache') {
+            return new CacheDriver(
+                $config->get('cache'),
+                $config->get('session.file.lifetime'),
+            );
         }
 
         throw new \Exception('Session driver not found');
     }
 
-    protected function getDriver(): DriverInterface
+    protected function getSecret(): string 
     {
-        $sessionName = get_env('SESSION_NAME', 'lightpack_session');
+        $secret = get_env('APP_KEY');
 
-        $driver = $this->getDriverClassname();
+        if (!$secret) {
+            throw new \RuntimeException(
+                'APP_KEY environment variable must be set for secure sessions'
+            );
+        }
 
-        return new $driver($sessionName);
+        return $secret;
     }
 }

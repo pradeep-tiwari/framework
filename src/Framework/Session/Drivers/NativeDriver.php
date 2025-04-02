@@ -1,10 +1,10 @@
 <?php
 
-namespace Lightpack\SessionStore\Drivers;
+namespace Lightpack\Session\Drivers;
 
-use Lightpack\SessionStore\Contracts\StoreInterface;
+use Lightpack\Session\DriverInterface;
 
-class NativeDriver implements StoreInterface
+class NativeDriver implements DriverInterface
 {
     private bool $started = false;
     private array $options;

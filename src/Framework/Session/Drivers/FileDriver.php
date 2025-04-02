@@ -1,11 +1,11 @@
 <?php
 
-namespace Lightpack\SessionStore\Drivers;
+namespace Lightpack\Session\Drivers;
 
-use Lightpack\SessionStore\Contracts\StoreInterface;
 use RuntimeException;
+use Lightpack\Session\DriverInterface;
 
-class FileDriver implements StoreInterface
+class FileDriver implements DriverInterface
 {
     private string $path;
     private int $lifetime;

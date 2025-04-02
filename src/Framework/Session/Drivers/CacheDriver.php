@@ -1,24 +1,24 @@
 <?php
 
-namespace Lightpack\SessionStore\Drivers;
+namespace Lightpack\Session\Drivers;
 
 use Lightpack\Cache\Cache;
-use Lightpack\SessionStore\Contracts\StoreInterface;
+use Lightpack\Session\DriverInterface;
 
-class CacheDriver implements StoreInterface
+class CacheDriver implements DriverInterface
 {
     private Cache $cache;
-    private string $prefix;
     private int $lifetime;
+    private string $prefix;
 
     public function __construct(
         Cache $cache,
-        string $prefix = 'session:',
-        int $lifetime = 7200 // 2 hours default
+        int $lifetime = 7200, // 2 hours default
+        string $prefix = 'session:'
     ) {
         $this->cache = $cache;
-        $this->prefix = $prefix;
         $this->lifetime = $lifetime;
+        $this->prefix = $prefix;
     }
 
     /**

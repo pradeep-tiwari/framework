@@ -6,51 +6,102 @@ use Lightpack\Session\DriverInterface;
 
 class ArrayDriver implements DriverInterface
 {
-    protected $store = [];
+    private array $sessions = [];
+    private array $timestamps = [];
 
-    public function __construct(string $name)
+    /**
+     * Create a new session and return its ID
+     */
+    public function create(): string
     {
-        $this->store['user_agent'] = 'HTTP_USER_AGENT';
+        $id = bin2hex(random_bytes(32));
+        $this->sessions[$id] = [];
+        $this->timestamps[$id] = [
+            'created_at' => time(),
+            'last_accessed_at' => time(),
+        ];
+        return $id;
     }
 
-    public function set(string $key, $value)
+    /**
+     * Load session data by ID
+     */
+    public function load(string $id): ?array
     {
-        $this->store[$key] = $value;
-    }
-
-    public function get(?string $key = null, $default = null)
-    {
-        if ($key === null) {
-            return $this->store;
+        if (!$this->isValid($id)) {
+            return null;
         }
 
-        return $this->store[$key] ?? $default;
+        $this->touch($id);
+        return $this->sessions[$id];
     }
 
-    public function delete(string $key)
+    /**
+     * Save session data
+     */
+    public function save(string $id, array $data): bool
     {
-        if ($this->store[$key] ?? null) {
-            unset($this->store[$key]);
+        if (!$this->isValid($id)) {
+            return false;
         }
-    }
 
-    public function regenerate(): bool
-    {
+        $this->sessions[$id] = $data;
+        $this->touch($id);
         return true;
     }
 
-    public function verifyAgent(): bool
+    /**
+     * Destroy session data
+     */
+    public function destroy(string $id): bool
     {
+        unset($this->sessions[$id], $this->timestamps[$id]);
         return true;
     }
 
-    public function destroy()
+    /**
+     * Check if session is valid
+     */
+    public function isValid(string $id): bool
     {
-        $this->store = [];
+        return isset($this->sessions[$id]);
     }
 
-    public function started(): bool
+    /**
+     * Update session last access time
+     */
+    public function touch(string $id): bool
     {
+        if (!$this->isValid($id)) {
+            return false;
+        }
+
+        $this->timestamps[$id]['last_accessed_at'] = time();
         return true;
+    }
+
+    /**
+     * Get session creation time
+     */
+    public function getCreatedAt(string $id): ?int
+    {
+        return $this->timestamps[$id]['created_at'] ?? null;
+    }
+
+    /**
+     * Get session last access time
+     */
+    public function getLastAccessedAt(string $id): ?int
+    {
+        return $this->timestamps[$id]['last_accessed_at'] ?? null;
+    }
+
+    /**
+     * Clear all sessions (useful for testing)
+     */
+    public function clear(): void
+    {
+        $this->sessions = [];
+        $this->timestamps = [];
     }
 }

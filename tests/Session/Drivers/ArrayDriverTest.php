@@ -1,33 +1,22 @@
 <?php
 
-namespace Lightpack\Tests\SessionStore\Drivers;
+namespace Lightpack\Tests\Session\Drivers;
 
 use PHPUnit\Framework\TestCase;
-use Lightpack\Cache\Cache;
-use Lightpack\Cache\Drivers\FileDriver as CacheFileDriver;
-use Lightpack\SessionStore\Drivers\CacheDriver;
+use Lightpack\Session\Drivers\ArrayDriver;
 
-class CacheDriverTest extends TestCase
+class ArrayDriverTest extends TestCase
 {
-    private CacheDriver $driver;
-    private Cache $cache;
-    private string $prefix = 'test:';
-    private int $lifetime = 3600;
-    private string $cacheDir;
+    private ArrayDriver $driver;
 
     protected function setUp(): void
     {
-        $this->cacheDir = __DIR__ . '/tmp';
-        mkdir($this->cacheDir);
-        
-        $this->cache = new Cache(new CacheFileDriver($this->cacheDir));
-        $this->driver = new CacheDriver($this->cache, $this->prefix, $this->lifetime);
+        $this->driver = new ArrayDriver();
     }
 
     protected function tearDown(): void
     {
-        array_map('unlink', glob($this->cacheDir . '/*'));
-        rmdir($this->cacheDir);
+        $this->driver->clear();
     }
 
     public function testCreateSession()
@@ -88,22 +77,20 @@ class CacheDriverTest extends TestCase
         $initialAccess = $this->driver->getLastAccessedAt($id);
         
         sleep(1);
-        $this->driver->touch($id);
+        $this->driver->load($id);
         $newAccess = $this->driver->getLastAccessedAt($id);
         
         $this->assertGreaterThan($initialAccess, $newAccess);
     }
 
-    public function testSessionExpiration()
+    public function testClearSessions()
     {
-        $shortLifetime = 1; // 1 second
-        $driver = new CacheDriver($this->cache, $this->prefix, $shortLifetime);
+        $id1 = $this->driver->create();
+        $id2 = $this->driver->create();
         
-        $id = $driver->create();
-        $this->assertTrue($driver->isValid($id));
+        $this->driver->clear();
         
-        sleep(2); // Wait for session to expire
-        $this->assertFalse($driver->isValid($id));
-        $this->assertNull($driver->load($id));
+        $this->assertFalse($this->driver->isValid($id1));
+        $this->assertFalse($this->driver->isValid($id2));
     }
 }

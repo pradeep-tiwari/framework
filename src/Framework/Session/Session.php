@@ -3,16 +3,71 @@
 namespace Lightpack\Session;
 
 use Lightpack\Utils\Arr;
+use Lightpack\Http\Cookie;
+use Lightpack\Session\DriverInterface;
 
 class Session
 {
     private DriverInterface $driver;
+    private ?string $id = null;
+    private array $data = [];
+    private bool $started = false;
+    private Cookie $cookie;
+    private string $cookieName;
     private Arr $arr;
 
-    public function __construct(DriverInterface $driver)
-    {
+    public function __construct(
+        DriverInterface $driver,
+        string $secret,
+        string $cookieName = 'LPSESSID'
+    ) {
         $this->driver = $driver;
+        $this->cookie = new Cookie($secret);
+        $this->cookieName = $cookieName;
         $this->arr = new Arr();
+    }
+
+    /**
+     * Start a new session or load existing one
+     */
+    public function start(): bool
+    {
+        if ($this->started) {
+            return true;
+        }
+
+        // Try to get session ID from cookie
+        $id = $this->cookie->get($this->cookieName);
+
+        if ($id !== null && $this->driver->isValid($id)) {
+            $data = $this->driver->load($id);
+            
+            if ($data !== null) {
+                $this->id = $id;
+                $this->data = $data;
+                $this->started = true;
+                $this->ageFlashData();
+                return true;
+            }
+        }
+
+        // Create new session
+        $this->id = $this->driver->create();
+        $this->data = [];
+        $this->started = true;
+
+        // Set cookie with new session ID
+        $this->setCookie();
+
+        return true;
+    }
+
+    /**
+     * Get session ID
+     */
+    public function getId(): ?string
+    {
+        return $this->id;
     }
 
     /**
@@ -29,90 +84,153 @@ class Session
     private function getDataForDotNotation(string $key): array
     {
         $topKey = explode('.', $key)[0];
-        $data = [];
-        $data[$topKey] = $this->driver->get($topKey) ?? [];
-        return [$topKey, $data];
+        return [$topKey, [$topKey => $this->get($topKey) ?? []]];
     }
 
-    public function set(string $key, $value)
+    /**
+     * Set session data
+     */
+    public function set(string $key, $value): void
     {
-        if(!$this->hasDotNotation($key)) {
-            $this->driver->set($key, $value);
+        if (!$this->started) {
+            $this->start();
+        }
+
+        if (!$this->hasDotNotation($key)) {
+            $this->data[$key] = $value;
+            $this->driver->save($this->id, $this->data);
             return;
         }
 
         [$topKey, $data] = $this->getDataForDotNotation($key);
         $this->arr->set($key, $value, $data);
-        $this->driver->set($topKey, $data[$topKey]);
+        $this->data[$topKey] = $data[$topKey];
+        $this->driver->save($this->id, $this->data);
     }
 
+    /**
+     * Get session data
+     */
     public function get(?string $key = null, $default = null)
     {
-        if($key === null) {
-            return $this->driver->get();
+        if (!$this->started) {
+            return $default;
         }
 
-        if(!$this->hasDotNotation($key)) {
-            return $this->driver->get($key, $default);
+        if ($key === null) {
+            return $this->data;
+        }
+
+        if (!$this->hasDotNotation($key)) {
+            return $this->data[$key] ?? $default;
         }
 
         [$topKey, $data] = $this->getDataForDotNotation($key);
         return $this->arr->get($key, $data) ?? $default;
     }
 
-    public function delete(string $key)
+    /**
+     * Delete session data
+     */
+    public function delete(string $key): void
     {
-        if(!$this->hasDotNotation($key)) {
-            $this->driver->delete($key);
+        if (!$this->started) {
+            return;
+        }
+
+        if (!$this->hasDotNotation($key)) {
+            unset($this->data[$key]);
+            $this->driver->save($this->id, $this->data);
             return;
         }
 
         [$topKey, $data] = $this->getDataForDotNotation($key);
         $this->arr->delete($key, $data);
-        $this->driver->set($topKey, $data[$topKey]);
+        $this->data[$topKey] = $data[$topKey];
+        $this->driver->save($this->id, $this->data);
     }
 
-    public function regenerate(): bool
-    {
-        $this->delete('_token');
-        return $this->driver->regenerate();
-    }
-
-    public function verifyAgent(): bool
-    {
-        return $this->driver->verifyAgent();
-    }
-
-    public function destroy()
-    {
-        $this->driver->destroy();
-    }
-
+    /**
+     * Check if key exists
+     */
     public function has(string $key): bool
     {
-        if(!$this->hasDotNotation($key)) {
-            return $this->get($key) !== null;
+        if (!$this->started) {
+            return false;
+        }
+
+        if (!$this->hasDotNotation($key)) {
+            return isset($this->data[$key]);
         }
 
         [$topKey, $data] = $this->getDataForDotNotation($key);
         return $this->arr->has($key, $data);
     }
 
+    /**
+     * Get/Set flash message
+     */
+    public function flash(string $key, $value = null)
+    {
+        if (!$this->started) {
+            if ($value !== null) {
+                $this->start();
+            } else {
+                return null;
+            }
+        }
+
+        if ($value !== null) {
+            $flash = $this->get('_flash', []);
+            $flash['new'][$key] = $value;
+            $this->set('_flash', $flash);
+            return;
+        }
+
+        $flash = $this->get('_flash', []);
+        $value = $flash['current'][$key] ?? null;
+        unset($flash['current'][$key]);
+        $this->set('_flash', $flash);
+        return $value;
+    }
+
+    /**
+     * Get/Generate CSRF token
+     */
     public function token(): string
     {
+        if (!$this->started) {
+            $this->start();
+        }
+
         $token = $this->get('_token');
 
         if (!$token) {
-            $token = bin2hex(openssl_random_pseudo_bytes(8));
+            $token = bin2hex(random_bytes(32));
             $this->set('_token', $token);
         }
 
         return $token;
     }
 
+    /**
+     * Age flash data - move new to current
+     */
+    private function ageFlashData(): void
+    {
+        $flash = $this->get('_flash', []);
+        $this->set('_flash', [
+            'current' => $flash['new'] ?? [],
+            'new' => []
+        ]);
+    }
+
+    /**
+     * Verify CSRF token
+     */
     public function verifyToken(): bool
     {
-        if (!$this->driver->started()) {
+        if (!$this->started) {
             return false;
         }
 
@@ -139,19 +257,7 @@ class Session
             return false;
         }
 
-        return $this->get('_token') === $token;
-    }
-
-    public function flash(string $key, $value = null)
-    {
-        if ($value) {
-            $this->driver->set($key, $value);
-            return;
-        }
-
-        $flash = $this->driver->get($key);
-        $this->driver->delete($key);
-        return $flash;
+        return hash_equals($this->get('_token'), $token);
     }
 
     public function hasInvalidToken(): bool
@@ -159,8 +265,123 @@ class Session
         return !$this->verifyToken();
     }
 
-    public function hasInvalidAgent(): bool
+    /**
+     * Remove key from session
+     */
+    public function remove(string $key): void
     {
-        return !$this->verifyAgent();
+        if (!$this->started) {
+            return;
+        }
+
+        unset($this->data[$key]);
+        $this->driver->save($this->id, $this->data);
+    }
+
+    /**
+     * Get all session data
+     */
+    public function all(): array
+    {
+        if (!$this->started) {
+            return [];
+        }
+
+        return $this->data;
+    }
+
+    /**
+     * Clear all session data
+     */
+    public function clear(): void
+    {
+        if (!$this->started) {
+            return;
+        }
+
+        $this->data = [];
+        $this->driver->save($this->id, $this->data);
+    }
+
+    /**
+     * Destroy the session
+     */
+    public function destroy(): void
+    {
+        if (!$this->started || !$this->id || !$this->driver->isValid($this->id)) {
+            return;
+        }
+
+        $this->driver->destroy($this->id);
+        $this->removeCookie();
+        $this->id = null;
+        $this->data = [];
+        $this->started = false;
+    }
+
+    /**
+     * Regenerate session ID
+     */
+    public function regenerate(): bool
+    {
+        if (!$this->started) {
+            $this->start();
+        }
+
+        $oldId = $this->id;
+        $this->id = $this->driver->create();
+        
+        if ($this->driver->save($this->id, $this->data)) {
+            $this->driver->destroy($oldId);
+            $this->setCookie();
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Get session creation time
+     */
+    public function getCreatedAt(): ?int
+    {
+        if (!$this->started) {
+            return null;
+        }
+
+        return $this->driver->getCreatedAt($this->id);
+    }
+
+    /**
+     * Get session last access time
+     */
+    public function getLastAccessedAt(): ?int
+    {
+        if (!$this->started) {
+            return null;
+        }
+
+        return $this->driver->getLastAccessedAt($this->id);
+    }
+
+    /**
+     * Set session cookie
+     */
+    private function setCookie(): void
+    {
+        $this->cookie->set(
+            $this->cookieName,
+            $this->id,
+            0, // Until browser closes
+            ['secure' => true] // Force HTTPS for sessions
+        );
+    }
+
+    /**
+     * Remove session cookie
+     */
+    private function removeCookie(): void
+    {
+        $this->cookie->delete($this->cookieName);
     }
 }

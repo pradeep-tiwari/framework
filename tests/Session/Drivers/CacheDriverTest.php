@@ -1,38 +1,33 @@
 <?php
 
-namespace Lightpack\Tests\SessionStore\Drivers;
+namespace Lightpack\Tests\Session\Drivers;
 
 use PHPUnit\Framework\TestCase;
-use Lightpack\SessionStore\Drivers\NativeDriver;
+use Lightpack\Cache\Cache;
+use Lightpack\Cache\Drivers\FileDriver as CacheFileDriver;
+use Lightpack\Session\Drivers\CacheDriver;
 
-/**
- * @runTestsInSeparateProcesses
- */
-class NativeDriverTest extends TestCase
+class CacheDriverTest extends TestCase
 {
-    private NativeDriver $driver;
-    private string $sessionDir;
+    private CacheDriver $driver;
+    private Cache $cache;
+    private int $lifetime = 3600;
+    private string $prefix = 'test:';
+    private string $cacheDir;
 
     protected function setUp(): void
     {
-        $this->sessionDir = __DIR__ . '/tmp';
-        if (!is_dir($this->sessionDir)) {
-            mkdir($this->sessionDir);
-        }
-
-        $this->driver = new NativeDriver([
-            'save_path' => $this->sessionDir,
-            'lifetime' => 3600,
-        ]);
+        $this->cacheDir = __DIR__ . '/tmp';
+        mkdir($this->cacheDir);
+        
+        $this->cache = new Cache(new CacheFileDriver($this->cacheDir));
+        $this->driver = new CacheDriver($this->cache, $this->lifetime, $this->prefix);
     }
 
     protected function tearDown(): void
     {
-        if (session_status() === PHP_SESSION_ACTIVE) {
-            session_destroy();
-        }
-        array_map('unlink', glob($this->sessionDir . '/*'));
-        rmdir($this->sessionDir);
+        array_map('unlink', glob($this->cacheDir . '/*'));
+        rmdir($this->cacheDir);
     }
 
     public function testCreateSession()
@@ -40,10 +35,7 @@ class NativeDriverTest extends TestCase
         $id = $this->driver->create();
         $this->assertNotEmpty($id);
         $this->assertTrue($this->driver->isValid($id));
-        $this->assertEmpty(array_diff_key(
-            $this->driver->load($id),
-            ['_created_at' => true, '_last_accessed_at' => true, '_expires_at' => true]
-        ));
+        $this->assertEmpty($this->driver->load($id));
     }
 
     public function testLoadSession()
@@ -52,8 +44,7 @@ class NativeDriverTest extends TestCase
         $data = ['key' => 'value'];
         
         $this->driver->save($id, $data);
-        $loaded = $this->driver->load($id);
-        $this->assertEquals('value', $loaded['key']);
+        $this->assertEquals($data, $this->driver->load($id));
     }
 
     public function testSaveSession()
@@ -62,8 +53,7 @@ class NativeDriverTest extends TestCase
         $data = ['key' => 'value'];
         
         $this->assertTrue($this->driver->save($id, $data));
-        $loaded = $this->driver->load($id);
-        $this->assertEquals('value', $loaded['key']);
+        $this->assertEquals($data, $this->driver->load($id));
     }
 
     public function testDestroySession()
@@ -106,36 +96,14 @@ class NativeDriverTest extends TestCase
 
     public function testSessionExpiration()
     {
-        $driver = new NativeDriver([
-            'save_path' => $this->sessionDir,
-            'lifetime' => 1, // 1 second
-        ]);
+        $shortLifetime = 1; // 1 second
+        $driver = new CacheDriver($this->cache, $shortLifetime, $this->prefix);
         
         $id = $driver->create();
         $this->assertTrue($driver->isValid($id));
         
         sleep(2); // Wait for session to expire
-        
-        // Load session data directly to avoid memory issues
-        $path = $this->sessionDir . '/sess_' . $id;
         $this->assertFalse($driver->isValid($id));
         $this->assertNull($driver->load($id));
-    }
-
-    public function testCustomSessionOptions()
-    {
-        $options = [
-            'name' => 'CUSTOMSESSID',
-            'lifetime' => 1800,
-            'path' => '/custom',
-            'domain' => 'example.com',
-            'secure' => true,
-            'httponly' => true,
-            'save_path' => $this->sessionDir,
-        ];
-
-        $driver = new NativeDriver($options);
-        $this->assertEquals('CUSTOMSESSID', ini_get('session.name'));
-        $this->assertEquals($this->sessionDir, ini_get('session.save_path'));
     }
 }

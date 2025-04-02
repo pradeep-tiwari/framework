@@ -39,7 +39,7 @@ class LimiterTest extends TestCase
     public function testFirstAttemptSucceeds()
     {
         $this->assertTrue($this->limiter->attempt('test-key', 3, 1));
-        $this->assertEquals(1, $this->limiter->getHits('test-key'));
+        $this->assertEquals(1, $this->limiter->hits('test-key'));
     }
 
     public function testMultipleAttemptsWithinLimit()
@@ -47,7 +47,7 @@ class LimiterTest extends TestCase
         $this->assertTrue($this->limiter->attempt('test-key', 3, 1));
         $this->assertTrue($this->limiter->attempt('test-key', 3, 1));
         $this->assertTrue($this->limiter->attempt('test-key', 3, 1));
-        $this->assertEquals(3, $this->limiter->getHits('test-key'));
+        $this->assertEquals(3, $this->limiter->hits('test-key'));
     }
 
     public function testExceedingLimitFails()
@@ -59,7 +59,7 @@ class LimiterTest extends TestCase
         
         // Fourth attempt should fail
         $this->assertFalse($this->limiter->attempt('test-key', 3, 1));
-        $this->assertEquals(3, $this->limiter->getHits('test-key'));
+        $this->assertEquals(3, $this->limiter->hits('test-key'));
     }
 
     public function testLimitResetsAfterExpiry()
@@ -67,17 +67,17 @@ class LimiterTest extends TestCase
         // Use up all attempts
         $this->limiter->attempt('test-key', 2, 1);
         $this->limiter->attempt('test-key', 2, 1);
-        $this->assertEquals(2, $this->limiter->getHits('test-key'));
+        $this->assertEquals(2, $this->limiter->hits('test-key'));
 
         // Make cache appear expired by modifying the TTL
-        $file = $this->cacheDir . '/' . sha1('test-key');
+        $file = $this->cacheDir . '/' . sha1('limiter:test-key');
         $contents = unserialize(file_get_contents($file));
         $contents['ttl'] = time() - 60;  // Set TTL to 1 minute ago
         file_put_contents($file, serialize($contents));
 
         // Should be able to attempt again
         $this->assertTrue($this->limiter->attempt('test-key', 2, 1));
-        $this->assertEquals(1, $this->limiter->getHits('test-key'));
+        $this->assertEquals(1, $this->limiter->hits('test-key'));
     }
 
     public function testDifferentKeysTrackedSeparately()
@@ -85,7 +85,17 @@ class LimiterTest extends TestCase
         $this->assertTrue($this->limiter->attempt('key1', 2, 1));
         $this->assertTrue($this->limiter->attempt('key2', 2, 1));
 
-        $this->assertEquals(1, $this->limiter->getHits('key1'));
-        $this->assertEquals(1, $this->limiter->getHits('key2'));
+        $this->assertEquals(1, $this->limiter->hits('key1'));
+        $this->assertEquals(1, $this->limiter->hits('key2'));
+    }
+
+    public function testResetClearsHits()
+    {
+        $this->limiter->attempt('test-key', 3, 1);
+        $this->limiter->attempt('test-key', 3, 1);
+        $this->assertEquals(2, $this->limiter->hits('test-key'));
+
+        $this->limiter->reset('test-key');
+        $this->assertEquals(0, $this->limiter->hits('test-key'));
     }
 }

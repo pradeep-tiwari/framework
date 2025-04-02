@@ -8,6 +8,7 @@ use Lightpack\Container\Container;
 class Limiter 
 {
     protected Cache $cache;
+    protected string $prefix = 'limiter:';
 
     public function __construct() 
     {
@@ -16,19 +17,24 @@ class Limiter
 
     public function attempt(string $key, int $max, int $mins): bool 
     {
+        $key = $this->prefix . $key;
         $hits = (int) ($this->cache->get($key) ?? 0);
         
         if ($hits >= $max) {
             return false;
         }
 
-        // First hit sets TTL, subsequent hits preserve it
-        $this->cache->set($key, $hits + 1, $mins * 60, $hits > 0);
+        $this->cache->set($key, $hits + 1, $mins * 60, false);
         return true;
     }
 
-    public function getHits(string $key): ?int
+    public function reset(string $key): void 
     {
-        return $this->cache->get($key);
+        $this->cache->delete($this->prefix . $key);
+    }
+
+    public function hits(string $key): int 
+    {
+        return (int) ($this->cache->get($this->prefix . $key) ?? 0);
     }
 }

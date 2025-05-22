@@ -7,6 +7,8 @@ class AiTaskBuilder
     protected $provider;
     protected ?string $prompt = null;
     protected ?array $expectSchema = null;
+    protected array $requiredFields = [];
+    protected array $errors = []; // For reporting missing required fields
     protected ?string $expectArrayKey = null;
     protected ?array $example = null;
     protected ?string $model = null;
@@ -35,18 +37,32 @@ class AiTaskBuilder
         return $this;
     }
 
+    /**
+     * Accepts schema in the form:
+     * [
+     *   'field' => 'type',
+     *   'field2' => ['type' => 'int', 'required' => true],
+     * ]
+     * Required fields are detected from the schema.
+     */
     public function expect(array $schema)
     {
-        // If $schema is a list of keys (numeric), default all types to 'string'
         $normalized = [];
-        foreach ($schema as $key => $type) {
+        $required = [];
+        foreach ($schema as $key => $def) {
             if (is_int($key)) {
-                $normalized[$type] = 'string';
+                $normalized[$def] = 'string';
+            } elseif (is_array($def)) {
+                $normalized[$key] = $def['type'] ?? 'string';
+                if (!empty($def['required'])) {
+                    $required[] = $key;
+                }
             } else {
-                $normalized[$key] = $type;
+                $normalized[$key] = $def;
             }
         }
         $this->expectSchema = $normalized;
+        $this->requiredFields = $required;
         return $this;
     }
 
@@ -88,6 +104,7 @@ class AiTaskBuilder
 
     public function run(): array
     {
+        $this->errors = [];
         $params = $this->buildParams();
         $result = $this->provider->generate($params);
         $this->rawResponse = $result['text'] ?? '';
@@ -97,15 +114,16 @@ class AiTaskBuilder
 
         if ($this->expectArrayKey && is_array($data)) {
             $data = $this->coerceSchemaOnArray($data);
-            $success = true;
+            $success = count($this->errors) === 0;
         } elseif ($this->expectSchema && is_array($data)) {
             $data = $this->coerceSchemaOnObject($data);
-            $success = true;
+            $success = count($this->errors) === 0;
         }
 
         return [
             'success' => $success,
             'data' => $success ? $data : null,
+            'errors' => $this->errors,
             'raw' => $this->rawResponse,
         ];
     }
@@ -163,6 +181,12 @@ class AiTaskBuilder
                     }
                     settype($item[$key], $type);
                 }
+                // Check required fields
+                foreach ($this->requiredFields as $req) {
+                    if (!isset($item[$req]) || $item[$req] === null || $item[$req] === '') {
+                        $this->errors[] = "Missing required field: $req";
+                    }
+                }
             }
         }
         unset($item);
@@ -179,6 +203,12 @@ class AiTaskBuilder
                 $data[$key] = null;
             }
             settype($data[$key], $type);
+        }
+        // Check required fields
+        foreach ($this->requiredFields as $req) {
+            if (!isset($data[$req]) || $data[$req] === null || $data[$req] === '') {
+                $this->errors[] = "Missing required field: $req";
+            }
         }
         return $data;
     }
@@ -205,7 +235,12 @@ class AiTaskBuilder
     {
         $example = [];
         foreach ($this->expectSchema as $key => $type) {
-            $example[$key] = $type === 'string' ? 'example' : ($type === 'int' ? 0 : null);
+            // If original schema definition had required info, show it
+            if (is_array($type)) {
+                $example[$key] = $type['type'] === 'string' ? 'example' : ($type['type'] === 'int' ? 0 : null);
+            } else {
+                $example[$key] = $type === 'string' ? 'example' : ($type === 'int' ? 0 : null);
+            }
         }
         return $example;
     }

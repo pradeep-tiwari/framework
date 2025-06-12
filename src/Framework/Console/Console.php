@@ -20,6 +20,7 @@ use Lightpack\Console\Commands\ProcessJobs;
 use Lightpack\Console\Commands\CreateMail;
 use Lightpack\Console\Commands\CreateSeeder;
 use Lightpack\Console\Commands\CreateTransformer;
+use Lightpack\Console\Commands\Deploy\DeployCommand;
 use Lightpack\Console\Commands\GenerateAppKey;
 use Lightpack\Console\Commands\SeedCommand;
 use Lightpack\Console\Commands\ScheduleEvents;
@@ -48,6 +49,7 @@ class Console
         'create:mail' => CreateMail::class,
         'create:seeder' => CreateSeeder::class,
         'db:seed' => SeedCommand::class,
+        'deploy' => DeployCommand::class,
         'schedule:events' => ScheduleEvents::class,
         'app:key' => GenerateAppKey::class,
         'app:serve' => ServeCommand::class,

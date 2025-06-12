@@ -40,9 +40,9 @@ class DeployPrepare implements ICommand
         passthru('composer install --no-dev --optimize-autoloader');
         echo "[deploy:prepare] Composer install complete.\n";
 
-        // 5. (Optional) Run migrations, build assets, warm cache
+        // 5. TODO: (Optional) Run migrations, build assets, warm cache
         passthru('php console migrate:up');
-        // Add asset build or cache warmup here if needed
+        // 6. TODO: (Optional) Add asset build or cache warmup here if needed
         return 0;
     }
 

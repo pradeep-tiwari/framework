@@ -30,7 +30,7 @@ class DeployRollback implements ICommand
         symlink($previousReleasePath, $currentSymlink);
         echo "[deploy:rollback] Symlinked 'current' to $previousReleasePath\n";
         
-        // (Optional) Reload PHP-FPM or clear cache here
+        // TODO: (Optional) Reload PHP-FPM or clear cache here
         return 0;
     }
 }

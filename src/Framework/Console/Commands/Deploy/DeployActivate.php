@@ -30,7 +30,7 @@ class DeployActivate implements ICommand
         symlink($latestReleasePath, $currentSymlink);
         echo "[deploy:activate] Symlinked 'current' to $latestReleasePath\n";
         
-        // (Optional) Reload PHP-FPM or clear cache here
+        // TODO: (Optional) Reload PHP-FPM or clear cache here
         return 0;
     }
 }

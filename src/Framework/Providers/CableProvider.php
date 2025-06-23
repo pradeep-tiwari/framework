@@ -9,6 +9,7 @@ use Lightpack\Cable\Presence;
 use Lightpack\Cable\Drivers\DatabasePresenceDriver;
 use Lightpack\Cable\Drivers\RedisCableDriver;
 use Lightpack\Cable\Drivers\RedisPresenceDriver;
+use Lightpack\Cable\Drivers\MercureCableDriver;
 
 /**
  * Cable Provider
@@ -64,6 +65,13 @@ class CableProvider implements ProviderInterface
             );
         }
         
+        if ($driver === 'mercure') {
+            return new MercureCableDriver(
+                $config->get('cable.mercure.hub_url'),
+                $config->get('cable.mercure.jwt')
+            );
+        }
+
         throw new \Exception("Unsupported cable driver: {$driver}");
     }
     

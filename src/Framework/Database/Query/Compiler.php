@@ -20,6 +20,11 @@ class Compiler
         $sql[] = $this->where();
         $sql[] = $this->groupBy();
         $sql[] = $this->having();
+        // Inject WINDOW clause if any windows are present
+        $windowClause = $this->windowClause();
+        if ($windowClause) {
+            $sql[] = $windowClause;
+        }
         $sql[] = $this->orderBy();
         $sql[] = $this->limit();
         $sql[] = $this->offset();
@@ -57,16 +62,12 @@ class Compiler
         return "INSERT" . $ignore . "INTO {$this->query->table} ($columns) VALUES $parameters";
     }
 
-    // public function compileInsertIgnore(array $columns)
-    // {
-    //     $parameters = $this->parameterize(count($columns));
-    //     $parameters = count($columns) === 1 ? "($parameters)" : $parameters;
-    //     $columns = implode(', ', $columns);
-    //     return "INSERT IGNORE INTO {$this->query->table} ($columns) VALUES $parameters";
-    // }
-
+    /**
+     * Compile a bulk insert statement for multiple rows.
+     */
     public function compileBulkInsert(array $columns, array $values, bool $shouldIgnore = false)
     {
+        $parameters = [];
         foreach ($values as $value) {
             if (count($value) == 1) {
                 $parameters[] = '(' . $this->parameterize(count($value)) . ')';
@@ -117,6 +118,18 @@ class Compiler
         return "INSERT INTO {$table} ($columns) VALUES $values ON DUPLICATE KEY UPDATE $updateClause";
     }
 
+    /**
+     * Compile the WINDOW clause for window function definitions.
+     */
+    private function windowClause(): string
+    {
+        $windows = $this->query->windows ?? [];
+        if (empty($windows)) {
+            return '';
+        }
+        return 'WINDOW ' . implode(', ', $windows);
+    }
+
     public function compileUpdate(array $columns)
     {
         $where = $this->where();
@@ -164,7 +177,7 @@ class Compiler
         $columns = $this->query->columns ?? [];
 
         $allColumns = [];
-        // Add all select_raw expressions as-is
+        // Add all select_raw expressions as-is (includes windowed and pivot expressions)
         foreach ($raws as $raw) {
             $allColumns[] = $raw;
         }
@@ -306,7 +319,11 @@ class Compiler
             return $this->wrapColumn($column);
         }, $this->query->group);
 
-        return 'GROUP BY ' . implode(', ', $columns);
+        $groupBy = 'GROUP BY ' . implode(', ', $columns);
+        if (!empty($this->query->group_modifier)) {
+            $groupBy .= ' WITH ' . strtoupper($this->query->group_modifier);
+        }
+        return $groupBy;
     }
 
     /**

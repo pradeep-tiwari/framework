@@ -14,12 +14,14 @@ class Query
     protected $components = [
         'alias' => null,
         'columns' => [],
-        'select_raw' => [], // for selectRaw expressions
+        'select_raw' => [], // for selectRaw expressions and windowed selects
         'distinct' => false,
         'join' => [],
         'where' => [],
         'having' => [],
         'group' => [],
+        'group_modifier' => null, // 'ROLLUP' or 'CUBE'
+        'windows' => [], // for named window definitions
         'order' => [],
         'lock' => [],
         'limit' => null,
@@ -179,6 +181,62 @@ class Query
             $this->bindings = array_merge($this->bindings, $bindings);
         }
         return $this;
+    }
+
+    /**
+     * Add a window function select expression.
+     * Example: $q->selectWindow('ROW_NUMBER()', ['PARTITION BY dept', 'ORDER BY salary DESC'], 'rank')
+     */
+    public function selectWindow(string $function, array $clauses, string $alias = null): static
+    {
+        $windowExpr = $function . ' OVER (' . implode(' ', $clauses) . ')';
+        if ($alias) {
+            $windowExpr .= ' AS ' . $alias;
+        }
+        $this->components['select_raw'][] = $windowExpr;
+        return $this;
+    }
+
+    /**
+     * Add a named window definition. Example: $q->window('w AS (PARTITION BY dept ORDER BY salary DESC)')
+     */
+    public function window(string $definition): static
+    {
+        $this->components['windows'][] = $definition;
+        return $this;
+    }
+
+    /**
+     * Helper for ROW_NUMBER() window ranking.
+     */
+    public function rowNumber(array $clauses, string $alias = 'row_num'): static
+    {
+        return $this->selectWindow('ROW_NUMBER()', $clauses, $alias);
+    }
+
+    /**
+     * Helper for RANK() window ranking.
+     */
+    public function rank(array $clauses, string $alias = 'rank'): static
+    {
+        return $this->selectWindow('RANK()', $clauses, $alias);
+    }
+
+    /**
+     * Helper for DENSE_RANK() window ranking.
+     */
+    public function denseRank(array $clauses, string $alias = 'dense_rank'): static
+    {
+        return $this->selectWindow('DENSE_RANK()', $clauses, $alias);
+    }
+
+    /**
+     * Helper for NTILE() window ranking.
+     */
+    public function ntile(int $buckets, array $clauses, string $alias = 'ntile'): static
+    {
+        $expr = 'NTILE(' . $buckets . ')';
+        return $this->selectWindow($expr, $clauses, $alias);
     }
 
     /**
@@ -530,9 +588,33 @@ class Query
         return $this;
     }
 
+    /**
+     * Standard GROUP BY clause.
+     */
     public function groupBy(string ...$columns)
     {
         $this->components['group'] = $columns;
+        $this->components['group_modifier'] = null;
+        return $this;
+    }
+
+    /**
+     * GROUP BY ... WITH ROLLUP
+     */
+    public function groupByRollup(string ...$columns)
+    {
+        $this->components['group'] = $columns;
+        $this->components['group_modifier'] = 'ROLLUP';
+        return $this;
+    }
+
+    /**
+     * GROUP BY ... WITH CUBE (MySQL 8.0.18+)
+     */
+    public function groupByCube(string ...$columns)
+    {
+        $this->components['group'] = $columns;
+        $this->components['group_modifier'] = 'CUBE';
         return $this;
     }
 
@@ -620,6 +702,22 @@ class Query
         return $result;
     }
 
+    /**
+     * Static pivot helper: generates CASE aggregate expressions for each value.
+     * Example: $q->pivot('status', ['active', 'inactive'], 'COUNT(*)')
+     */
+    public function pivot(string $pivotColumn, array $values, string $aggregate = 'COUNT(*)', string $aliasPrefix = null): static
+    {
+        foreach ($values as $val) {
+            $alias = ($aliasPrefix ? $aliasPrefix . '_' : '') . $val;
+            $expr = "$aggregate AS `$alias`";
+            $case = str_replace($aggregate, "SUM(CASE WHEN `$pivotColumn` = ? THEN 1 ELSE 0 END)", $expr);
+            $this->components['select_raw'][] = $case;
+            $this->bindings[] = $val;
+        }
+        return $this;
+    }
+
     public function sum(string $column)
     {
         $this->columns = ["SUM(`$column`) AS sum"];
@@ -666,7 +764,11 @@ class Query
             return $this->table;
         }
 
-        return $this->components[$key] ?? null;
+        // Support dynamic retrieval of new components
+        if (isset($this->components[$key])) {
+            return $this->components[$key];
+        }
+        return null;
     }
 
     public function __set(string $key, $value)
@@ -788,10 +890,12 @@ class Query
         $this->components['where'] = [];
         $this->components['join'] = [];
         $this->components['group'] = [];
+        $this->components['group_modifier'] = null;
         $this->components['order'] = [];
         $this->components['lock'] = [];
         $this->components['limit'] = null;
         $this->components['offset'] = null;
+        $this->components['windows'] = [];
         $this->bindings = [];
     }
 

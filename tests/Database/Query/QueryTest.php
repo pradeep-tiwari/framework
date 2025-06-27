@@ -1181,4 +1181,76 @@ final class QueryTest extends TestCase
         $this->assertEquals(['+foo -bar'], $this->query->bindings);
         $this->query->resetQuery();
     }
+
+    public function testWindowFunctions()
+    {
+        // Test 1: row_number() over partition by color
+        $sql = 'SELECT `id`, `name`, ROW_NUMBER() OVER (PARTITION BY `color` ORDER BY `price` DESC) AS row_num FROM `products`';
+        $this->query->select('id', 'name')
+            ->selectWindow('ROW_NUMBER', ['PARTITION BY `color`', 'ORDER BY `price` DESC'], 'row_num');
+        $this->assertEquals($sql, $this->query->toSql());
+        $this->query->resetQuery();
+
+        // Test 2: rank() over partition by color
+        $sql = 'SELECT `id`, `name`, RANK() OVER (PARTITION BY `color` ORDER BY `price` DESC) AS rank FROM `products`';
+        $this->query->select('id', 'name')
+            ->rank(['PARTITION BY `color`', 'ORDER BY `price` DESC'], 'rank');
+        $this->assertEquals($sql, $this->query->toSql());
+        $this->query->resetQuery();
+
+        // Test 3: dense_rank() over partition by color
+        $sql = 'SELECT `id`, `name`, DENSE_RANK() OVER (PARTITION BY `color` ORDER BY `price` DESC) AS dense_rank FROM `products`';
+        $this->query->select('id', 'name')
+            ->denseRank(['PARTITION BY `color`', 'ORDER BY `price` DESC'], 'dense_rank');
+        $this->assertEquals($sql, $this->query->toSql());
+        $this->query->resetQuery();
+
+        // Test 4: ntile(3) over partition by color
+        $sql = 'SELECT `id`, `name`, NTILE(3) OVER (PARTITION BY `color` ORDER BY `price` DESC) AS ntile3 FROM `products`';
+        $this->query->select('id', 'name')
+            ->ntile(3, ['PARTITION BY `color`', 'ORDER BY `price` DESC'], 'ntile3');
+        $this->assertEquals($sql, $this->query->toSql());
+        $this->query->resetQuery();
+    }
+
+    public function testGroupByRollupAndCube()
+    {
+        // Test 1: GROUP BY color, size WITH ROLLUP
+        $sql = 'SELECT `color`, `size`, COUNT(*) AS num FROM `products` GROUP BY `color`, `size` WITH ROLLUP';
+        $this->query->select('color', 'size')
+            ->selectRaw('COUNT(*) AS num')
+            ->groupByRollup('color', 'size');
+        $this->assertEquals($sql, $this->query->toSql());
+        $this->query->resetQuery();
+
+        // Test 2: GROUP BY color, size WITH CUBE
+        $sql = 'SELECT `color`, `size`, COUNT(*) AS num FROM `products` GROUP BY `color`, `size` WITH CUBE';
+        $this->query->select('color', 'size')
+            ->selectRaw('COUNT(*) AS num')
+            ->groupByCube('color', 'size');
+        $this->assertEquals($sql, $this->query->toSql());
+        $this->query->resetQuery();
+    }
+
+    public function testPivotQuery()
+    {
+        // Example: Pivot color to columns (red, blue)
+        $sql = 'SELECT SUM(CASE WHEN `color` = ? THEN `price` ELSE 0 END) AS red, SUM(CASE WHEN `color` = ? THEN `price` ELSE 0 END) AS blue FROM `products`';
+        $this->query->pivot('color', ['red', 'blue'], 'price');
+        $this->assertEquals($sql, $this->query->toSql());
+        $this->assertEquals(['red', 'blue'], $this->query->bindings);
+        $this->query->resetQuery();
+    }
+
+    public function testTopNPerGroup()
+    {
+        // Example: Top 2 products per color by price
+        $sql = 'SELECT `id`, `name`, ROW_NUMBER() OVER (PARTITION BY `color` ORDER BY `price` DESC) AS row_num FROM `products`';
+        $this->query->select('id', 'name')
+            ->rowNumber(['PARTITION BY `color`', 'ORDER BY `price` DESC'], 'row_num');
+        $this->assertEquals($sql, $this->query->toSql());
+        $this->query->resetQuery();
+        // Note: Filtering (row_num <= 2) would require a subquery or having clause in real SQL usage.
+    }
 }
+

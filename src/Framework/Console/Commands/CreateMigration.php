@@ -13,6 +13,7 @@ class CreateMigration implements ICommand
         $output = new Output();
         $schemas = self::getPredefinedSchemas();
         $support = $this->parseSupportArgument($arguments);
+        $module = $this->parseModuleArgument($arguments);
 
         if ($support === '') {
             $this->showError($output, "You must provide a value for --support. Example: --support=users", null, array_keys($schemas));
@@ -24,7 +25,7 @@ class CreateMigration implements ICommand
                 $this->showError($output, "Unknown support schema: \"{$support}\".", null, array_keys($schemas));
                 return;
             }
-            [$filepath, $template] = $this->buildMigrationFile("{$support}_schema", $schemas[$support]);
+            [$filepath, $template] = $this->buildMigrationFile("{$support}_schema", $schemas[$support], $module);
         } else {
             $migration = $arguments[0] ?? null;
             if (!$migration) {
@@ -40,7 +41,7 @@ class CreateMigration implements ICommand
                 $this->showError($output, "Migration file name can only contain alphanumeric characters and underscores.");
                 return;
             }
-            [$filepath, $template] = $this->buildMigrationFile($migration);
+            [$filepath, $template] = $this->buildMigrationFile($migration, null, $module);
         }
 
         file_put_contents($filepath, $template);
@@ -73,11 +74,22 @@ class CreateMigration implements ICommand
     /**
      * Returns migration file path and template for given name and optional template class.
      */
-    protected function buildMigrationFile(string $name, ?string $templateClass = null): array
+    protected function buildMigrationFile(string $name, ?string $templateClass = null, ?string $module = null): array
     {
         $timestamp = date('YmdHis');
         $filename = "{$timestamp}_{$name}.php";
-        $filepath = "./database/migrations/{$filename}";
+        
+        if ($module) {
+            $filepath = "./modules/{$module}/Database/Migrations/{$filename}";
+            // Ensure directory exists
+            $dir = "./modules/{$module}/Database/Migrations";
+            if (!is_dir($dir)) {
+                mkdir($dir, 0755, true);
+            }
+        } else {
+            $filepath = "./database/migrations/{$filename}";
+        }
+        
         $template = $templateClass ? $templateClass::getTemplate() : MigrationView::getTemplate();
         return [$filepath, $template];
     }
@@ -94,6 +106,16 @@ class CreateMigration implements ICommand
             }
             if (strpos($arg, '--support=') === 0) {
                 return substr($arg, strlen('--support='));
+            }
+        }
+        return null;
+    }
+    
+    protected function parseModuleArgument(array $arguments): ?string
+    {
+        foreach ($arguments as $arg) {
+            if (strpos($arg, '--module=') === 0) {
+                return substr($arg, 9);
             }
         }
         return null;

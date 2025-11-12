@@ -14,9 +14,9 @@ class CreateModel implements ICommand
         $output = new Output();
         $options = $this->parseArguments($arguments, $output);
         if ($options === null) return;
-        extract($options); // $className, $tableName, $primaryKey
+        extract($options); // $className, $tableName, $primaryKey, $module
 
-        $paths = $this->resolvePaths($className, $output);
+        $paths = $this->resolvePaths($className, $module, $output);
         if ($paths === null) return;
         extract($paths); // $baseName, $subdir, $directory, $filePath, $parts
 
@@ -32,9 +32,10 @@ class CreateModel implements ICommand
 
         $tableName = $tableName ?? $this->createTableName($baseName);
         $primaryKey = $primaryKey ?? 'id';
-        $namespace = $this->computeNamespace($subdir);
+        $namespace = $this->computeNamespace($subdir, $module);
         $this->writeModelFile($filePath, $namespace, $baseName, $tableName, $primaryKey);
-        $output->success("✓ Model created: app/Models" . ($subdir ? "/$subdir" : '') . "/{$baseName}.php");
+        $baseDir = $module ? "modules/{$module}/Models" : "app/Models";
+        $output->success("✓ Model created: {$baseDir}" . ($subdir ? "/$subdir" : '') . "/{$baseName}.php");
         $output->newline();
     }
 
@@ -48,11 +49,14 @@ class CreateModel implements ICommand
         $className = null;
         $tableName = null;
         $primaryKey = null;
+        $module = null;
         foreach ($arguments as $arg) {
             if (strpos($arg, '--table=') === 0) {
                 $tableName = substr($arg, 8);
             } elseif (strpos($arg, '--key=') === 0) {
                 $primaryKey = substr($arg, 6);
+            } elseif (strpos($arg, '--module=') === 0) {
+                $module = substr($arg, 9);
             } elseif ($className === null) {
                 $className = $arg;
             }
@@ -61,10 +65,10 @@ class CreateModel implements ICommand
             $output->error("Please provide a model class name.\n");
             return null;
         }
-        return compact('className', 'tableName', 'primaryKey');
+        return compact('className', 'tableName', 'primaryKey', 'module');
     }
 
-    private function resolvePaths(string $className, Output $output)
+    private function resolvePaths(string $className, ?string $module, Output $output)
     {
         $relativePath = str_replace('\\', '/', $className);
         if (strpos($relativePath, '.') !== false) {
@@ -74,7 +78,13 @@ class CreateModel implements ICommand
         $parts = explode('/', $relativePath);
         $baseName = array_pop($parts);
         $subdir = implode('/', $parts);
-        $directory = DIR_ROOT . '/app/Models' . ($subdir ? '/' . $subdir : '');
+        
+        if ($module) {
+            $directory = DIR_ROOT . "/modules/{$module}/Models" . ($subdir ? '/' . $subdir : '');
+        } else {
+            $directory = DIR_ROOT . '/app/Models' . ($subdir ? '/' . $subdir : '');
+        }
+        
         $filePath = $directory . '/' . $baseName . '.php';
         return compact('baseName', 'subdir', 'directory', 'filePath', 'parts');
     }
@@ -90,8 +100,11 @@ class CreateModel implements ICommand
         return true;
     }
 
-    private function computeNamespace(string $subdir): string
+    private function computeNamespace(string $subdir, ?string $module): string
     {
+        if ($module) {
+            return "Modules\\{$module}\\Models" . ($subdir ? '\\' . str_replace('/', '\\', $subdir) : '');
+        }
         return 'App\\Models' . ($subdir ? '\\' . str_replace('/', '\\', $subdir) : '');
     }
 

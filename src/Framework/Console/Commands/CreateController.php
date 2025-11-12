@@ -11,6 +11,7 @@ class CreateController implements ICommand
     public function run(array $arguments = [])
     {
         $className = $arguments[0] ?? null;
+        $module = $this->getModuleOption($arguments);
 
         if (null === $className) {
             $message = "Please provide a controller class name.\n\n";
@@ -19,8 +20,15 @@ class CreateController implements ICommand
         }
 
         $parts = explode('\\', trim($className, '/'));
-        $namespace = 'App\Controllers';
-        $directory = DIR_ROOT . '/app/Controllers';
+        
+        // Determine base namespace and directory
+        if ($module) {
+            $namespace = "Modules\\{$module}\\Controllers";
+            $directory = DIR_ROOT . "/modules/{$module}/Controllers";
+        } else {
+            $namespace = 'App\Controllers';
+            $directory = DIR_ROOT . '/app/Controllers';
+        }
 
         /**
          * This takes care if namespaced controller is to be created.
@@ -51,5 +59,15 @@ class CreateController implements ICommand
 
         file_put_contents($filename . '.php', $template);
         fputs(STDOUT, "✓ Controller created: .{$directory}/{$className}.php\n\n");
+    }
+    
+    private function getModuleOption(array $arguments): ?string
+    {
+        foreach ($arguments as $arg) {
+            if (str_starts_with($arg, '--module=')) {
+                return substr($arg, 9);
+            }
+        }
+        return null;
     }
 }

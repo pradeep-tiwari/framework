@@ -121,6 +121,76 @@ Then run:
 composer dump-autoload
 ```
 
+## CLI Commands for Modules
+
+All Lightpack code generation commands support the `--module` flag to create files within modules.
+
+### Creating Module Components
+
+```bash
+# Controllers
+php console create:controller PostController --module=Blog
+→ modules/Blog/Controllers/PostController.php
+
+# Models
+php console create:model Post --module=Blog --table=posts
+→ modules/Blog/Models/Post.php
+
+# Migrations
+php console create:migration create_posts_table --module=Blog
+→ modules/Blog/Database/Migrations/20231112_create_posts_table.php
+
+# Events
+php console create:event PostPublished --module=Blog
+→ modules/Blog/Listeners/PostPublished.php
+
+# Commands
+php console create:command PublishPosts --module=Blog
+→ modules/Blog/Commands/PublishPosts.php
+
+# Requests
+php console create:request StorePostRequest --module=Blog
+→ modules/Blog/Requests/StorePostRequest.php
+
+# Transformers
+php console create:transformer PostTransformer --module=Blog
+→ modules/Blog/Transformers/PostTransformer.php
+
+# Seeders
+php console create:seeder PostsSeeder --module=Blog
+→ modules/Blog/Database/Seeders/PostsSeeder.php
+
+# Filters
+php console create:filter AuthFilter --module=Blog
+→ modules/Blog/Filters/AuthFilter.php
+
+# Jobs
+php console create:job ProcessPost --module=Blog
+→ modules/Blog/Jobs/ProcessPost.php
+
+# Mails
+php console create:mail PostPublishedMail --module=Blog
+→ modules/Blog/Mails/PostPublishedMail.php
+
+# Providers
+php console create:provider CacheProvider --module=Blog
+→ modules/Blog/Providers/CacheProvider.php
+```
+
+**All commands:**
+- Automatically create directories if they don't exist
+- Use proper `Modules\{Module}\{Type}` namespace
+- Support nested paths (e.g., `Admin/PostController`)
+- Work without `--module` flag for app-level files
+
+### Publishing Module Assets
+
+```bash
+php console module:publish-assets Blog
+```
+
+Copies assets from `modules/Blog/Assets/` to `public/modules/blog/`.
+
 ## Module Components
 
 ### Routes
@@ -255,6 +325,64 @@ Running migrations: blog
 ```
 
 Module migrations are automatically discovered from `modules/*/Database/Migrations/`.
+
+**Migration Behavior:**
+
+Migrations from all sources (app + modules) run in **chronological order** based on timestamp:
+
+```bash
+# Example with multiple modules
+database/migrations/
+  20231101_create_users_table.php
+  20231102_create_roles_table.php
+
+modules/Blog/Database/Migrations/
+  20231103_create_posts_table.php
+
+modules/Shop/Database/Migrations/
+  20231104_create_products_table.php
+
+# Running migrate:up
+php console migrate:up
+
+Running migrations: app
+  ✓ 20231101_create_users_table
+  ✓ 20231102_create_roles_table
+
+Running migrations: blog
+  ✓ 20231103_create_posts_table
+
+Running migrations: shop
+  ✓ 20231104_create_products_table
+
+# All 4 migrations are in batch 1
+```
+
+**Rollback:**
+
+Rollback happens in **reverse order** (LIFO - Last In, First Out):
+
+```bash
+# Rollback last batch
+php console migrate:down
+
+Rolled back migrations:
+  ✓ 20231104_create_products_table  (last in, first out)
+  ✓ 20231103_create_posts_table
+  ✓ 20231102_create_roles_table
+  ✓ 20231101_create_users_table
+
+# Rollback last N batches
+php console migrate:down --steps=2
+
+# Rollback all migrations
+php console migrate:down --all
+```
+
+**Important:**
+- Use proper timestamps to ensure correct migration order
+- Consider foreign key dependencies when creating migrations
+- If a module is removed, its migrations in DB will be skipped with a warning during rollback
 
 ### Events
 

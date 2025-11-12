@@ -28,10 +28,13 @@ class RunMigrationDown implements ICommand
         $confirm = $this->promptConfirmation($steps);
 
         if ($confirm) {
+            // Collect all migration files from all paths (app + modules)
+            $allMigrationFiles = $this->getAllMigrationFiles();
+            
             if('all' === $steps) {
-                $migrations = $migrator->rollbackAll(DIR_ROOT . '/database/migrations');
+                $migrations = $migrator->rollbackAll($allMigrationFiles);
             } else {
-                $migrations = $migrator->rollback(DIR_ROOT . '/database/migrations', $steps);
+                $migrations = $migrator->rollback($allMigrationFiles, $steps);
             }
 
             fputs(STDOUT, "\n");
@@ -98,5 +101,44 @@ class RunMigrationDown implements ICommand
         }
 
         return strtolower(trim(fgets(STDIN))) === 'y';
+    }
+
+    private function getAllMigrationFiles(): array
+    {
+        $paths = $this->getMigrationPaths();
+        $allFiles = [];
+        
+        foreach ($paths as $path) {
+            if (is_dir($path)) {
+                $files = glob($path . '/*.php');
+                foreach ($files as $file) {
+                    $filename = basename($file);
+                    $allFiles[$filename] = new \SplFileInfo($file);
+                }
+            }
+        }
+        
+        return $allFiles;
+    }
+
+    private function getMigrationPaths(): array
+    {
+        $paths = [DIR_ROOT . '/database/migrations'];
+        
+        // Auto-discover module migrations
+        $modulesDir = DIR_ROOT . '/modules';
+        if (is_dir($modulesDir)) {
+            $modules = glob($modulesDir . '/*', GLOB_ONLYDIR);
+            
+            foreach ($modules as $moduleDir) {
+                $migrationPath = $moduleDir . '/Database/Migrations';
+                
+                if (is_dir($migrationPath)) {
+                    $paths[] = $migrationPath;
+                }
+            }
+        }
+        
+        return $paths;
     }
 }

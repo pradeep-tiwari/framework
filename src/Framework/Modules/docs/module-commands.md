@@ -267,6 +267,71 @@ modules/Blog/
 4. **Consistent Structure** - Same command patterns for app and modules
 5. **No Manual Setup** - Directories created automatically
 
+## Migration Behavior
+
+### How Migrations Work with Modules
+
+Module migrations are automatically discovered and run alongside app migrations.
+
+**Migration Order:**
+- All migrations (app + modules) run in **chronological order** based on timestamp
+- All migrations in a single `migrate:up` run get the same batch number
+- Rollback happens in **reverse order** (LIFO - Last In, First Out)
+
+**Example Scenario:**
+
+```bash
+# Your migrations
+database/migrations/
+  20231101_create_users_table.php
+  20231102_create_roles_table.php
+
+modules/Blog/Database/Migrations/
+  20231103_create_posts_table.php
+
+modules/Shop/Database/Migrations/
+  20231104_create_products_table.php
+
+# Running migrate:up
+php console migrate:up
+
+Running migrations: app
+  ✓ 20231101_create_users_table
+  ✓ 20231102_create_roles_table
+
+Running migrations: blog
+  ✓ 20231103_create_posts_table
+
+Running migrations: shop
+  ✓ 20231104_create_products_table
+
+# All 4 migrations are now in batch 1
+```
+
+**Rollback Behavior:**
+
+```bash
+# Rollback last batch (all 4 migrations)
+php console migrate:down
+
+Rolled back migrations:
+  ✓ 20231104_create_products_table  (last in, first out)
+  ✓ 20231103_create_posts_table
+  ✓ 20231102_create_roles_table
+  ✓ 20231101_create_users_table
+
+# Rollback last N batches
+php console migrate:down --steps=2
+
+# Rollback all migrations
+php console migrate:down --all
+```
+
+**Important:**
+- Use proper timestamps to ensure correct migration order
+- Consider foreign key dependencies when creating migrations
+- If a module is removed, its migrations in DB will be skipped with a warning during rollback
+
 ## Notes
 
 - The `--module` flag works with all existing command options

@@ -65,15 +65,14 @@ class Migrator
     /**
      * Rollback migrations.
      *
-     * @param string $path Migration rollback directory.
+     * @param array $migrationFiles Array of migration files indexed by filename.
      * @param integer|null $steps No. of batches to rollback.
-     * @return array Array of rolled back migratins.
+     * @return array Array of rolled back migrations.
      */
-    public function rollback(string $path, ?int $steps = null): array
+    public function rollback(array $migrationFiles, ?int $steps = null): array
     {
         $this->connection->disableForeignKeyChecks();
 
-        $migrationFiles = $this->findMigrationFiles($path);
         $steps = $steps ?? 1;
         $migratedFiles = [];
 
@@ -87,6 +86,17 @@ class Migrator
             }
 
             foreach ($lastBatchMigrations as $migration) {
+                // Check if migration file exists
+                if (!isset($migrationFiles[$migration])) {
+                    fputs(STDERR, "Warning: Migration file not found, skipping: {$migration}\n");
+                    // Still delete from DB to keep it clean
+                    $this->connection->query(
+                        "DELETE FROM migrations WHERE migration = ?",
+                        [$migration]
+                    );
+                    continue;
+                }
+                
                 $migrationFile = $migrationFiles[$migration];
                 $migrationFilepath = $migrationFile->getPathname();
 
@@ -113,9 +123,9 @@ class Migrator
         return $migratedFiles;
     }
 
-    public function rollbackAll(string $path): array
+    public function rollbackAll(array $migrationFiles): array
     {
-        return $this->rollback($path, 999999);
+        return $this->rollback($migrationFiles, 999999);
     }
 
     private function getExecutedMigrations()

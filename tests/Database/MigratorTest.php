@@ -63,6 +63,19 @@ PHP;
         return $filePath;
     }
 
+    private function getMigrationFiles()
+    {
+        $files = [];
+        $phpFiles = glob($this->migrationsPath . '/*.php');
+        
+        foreach ($phpFiles as $file) {
+            $filename = basename($file);
+            $files[$filename] = new \SplFileInfo($file);
+        }
+        
+        return $files;
+    }
+
     public function testMigratorCanRunAndRollbackMigrations()
     {
         // Create migration file to create products table
@@ -82,7 +95,8 @@ PHP;
         $this->assertNotEmpty($row);
 
         // Rollback migrations
-        $rolledBack = $this->migrator->rollback($this->migrationsPath);
+        $migrationFiles = $this->getMigrationFiles();
+        $rolledBack = $this->migrator->rollback($migrationFiles);
         $this->assertContains('20250101_create_products_table.php', $rolledBack);
         $tables = $this->schema->inspectTables();
         $this->assertNotContains('products', $tables);
@@ -117,7 +131,8 @@ PHP;
         $this->assertEquals(1, (int)$batchRow['batch']);
 
         // Rollback one batch
-        $rolledBack = $this->migrator->rollback($this->migrationsPath);
+        $migrationFiles = $this->getMigrationFiles();
+        $rolledBack = $this->migrator->rollback($migrationFiles);
         $this->assertContains('20250101_create_categories_table.php', $rolledBack);
         $this->assertContains('20250102_create_products_table.php', $rolledBack);
         $tables = $this->schema->inspectTables();

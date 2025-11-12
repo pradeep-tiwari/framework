@@ -99,6 +99,118 @@ php console create:command PublishPosts --module=Blog
 
 ---
 
+### Create Request
+
+```bash
+# App request
+php console create:request StorePostRequest
+
+# Module request
+php console create:request StorePostRequest --module=Blog
+```
+
+**Output:**
+- App: `app/Requests/StorePostRequest.php` with namespace `App\Requests`
+- Module: `modules/Blog/Requests/StorePostRequest.php` with namespace `Modules\Blog\Requests`
+
+---
+
+### Create Transformer
+
+```bash
+# App transformer
+php console create:transformer PostTransformer
+
+# Module transformer
+php console create:transformer PostTransformer --module=Blog
+```
+
+**Output:**
+- App: `app/Transformers/PostTransformer.php` with namespace `App\Transformers`
+- Module: `modules/Blog/Transformers/PostTransformer.php` with namespace `Modules\Blog\Transformers`
+
+---
+
+### Create Seeder
+
+```bash
+# App seeder
+php console create:seeder PostsSeeder
+
+# Module seeder
+php console create:seeder PostsSeeder --module=Blog
+```
+
+**Output:**
+- App: `database/seeders/PostsSeeder.php`
+- Module: `modules/Blog/Database/Seeders/PostsSeeder.php`
+
+---
+
+### Create Filter
+
+```bash
+# App filter
+php console create:filter AuthFilter
+
+# Module filter
+php console create:filter AuthFilter --module=Blog
+```
+
+**Output:**
+- App: `app/Filters/AuthFilter.php` with namespace `App\Filters`
+- Module: `modules/Blog/Filters/AuthFilter.php` with namespace `Modules\Blog\Filters`
+
+---
+
+### Create Job
+
+```bash
+# App job
+php console create:job ProcessPost
+
+# Module job
+php console create:job ProcessPost --module=Blog
+```
+
+**Output:**
+- App: `app/Jobs/ProcessPost.php` with namespace `App\Jobs`
+- Module: `modules/Blog/Jobs/ProcessPost.php` with namespace `Modules\Blog\Jobs`
+
+---
+
+### Create Mail
+
+```bash
+# App mail
+php console create:mail PostPublishedMail
+
+# Module mail
+php console create:mail PostPublishedMail --module=Blog
+```
+
+**Output:**
+- App: `app/Mails/PostPublishedMail.php` with namespace `App\Mails`
+- Module: `modules/Blog/Mails/PostPublishedMail.php` with namespace `Modules\Blog\Mails`
+
+---
+
+### Create Provider
+
+```bash
+# App provider
+php console create:provider CacheProvider
+
+# Module provider
+php console create:provider CacheProvider --module=Blog
+```
+
+**Output:**
+- App: `app/Providers/CacheProvider.php` with namespace `App\Providers`
+- Module: `modules/Blog/Providers/CacheProvider.php` with namespace `Modules\Blog\Providers`
+
+---
+
 ## Complete Workflow Example
 
 ```bash

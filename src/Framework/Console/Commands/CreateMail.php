@@ -10,6 +10,7 @@ class CreateMail implements ICommand
     public function run(array $arguments = [])
     {
         $className = $arguments[0] ?? null;
+        $module = $this->getModuleOption($arguments);
 
         if (null === $className) {
             $message = "Please provide the mail class name.\n\n";
@@ -24,10 +25,34 @@ class CreateMail implements ICommand
         }
 
         $template = MailView::getTemplate();
-        $template = str_replace('__MAIL_NAME__', $className, $template);
-        $directory = './app/Mails';
-
-        file_put_contents(DIR_ROOT . '/app/Mails/' . $className . '.php', $template);
+        
+        if ($module) {
+            $namespace = "Modules\\{$module}\\Mails";
+            $directory = "./modules/{$module}/Mails";
+            $filepath = DIR_ROOT . "/modules/{$module}/Mails/{$className}.php";
+        } else {
+            $namespace = "App\\Mails";
+            $directory = './app/Mails';
+            $filepath = DIR_ROOT . "/app/Mails/{$className}.php";
+        }
+        
+        $template = str_replace(['__MAIL_NAME__', '__NAMESPACE__'], [$className, $namespace], $template);
+        
+        if (!is_dir(dirname($filepath))) {
+            mkdir(dirname($filepath), 0755, true);
+        }
+        
+        file_put_contents($filepath, $template);
         fputs(STDOUT, "✓ Mail created: {$directory}/{$className}.php\n\n");
+    }
+    
+    private function getModuleOption(array $arguments): ?string
+    {
+        foreach ($arguments as $arg) {
+            if (str_starts_with($arg, '--module=')) {
+                return substr($arg, 9);
+            }
+        }
+        return null;
     }
 }

@@ -11,6 +11,7 @@ class CreateTransformer implements ICommand
     public function run(array $arguments = [])
     {
         $className = $arguments[0] ?? null;
+        $module = $this->getModuleOption($arguments);
 
         if (null === $className) {
             $message = "Please provide a transformer class name.\n\n";
@@ -19,8 +20,15 @@ class CreateTransformer implements ICommand
         }
 
         $parts = explode('\\', trim($className, '/'));
-        $namespace = 'App\Transformers';
-        $directory = DIR_ROOT . '/app/Transformers';
+        
+        if ($module) {
+            $namespace = "Modules\\{$module}\\Transformers";
+            $directory = DIR_ROOT . "/modules/{$module}/Transformers";
+        } else {
+            $namespace = 'App\Transformers';
+            $directory = DIR_ROOT . '/app/Transformers';
+        }
+        
         $file = new File;
 
         /**
@@ -51,5 +59,15 @@ class CreateTransformer implements ICommand
 
         $file->write($filepath, $template);
         fputs(STDOUT, "✓ Transformer created: .{$directory}/{$className}.php\n\n");
+    }
+    
+    private function getModuleOption(array $arguments): ?string
+    {
+        foreach ($arguments as $arg) {
+            if (str_starts_with($arg, '--module=')) {
+                return substr($arg, 9);
+            }
+        }
+        return null;
     }
 }

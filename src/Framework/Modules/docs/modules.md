@@ -39,6 +39,29 @@ modules/
 
 ## Creating a Module
 
+### Quick Start with CLI
+
+The fastest way to create a module is using the CLI command:
+
+```bash
+php console create:module Blog
+```
+
+This creates the complete module structure:
+- Provider with proper namespace
+- Routes, events, commands files
+- Directory structure (Controllers, Models, Views, etc.)
+- Config and Assets directories
+
+Then follow the instructions to:
+1. Add provider to `boot/modules.php`
+2. Update `composer.json` autoload
+3. Run `composer dump-autoload`
+
+### Manual Creation
+
+If you prefer to create modules manually:
+
 ### 1. Create Module Directory
 
 ```bash
@@ -280,6 +303,61 @@ $schedule->command('blog:cleanup-drafts')
     ->weekly()
     ->sundays()
     ->at('02:00');
+```
+
+### Config
+
+**modules/Blog/Config/blog.php:**
+
+```php
+<?php
+
+return [
+    'posts_per_page' => 10,
+    'allow_comments' => true,
+    'cache_duration' => 3600,
+];
+```
+
+**Accessing module config:**
+
+```php
+// In controller
+$perPage = app('config')->get('modules.blog.blog.posts_per_page');
+
+// Or
+$config = app('config')->get('modules.blog.blog');
+$perPage = $config['posts_per_page'];
+```
+
+Config files are automatically loaded from `modules/{Module}/Config/` and stored under `modules.{namespace}.{filename}`.
+
+### Assets
+
+Modules can have CSS, JavaScript, images, and other assets in the `Assets` directory.
+
+**modules/Blog/Assets/css/blog.css:**
+
+```css
+.blog-posts {
+    max-width: 800px;
+    margin: 0 auto;
+}
+```
+
+**Publishing assets:**
+
+```bash
+php console module:publish-assets Blog
+```
+
+This copies assets from `modules/Blog/Assets/` to `public/modules/blog/`.
+
+**Using published assets in views:**
+
+```php
+<link rel="stylesheet" href="/modules/blog/css/blog.css">
+<script src="/modules/blog/js/blog.js"></script>
 ```
 
 ## Advanced: Custom Services

@@ -1,0 +1,37 @@
+/* Blog Module Styles */
+
+.blog-posts {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.post {
+    margin-bottom: 40px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.post h2 {
+    margin: 0 0 10px 0;
+}
+
+.post h2 a {
+    color: #333;
+    text-decoration: none;
+}
+
+.post h2 a:hover {
+    color: #0066cc;
+}
+
+.post-meta {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+.post-excerpt {
+    line-height: 1.6;
+    color: #444;
+}

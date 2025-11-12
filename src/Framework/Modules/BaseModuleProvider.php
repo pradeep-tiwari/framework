@@ -22,6 +22,7 @@ abstract class BaseModuleProvider implements ProviderInterface
     
     public function register(Container $container)
     {
+        $this->loadConfig($container);
         $this->loadRoutes();
         $this->loadEvents($container);
         $this->loadCommands();
@@ -82,6 +83,26 @@ abstract class BaseModuleProvider implements ProviderInterface
         $viewPath = $this->modulePath . '/Views';
         if (is_dir($viewPath)) {
             $container->get('template')->addViewPath($this->namespace, $viewPath);
+        }
+    }
+    
+    protected function loadConfig(Container $container): void
+    {
+        $configDir = $this->modulePath . '/Config';
+        if (!is_dir($configDir)) {
+            return;
+        }
+        
+        $configs = glob($configDir . '/*.php');
+        $config = $container->get('config');
+        
+        foreach ($configs as $file) {
+            $name = basename($file, '.php');
+            $data = require $file;
+            
+            // Store under modules.{namespace}.{config_name}
+            // e.g., modules.blog.settings
+            $config->set("modules.{$this->namespace}.{$name}", $data);
         }
     }
     

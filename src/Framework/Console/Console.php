@@ -26,6 +26,8 @@ use Lightpack\Console\Commands\SeedCommand;
 use Lightpack\Console\Commands\ScheduleEvents;
 use Lightpack\Console\Commands\ServeCommand;
 use Lightpack\Console\Commands\WatchCommand;
+use Lightpack\Console\Commands\CreateModule;
+use Lightpack\Console\Commands\PublishModuleAssets;
 
 class Console
 {
@@ -54,6 +56,8 @@ class Console
         'app:key' => GenerateAppKey::class,
         'app:serve' => ServeCommand::class,
         'watch' => WatchCommand::class,
+        'create:module' => CreateModule::class,
+        'module:publish-assets' => PublishModuleAssets::class,
     ];
 
     public static function register(string $command, ICommand $handler)

@@ -25,6 +25,9 @@ final class App
         // Register all service providers.
         self::bootProviders();
 
+        // Register module providers.
+        self::bootModules();
+
         // Setup debugging tools and error handlers.
         self::bootDebug();
 
@@ -45,6 +48,9 @@ final class App
 
         // Register all service providers.
         self::bootProviders();
+
+        // Register module providers.
+        self::bootModules();
 
         // Setup debugging tools and error handlers.
         self::bootDebug();
@@ -97,6 +103,23 @@ final class App
         $providers = array_merge($frameworkProviders, $appProviders);
 
         foreach ($providers as $provider) {
+            $provider = $container->resolve($provider);
+            $provider->register($container);
+        }
+    }
+
+    public static function bootModules()
+    {
+        $modulesFile = DIR_BOOT . '/modules.php';
+        
+        if (!file_exists($modulesFile)) {
+            return;
+        }
+        
+        $moduleProviders = require $modulesFile;
+        $container = Container::getInstance();
+        
+        foreach ($moduleProviders as $provider) {
             $provider = $container->resolve($provider);
             $provider->register($container);
         }

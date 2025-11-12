@@ -13,6 +13,7 @@ class Template
     protected $childContent = null;
     protected $stacks = [];
     protected $currentStack = null;
+    protected array $viewPaths = [];
 
     public function __construct(?string $viewsPath = null)
     {
@@ -196,10 +197,35 @@ class Template
 
     protected function resolveTemplatePath(string $file): string
     {
-        $template = $this->viewsPath . '/' . $file . '.php';
+        // Check for namespaced view: blog::posts/index
+        if (str_contains($file, '::')) {
+            [$namespace, $path] = explode('::', $file, 2);
+            
+            if (!isset($this->viewPaths[$namespace])) {
+                throw new \Lightpack\Exceptions\TemplateNotFoundException(
+                    sprintf("View namespace '%s' not registered", $namespace)
+                );
+            }
+            
+            $template = $this->viewPaths[$namespace] . '/' . $path . '.php';
+        } else {
+            // Default app views
+            $template = $this->viewsPath . '/' . $file . '.php';
+        }
 
         $this->throwExceptionIfTemplateNotFound($template);
 
         return $template;
+    }
+    
+    /**
+     * Register a view namespace path for modules.
+     * 
+     * @param string $namespace The namespace identifier (e.g., 'blog')
+     * @param string $path The absolute path to the views directory
+     */
+    public function addViewPath(string $namespace, string $path): void
+    {
+        $this->viewPaths[$namespace] = rtrim($path, '/');
     }
 }

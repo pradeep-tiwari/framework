@@ -29,21 +29,33 @@ class RunMigrationUp implements ICommand
         }
 
         $migrator = new Migrator($this->getConnection());
-
-        $migrations = $migrator->run(DIR_ROOT . '/database/migrations');
+        $paths = $this->getMigrationPaths();
+        $allMigrations = [];
         
         fputs(STDOUT, "\n");
 
-        if(empty($migrations)) {
-            fputs(STDOUT, "✓ Migrations already up-to-date.\n\n");
-        } else {
-            fputs(STDOUT, "Migrations:\n");
-
-            foreach ($migrations as $migration) {
-                fputs(STDOUT, "✓ {$migration}\n");
+        foreach ($paths as $name => $path) {
+            if (!is_dir($path)) {
+                continue;
             }
 
+            fputs(STDOUT, "Running migrations: {$name}\n");
+            $migrations = $migrator->run($path);
+            
+            if (empty($migrations)) {
+                fputs(STDOUT, "  ✓ Already up-to-date\n");
+            } else {
+                foreach ($migrations as $migration) {
+                    fputs(STDOUT, "  ✓ {$migration}\n");
+                    $allMigrations[] = $migration;
+                }
+            }
+            
             fputs(STDOUT, "\n");
+        }
+
+        if (empty($allMigrations)) {
+            fputs(STDOUT, "✓ All migrations already up-to-date.\n\n");
         }
     }
 
@@ -73,5 +85,29 @@ class RunMigrationUp implements ICommand
         } 
 
         return true;
+    }
+
+    private function getMigrationPaths(): array
+    {
+        $paths = [
+            'app' => DIR_ROOT . '/database/migrations',
+        ];
+        
+        // Auto-discover module migrations
+        $modulesDir = DIR_ROOT . '/modules';
+        if (is_dir($modulesDir)) {
+            $modules = glob($modulesDir . '/*', GLOB_ONLYDIR);
+            
+            foreach ($modules as $moduleDir) {
+                $moduleName = basename($moduleDir);
+                $migrationPath = $moduleDir . '/Database/Migrations';
+                
+                if (is_dir($migrationPath)) {
+                    $paths[strtolower($moduleName)] = $migrationPath;
+                }
+            }
+        }
+        
+        return $paths;
     }
 }

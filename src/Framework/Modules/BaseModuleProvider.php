@@ -28,6 +28,7 @@ abstract class BaseModuleProvider implements ProviderInterface
         $this->loadCommands();
         $this->loadSchedules();
         $this->loadViews($container);
+        $this->loadFilters($container);
         $this->registerServices($container);
     }
     
@@ -104,6 +105,24 @@ abstract class BaseModuleProvider implements ProviderInterface
             // e.g., modules.blog.settings
             $config->set("modules.{$this->namespace}.{$name}", $data);
         }
+    }
+    
+    protected function loadFilters(Container $container): void
+    {
+        $file = $this->modulePath . '/filters.php';
+        if (!file_exists($file)) {
+            return;
+        }
+        
+        $filters = require $file;
+        
+        // Initialize global registry if not exists
+        if (!isset($GLOBALS['modules_filters_registry'])) {
+            $GLOBALS['modules_filters_registry'] = [];
+        }
+        
+        // Merge module filters into global registry
+        $GLOBALS['modules_filters_registry'] = array_merge($GLOBALS['modules_filters_registry'], $filters);
     }
     
     /**

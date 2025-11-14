@@ -34,6 +34,9 @@ final class App
         // Register application-wide events.
         self::bootEvents();
 
+        // Build complete filter registry (app + modules).
+        self::bootFilterRegistry();
+
         // Load and register all routes.
         self::bootRoutes();
     }
@@ -165,7 +168,7 @@ final class App
         $dispatcher = new Dispatcher($container);
         $routeUri = $container->get('router')->getRoute()->getUri();
 
-        self::bootFilters();
+        self::registerRouteFilters();
 
         // Process before filters.
         $result = $filter->processBeforeFilters($routeUri);
@@ -218,9 +221,22 @@ final class App
         ];
     }
 
-    private static function bootFilters()
+    public static function bootFilterRegistry()
     {
         $filters = require DIR_BOOT . '/filters.php';
+        
+        // Merge module filters if they exist
+        if (isset($GLOBALS['modules_filters_registry'])) {
+            $filters = array_merge($filters, $GLOBALS['modules_filters_registry']);
+        }
+        
+        // Store complete filter registry in globals
+        $GLOBALS['filters_registry'] = $filters;
+    }
+
+    private static function registerRouteFilters()
+    {
+        $filters = $GLOBALS['filters_registry'] ?? [];
         $container = Container::getInstance();
         $routeFilters = $container->get('router')->getRoute()->getFilters();
         $filter = $container->get('filter');

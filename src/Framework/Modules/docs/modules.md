@@ -26,6 +26,8 @@ modules/
     ├── Database/
     │   └── Migrations/
     │       └── 001_create_posts_table.php
+    ├── Filters/
+    │   └── AuthFilter.php
     ├── Tests/
     │   ├── Feature/
     │   └── Unit/
@@ -34,6 +36,7 @@ modules/
     ├── routes.php
     ├── events.php
     ├── commands.php
+    ├── filters.php
     └── schedules.php
 ```
 
@@ -86,7 +89,7 @@ class BlogProvider extends BaseModuleProvider
 }
 ```
 
-That's it! The base class handles loading routes, events, commands, schedules, and views automatically.
+That's it! The base class handles loading routes, events, commands, schedules, filters, and views automatically.
 
 ### 3. Register Module
 
@@ -421,6 +424,32 @@ php console seed PostsSeeder --module=Blog --force
 # Run app-level seeder (default)
 php console seed DatabaseSeeder
 ```
+
+### Filters
+
+**modules/Blog/filters.php:**
+
+```php
+<?php
+
+return [
+    'blog.auth' => \Modules\Blog\Filters\AuthFilter::class,
+    'blog.admin' => \Modules\Blog\Filters\AdminFilter::class,
+];
+```
+
+Module filters are automatically merged with app-level filters during bootstrap and can be used in routes:
+
+```php
+// In modules/Blog/routes.php
+$route->get('/admin/posts', [PostController::class, 'index'])->filter('blog.admin');
+```
+
+**Key Points:**
+- Filter registry is built during bootstrap (before routes are matched)
+- Module filters are merged with app filters in the container
+- Use namespaced aliases (e.g., `blog.auth`) to avoid conflicts with app filters
+- Filters must implement `Lightpack\Filters\IFilter`
 
 ### Events
 

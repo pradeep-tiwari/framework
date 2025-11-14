@@ -27,9 +27,9 @@ class CreateEvent implements ICommand
         $template = EventView::getTemplate();
         
         if ($module) {
-            $namespace = "Modules\\{$module}\\Listeners";
-            $directory = "./modules/{$module}/Listeners";
-            $filepath = DIR_ROOT . "/modules/{$module}/Listeners/{$className}.php";
+            $namespace = "Modules\\{$module}\\Events";
+            $directory = "./modules/{$module}/Events";
+            $filepath = DIR_ROOT . "/modules/{$module}/Events/{$className}.php";
         } else {
             $namespace = "App\\Events";
             $directory = './app/Events';

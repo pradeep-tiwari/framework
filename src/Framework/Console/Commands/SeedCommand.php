@@ -11,13 +11,16 @@ class SeedCommand implements ICommand
     {
         fputs(STDOUT, "\n");
 
-        // Extract class name and flags
+        // Extract class name, module, and flags
         $className = null;
+        $module = null;
         $force = false;
         
         foreach ($arguments as $arg) {
             if ($arg === '--force') {
                 $force = true;
+            } elseif (str_starts_with($arg, '--module=')) {
+                $module = substr($arg, 9);
             } elseif (!str_starts_with($arg, '--')) {
                 $className = $arg;
             }
@@ -28,8 +31,12 @@ class SeedCommand implements ICommand
             $className = 'DatabaseSeeder';
         }
 
-        // Build fully qualified class name
-        $fullyQualifiedClass = "Database\\Seeders\\{$className}";
+        // Build fully qualified class name based on module or app
+        if ($module) {
+            $fullyQualifiedClass = "Modules\\{$module}\\Database\\Seeders\\{$className}";
+        } else {
+            $fullyQualifiedClass = "Database\\Seeders\\{$className}";
+        }
 
         // Check if class exists
         if (!class_exists($fullyQualifiedClass)) {

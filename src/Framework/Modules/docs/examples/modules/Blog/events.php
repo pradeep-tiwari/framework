@@ -8,10 +8,10 @@
 
 return [
     'post.created' => [
-        \Modules\Blog\Listeners\NotifySubscribers::class,
+        \Modules\Blog\Events\NotifySubscribers::class,
     ],
     
     'post.published' => [
-        \Modules\Blog\Listeners\SendNotification::class,
+        \Modules\Blog\Events\SendNotification::class,
     ],
 ];

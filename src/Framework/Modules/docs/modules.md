@@ -142,7 +142,7 @@ php console create:migration create_posts_table --module=Blog
 
 # Events
 php console create:event PostPublished --module=Blog
-→ modules/Blog/Listeners/PostPublished.php
+→ modules/Blog/Events/PostPublished.php
 
 # Commands
 php console create:command PublishPosts --module=Blog
@@ -384,6 +384,44 @@ php console migrate:down --all
 - Consider foreign key dependencies when creating migrations
 - If a module is removed, its migrations in DB will be skipped with a warning during rollback
 
+### Seeders
+
+**modules/Blog/Database/Seeders/PostsSeeder.php:**
+
+```php
+<?php
+
+namespace Modules\Blog\Database\Seeders;
+
+class PostsSeeder
+{
+    public function seed()
+    {
+        $posts = [
+            ['title' => 'First Post', 'content' => 'Content here...'],
+            ['title' => 'Second Post', 'content' => 'More content...'],
+        ];
+
+        foreach ($posts as $post) {
+            app('db')->table('posts')->insert($post);
+        }
+    }
+}
+```
+
+**Running module seeders:**
+
+```bash
+# Run specific module seeder
+php console seed PostsSeeder --module=Blog
+
+# Run with force flag (no confirmation)
+php console seed PostsSeeder --module=Blog --force
+
+# Run app-level seeder (default)
+php console seed DatabaseSeeder
+```
+
 ### Events
 
 **modules/Blog/events.php:**
@@ -393,11 +431,11 @@ php console migrate:down --all
 
 return [
     'post.created' => [
-        \Modules\Blog\Listeners\NotifySubscribers::class,
-        \Modules\Blog\Listeners\IndexInSearch::class,
+        \Modules\Blog\Events\NotifySubscribers::class,
+        \Modules\Blog\Events\IndexInSearch::class,
     ],
     'post.published' => [
-        \Modules\Blog\Listeners\SendNotification::class,
+        \Modules\Blog\Events\SendNotification::class,
     ],
 ];
 ```

@@ -65,12 +65,17 @@ class Migrator
     /**
      * Rollback migrations.
      *
-     * @param array $migrationFiles Array of migration files indexed by filename.
+     * @param string|array $migrationFiles Path to migrations directory OR array of migration files indexed by filename.
      * @param integer|null $steps No. of batches to rollback.
      * @return array Array of rolled back migrations.
      */
-    public function rollback(array $migrationFiles, ?int $steps = null): array
+    public function rollback(string|array $migrationFiles, ?int $steps = null): array
     {
+        // If string path provided, discover files
+        if (is_string($migrationFiles)) {
+            $migrationFiles = $this->findMigrationFiles($migrationFiles);
+        }
+        
         $this->connection->disableForeignKeyChecks();
 
         $steps = $steps ?? 1;
@@ -123,7 +128,7 @@ class Migrator
         return $migratedFiles;
     }
 
-    public function rollbackAll(array $migrationFiles): array
+    public function rollbackAll(string|array $migrationFiles): array
     {
         return $this->rollback($migrationFiles, 999999);
     }

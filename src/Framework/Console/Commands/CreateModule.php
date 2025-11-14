@@ -45,9 +45,7 @@ class CreateModule implements ICommand
         fputs(STDOUT, "Next steps:\n");
         fputs(STDOUT, "1. Add to boot/modules.php:\n");
         fputs(STDOUT, "   \\Modules\\{$moduleName}\\Providers\\{$moduleName}Provider::class,\n\n");
-        fputs(STDOUT, "2. Update composer.json autoload:\n");
-        fputs(STDOUT, "   \"Modules\\\\\": \"modules/\"\n\n");
-        fputs(STDOUT, "3. Run: composer dump-autoload\n\n");
+        fputs(STDOUT, "2. Run: composer dump-autoload\n\n");
     }
     
     private function createDirectoryStructure(string $basePath, string $moduleName): void

@@ -9,7 +9,7 @@ class FilterView
         return <<<'TEMPLATE'
 <?php
 
-namespace App\Filters;
+namespace __NAMESPACE__;
 
 use Lightpack\Http\Request;
 use Lightpack\Http\Response;

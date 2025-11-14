@@ -25,18 +25,25 @@ class CreateSeeder implements ICommand
         }
 
         $template = SeederView::getTemplate();
-        $template = str_replace('__SEEDER_NAME__', $className, $template);
         
         if ($module) {
+            $namespace = "Modules\\{$module}\\Database\\Seeders";
             $directory = "./modules/{$module}/Database/Seeders";
             $filePath = DIR_ROOT . "/modules/{$module}/Database/Seeders/{$className}.php";
             if (!is_dir(dirname($filePath))) {
                 mkdir(dirname($filePath), 0755, true);
             }
         } else {
+            $namespace = "Database\\Seeders";
             $directory = './database/seeders';
             $filePath = DIR_ROOT . "/database/seeders/{$className}.php";
         }
+        
+        $template = str_replace(
+            ['__NAMESPACE__', '__SEEDER_NAME__'],
+            [$namespace, $className],
+            $template
+        );
         if (file_exists($filePath)) {
             $message = "Seeder class file already exists: {$directory}/{$className}.php\n\n";
             fputs(STDERR, $message);

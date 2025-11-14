@@ -9,7 +9,7 @@ class MailView
         return <<<'TEMPLATE'
 <?php
 
-namespace App\Mails;
+namespace __NAMESPACE__;
 
 use Lightpack\Mail\Mail;
 

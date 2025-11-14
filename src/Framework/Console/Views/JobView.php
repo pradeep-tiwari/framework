@@ -9,7 +9,7 @@ class JobView
         return <<<'TEMPLATE'
 <?php
 
-namespace App\Jobs;
+namespace __NAMESPACE__;
 
 use Lightpack\Jobs\Job;
 

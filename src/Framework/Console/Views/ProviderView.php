@@ -9,7 +9,7 @@ class ProviderView
         return <<<'TEMPLATE'
 <?php
 
-namespace App\Providers;
+namespace __NAMESPACE__;
 
 use Lightpack\Container\Container;
 use Lightpack\Providers\ProviderInterface;

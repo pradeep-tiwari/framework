@@ -9,7 +9,7 @@ class EventView
         return <<<'TEMPLATE'
 <?php
 
-namespace App\Events;
+namespace __NAMESPACE__;
 
 class __EVENT_NAME__
 {

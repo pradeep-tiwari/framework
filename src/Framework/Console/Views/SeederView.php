@@ -9,7 +9,7 @@ class SeederView
         return <<<'TEMPLATE'
 <?php
 
-namespace Database\Seeders;
+namespace __NAMESPACE__;
 
 class __SEEDER_NAME__
 {

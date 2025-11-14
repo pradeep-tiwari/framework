@@ -6,6 +6,7 @@ use Lightpack\Config\Env;
 use Lightpack\Console\ICommand;
 use Lightpack\Database\Adapters\Mysql;
 use Lightpack\Database\Migrations\Migrator;
+use Lightpack\Database\Migrations\MigrationPathResolver;
 
 class RunMigrationDown implements ICommand
 {
@@ -29,7 +30,8 @@ class RunMigrationDown implements ICommand
 
         if ($confirm) {
             // Collect all migration files from all paths (app + modules)
-            $allMigrationFiles = $this->getAllMigrationFiles();
+            $resolver = new MigrationPathResolver(DIR_ROOT);
+            $allMigrationFiles = $resolver->getAllMigrationFiles();
             
             if('all' === $steps) {
                 $migrations = $migrator->rollbackAll($allMigrationFiles);
@@ -101,44 +103,5 @@ class RunMigrationDown implements ICommand
         }
 
         return strtolower(trim(fgets(STDIN))) === 'y';
-    }
-
-    private function getAllMigrationFiles(): array
-    {
-        $paths = $this->getMigrationPaths();
-        $allFiles = [];
-        
-        foreach ($paths as $path) {
-            if (is_dir($path)) {
-                $files = glob($path . '/*.php');
-                foreach ($files as $file) {
-                    $filename = basename($file);
-                    $allFiles[$filename] = new \SplFileInfo($file);
-                }
-            }
-        }
-        
-        return $allFiles;
-    }
-
-    private function getMigrationPaths(): array
-    {
-        $paths = [DIR_ROOT . '/database/migrations'];
-        
-        // Auto-discover module migrations
-        $modulesDir = DIR_ROOT . '/modules';
-        if (is_dir($modulesDir)) {
-            $modules = glob($modulesDir . '/*', GLOB_ONLYDIR);
-            
-            foreach ($modules as $moduleDir) {
-                $migrationPath = $moduleDir . '/Database/Migrations';
-                
-                if (is_dir($migrationPath)) {
-                    $paths[] = $migrationPath;
-                }
-            }
-        }
-        
-        return $paths;
     }
 }

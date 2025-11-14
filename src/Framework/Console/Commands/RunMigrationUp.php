@@ -6,6 +6,7 @@ use Lightpack\Config\Env;
 use Lightpack\Console\ICommand;
 use Lightpack\Database\Adapters\Mysql;
 use Lightpack\Database\Migrations\Migrator;
+use Lightpack\Database\Migrations\MigrationPathResolver;
 
 class RunMigrationUp implements ICommand
 {
@@ -29,7 +30,8 @@ class RunMigrationUp implements ICommand
         }
 
         $migrator = new Migrator($this->getConnection());
-        $paths = $this->getMigrationPaths();
+        $resolver = new MigrationPathResolver(DIR_ROOT);
+        $paths = $resolver->getPathsWithNames();
         $allMigrations = [];
         
         fputs(STDOUT, "\n");
@@ -85,29 +87,5 @@ class RunMigrationUp implements ICommand
         } 
 
         return true;
-    }
-
-    private function getMigrationPaths(): array
-    {
-        $paths = [
-            'app' => DIR_ROOT . '/database/migrations',
-        ];
-        
-        // Auto-discover module migrations
-        $modulesDir = DIR_ROOT . '/modules';
-        if (is_dir($modulesDir)) {
-            $modules = glob($modulesDir . '/*', GLOB_ONLYDIR);
-            
-            foreach ($modules as $moduleDir) {
-                $moduleName = basename($moduleDir);
-                $migrationPath = $moduleDir . '/Database/Migrations';
-                
-                if (is_dir($migrationPath)) {
-                    $paths[strtolower($moduleName)] = $migrationPath;
-                }
-            }
-        }
-        
-        return $paths;
     }
 }

@@ -4,6 +4,7 @@ namespace Lightpack\Testing;
 
 use Lightpack\Database\DB;
 use Lightpack\Database\Migrations\Migrator;
+use Lightpack\Database\Migrations\MigrationPathResolver;
 
 trait DatabaseTrait
 {
@@ -12,17 +13,28 @@ trait DatabaseTrait
         parent::setUpBeforeClass();
 
         $db = self::createConnection();
-
         $migrator = new Migrator($db);
-        $migrator->run(getcwd() . '/database/migrations');
+        $resolver = new MigrationPathResolver();
+        
+        // Run migrations for app and all modules
+        $paths = $resolver->getPaths();
+        
+        foreach ($paths as $path) {
+            if (is_dir($path)) {
+                $migrator->run($path);
+            }
+        }
     }
 
     public static function tearDownAfterClass(): void
     {
         $db = self::createConnection();
-
         $migrator = new Migrator($db);
-        $migrator->rollbackAll(getcwd() . '/database/migrations');
+        $resolver = new MigrationPathResolver();
+        
+        // Rollback all migrations from app and modules
+        $allMigrationFiles = $resolver->getAllMigrationFiles();
+        $migrator->rollbackAll($allMigrationFiles);
 
         parent::tearDownAfterClass();
     }

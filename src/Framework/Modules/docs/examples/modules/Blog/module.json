@@ -1,0 +1,9 @@
+{
+    "name": "Blog",
+    "display_name": "Blog Management",
+    "description": "Manage blog posts, categories, tags, and comments",
+    "version": "1.0.0",
+    "namespace": "blog",
+    "author": "Your Company",
+    "depends": []
+}

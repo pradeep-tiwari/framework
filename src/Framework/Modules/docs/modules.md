@@ -33,12 +33,57 @@ modules/
     │   └── Unit/
     ├── Providers/
     │   └── BlogProvider.php
+    ├── module.json
     ├── routes.php
     ├── events.php
     ├── commands.php
     ├── filters.php
     └── schedules.php
 ```
+
+## Module Metadata (module.json)
+
+Each module can optionally include a `module.json` file that provides metadata about the module. This file is automatically created when using `php console create:module`.
+
+**modules/Blog/module.json:**
+
+```json
+{
+    "name": "Blog",
+    "display_name": "Blog Management",
+    "description": "Manage blog posts, categories, and comments",
+    "version": "1.0.0",
+    "namespace": "blog",
+    "author": "Your Name",
+    "depends": []
+}
+```
+
+### Metadata Fields
+
+- **name** - Module identifier (matches directory name)
+- **display_name** - Human-readable name for UI
+- **description** - Brief description of module functionality
+- **version** - Semantic version (e.g., "1.2.3")
+- **namespace** - URL-safe namespace for routes/views
+- **author** - Module author name/email
+- **depends** - Array of required module names
+
+### Use Cases
+
+The `module.json` file enables:
+
+- **Module discovery** - List available modules without loading PHP code
+- **Dependency management** - Check requirements before installation
+- **Version tracking** - Track installed versions and available updates
+- **Module marketplace** - Display modules with metadata in admin UI
+- **Documentation** - Standard way to describe module functionality
+
+**Note:** The `module.json` file is **optional**. Modules work perfectly fine without it. It's primarily useful for:
+- Building module management UIs
+- Creating module marketplaces
+- Third-party module distribution
+- Automated dependency checking
 
 ## Creating a Module
 
@@ -51,15 +96,17 @@ php console create:module Blog
 ```
 
 This creates the complete module structure:
+- `module.json` with metadata
 - Provider with proper namespace
-- Routes, events, commands files
-- Directory structure (Controllers, Models, Views, etc.)
-- Config and Assets directories
+- Routes, events, commands, config, schedules, filters files
+- Directory structure (Controllers, Models, Views, Database, Tests, etc.)
+- Assets directories (css, js, img)
 
 Then follow the instructions to:
-1. Add provider to `boot/modules.php`
-2. Update `composer.json` autoload
-3. Run `composer dump-autoload`
+1. Edit `module.json` to add description and metadata
+2. Add provider to `boot/modules.php`
+3. Update `composer.json` autoload (if not already done)
+4. Run `composer dump-autoload`
 
 ### Manual Creation
 

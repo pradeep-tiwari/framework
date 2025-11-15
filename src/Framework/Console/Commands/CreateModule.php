@@ -32,6 +32,9 @@ class CreateModule implements ICommand
         // Create module directory structure
         $this->createDirectoryStructure($modulePath, $moduleName);
         
+        // Create module metadata
+        $this->createModuleJson($modulePath, $moduleName);
+        
         // Create module provider
         $this->createProvider($modulePath, $moduleName);
         
@@ -45,10 +48,15 @@ class CreateModule implements ICommand
         
         // Show success message
         fputs(STDOUT, "✓ Module created: {$moduleName}\n\n");
+        fputs(STDOUT, "Files created:\n");
+        fputs(STDOUT, "  - module.json (metadata)\n");
+        fputs(STDOUT, "  - Providers/{$moduleName}Provider.php\n");
+        fputs(STDOUT, "  - routes.php, events.php, commands.php, config.php, schedules.php, filters.php\n\n");
         fputs(STDOUT, "Next steps:\n");
-        fputs(STDOUT, "1. Add to boot/modules.php:\n");
+        fputs(STDOUT, "1. Edit module.json to add description and metadata\n");
+        fputs(STDOUT, "2. Add to boot/modules.php:\n");
         fputs(STDOUT, "   \\Modules\\{$moduleName}\\Providers\\{$moduleName}Provider::class,\n\n");
-        fputs(STDOUT, "2. Run: composer dump-autoload\n\n");
+        fputs(STDOUT, "3. Run: composer dump-autoload\n\n");
     }
     
     private function createDirectoryStructure(string $basePath, string $moduleName): void
@@ -188,5 +196,25 @@ return [
 PHP;
         
         file_put_contents($modulePath . '/filters.php', $content);
+    }
+
+    private function createModuleJson(string $modulePath, string $moduleName): void
+    {
+        $namespace = str()->dasherize($moduleName);
+        
+        $metadata = [
+            'name' => $moduleName,
+            'display_name' => $moduleName,
+            'description' => '',
+            'version' => '1.0.0',
+            'namespace' => $namespace,
+            'author' => '',
+            'depends' => [],
+        ];
+        
+        file_put_contents(
+            $modulePath . '/module.json',
+            json_encode($metadata, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n"
+        );
     }
 }

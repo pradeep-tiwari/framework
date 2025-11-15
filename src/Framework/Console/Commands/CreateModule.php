@@ -59,10 +59,8 @@ class CreateModule implements ICommand
             '/Models',
             '/Views',
             '/Database/Migrations',
-            '/Tests/Feature',
-            '/Tests/Unit',
+            '/Tests',
             '/Providers',
-            '/Config',
             '/Assets/css',
             '/Assets/js',
         ];

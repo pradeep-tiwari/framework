@@ -41,6 +41,7 @@ class CreateModule implements ICommand
         $this->createCommands($modulePath);
         $this->createConfig($modulePath, $moduleName);
         $this->createSchedules($modulePath);
+        $this->createFilters($modulePath);
         
         // Show success message
         fputs(STDOUT, "✓ Module created: {$moduleName}\n\n");
@@ -172,5 +173,19 @@ PHP;
 PHP;
         
         file_put_contents($modulePath . '/schedules.php', $content);
+    }
+
+    private function createFilters(string $modulePath): void
+    {
+        $content = <<<'PHP'
+<?php
+
+return [
+    // 'filter.name' => \Modules\YourModule\Filters\YourFilter::class,
+];
+
+PHP;
+        
+        file_put_contents($modulePath . '/filters.php', $content);
     }
 }

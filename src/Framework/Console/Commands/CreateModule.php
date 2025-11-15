@@ -59,10 +59,13 @@ class CreateModule implements ICommand
             '/Models',
             '/Views',
             '/Database/Migrations',
+            '/Database/Seeders',
+            '/Database/Factories',
             '/Tests',
             '/Providers',
             '/Assets/css',
             '/Assets/js',
+            '/Assets/img',
         ];
         
         foreach ($directories as $dir) {

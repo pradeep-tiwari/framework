@@ -75,7 +75,7 @@ class CreateModule implements ICommand
     
     private function createProvider(string $modulePath, string $moduleName): void
     {
-        $namespace = strtolower($moduleName);
+        $namespace = str()->dasherize($moduleName);
         
         $content = <<<PHP
 <?php
@@ -116,7 +116,7 @@ PHP;
     
     private function createEvents(string $modulePath): void
     {
-        $content = <<<'PHP'
+        $content = <<<PHP
 <?php
 
 return [
@@ -132,7 +132,7 @@ PHP;
     
     private function createCommands(string $modulePath): void
     {
-        $content = <<<'PHP'
+        $content = <<<PHP
 <?php
 
 return [
@@ -146,8 +146,8 @@ PHP;
 
     private function createConfig(string $modulePath, string $moduleName): void
     {
-        $namespace = str()->underscore($moduleName);
-        $content = <<<'PHP'
+        $namespace = str()->dasherize($moduleName);
+        $content = <<<PHP
 <?php
 
 return [
@@ -163,7 +163,7 @@ PHP;
 
     private function createSchedules(string $modulePath): void
     {
-        $content = <<<'PHP'
+        $content = <<<PHP
 <?php
 
 // schedule()->job(ExampleJob::class)->daily();
@@ -175,7 +175,7 @@ PHP;
 
     private function createFilters(string $modulePath): void
     {
-        $content = <<<'PHP'
+        $content = <<<PHP
 <?php
 
 return [

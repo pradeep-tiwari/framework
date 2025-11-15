@@ -89,21 +89,16 @@ abstract class BaseModuleProvider implements ProviderInterface
     
     protected function loadConfig(Container $container): void
     {
-        $configDir = $this->modulePath . '/Config';
-        if (!is_dir($configDir)) {
+        $configFile = $this->modulePath . '/config.php';
+        if (!file_exists($configFile)) {
             return;
         }
         
-        $configs = glob($configDir . '/*.php');
+        $configs = require $configFile;
         $config = $container->get('config');
         
-        foreach ($configs as $file) {
-            $name = basename($file, '.php');
-            $data = require $file;
-            
-            // Store under modules.{namespace}.{config_name}
-            // e.g., modules.blog.settings
-            $config->set("modules.{$this->namespace}.{$name}", $data);
+        foreach ($configs as $namespace => $config) {
+            $config->set("modules.{$namespace}", $config);
         }
     }
     

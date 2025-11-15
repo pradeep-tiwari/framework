@@ -39,6 +39,8 @@ class CreateModule implements ICommand
         $this->createRoutes($modulePath, $moduleName);
         $this->createEvents($modulePath);
         $this->createCommands($modulePath);
+        $this->createConfig($modulePath, $moduleName);
+        $this->createSchedules($modulePath);
         
         // Show success message
         fputs(STDOUT, "✓ Module created: {$moduleName}\n\n");
@@ -99,21 +101,13 @@ PHP;
     
     private function createRoutes(string $modulePath, string $moduleName): void
     {
-        $namespace = $moduleName;
-        $prefix = strtolower($moduleName);
+        $prefix = str()->dasherize($moduleName);
         
         $content = <<<PHP
 <?php
 
-/**
- * {$moduleName} Module Routes
- */
-
-\$route = app('route');
-
-\$route->group(['prefix' => '{$prefix}'], function(\$route) {
-    // Add your routes here
-    // \$route->get('/', \\Modules\\{$namespace}\\Controllers\\{$moduleName}Controller::class, 'index');
+route()->group(['prefix' => '{$prefix}'], function() {
+    // route()->get('/', {$moduleName}Controller::class, 'index');
 });
 
 PHP;
@@ -125,10 +119,6 @@ PHP;
     {
         $content = <<<'PHP'
 <?php
-
-/**
- * Module Events
- */
 
 return [
     // 'event.name' => [
@@ -146,10 +136,6 @@ PHP;
         $content = <<<'PHP'
 <?php
 
-/**
- * Module Commands
- */
-
 return [
     // 'module:command' => \Modules\YourModule\Commands\YourCommand::class,
 ];
@@ -157,5 +143,34 @@ return [
 PHP;
         
         file_put_contents($modulePath . '/commands.php', $content);
+    }
+
+    private function createConfig(string $modulePath, string $moduleName): void
+    {
+        $namespace = str()->underscore($moduleName);
+        $content = <<<'PHP'
+<?php
+
+return [
+    '{$namespace}' => [
+        // 'config.name' => 'value',
+    ],
+];
+
+PHP;
+        
+        file_put_contents($modulePath . '/config.php', $content);
+    }
+
+    private function createSchedules(string $modulePath): void
+    {
+        $content = <<<'PHP'
+<?php
+
+// schedule()->job(ExampleJob::class)->daily();
+
+PHP;
+        
+        file_put_contents($modulePath . '/schedules.php', $content);
     }
 }

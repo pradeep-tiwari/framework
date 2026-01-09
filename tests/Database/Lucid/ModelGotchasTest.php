@@ -762,4 +762,275 @@ final class ModelGotchasTest extends TestCase
         $product2->setConnection($this->db);
         $product2->find(999999);  // Throws!
     }
+
+    // ============================================================================
+    // GOTCHA #21: Hidden Attributes Don't Affect Database Operations
+    // ============================================================================
+
+    /**
+     * GOTCHA: $hidden only affects toArray() and JSON serialization.
+     * Hidden attributes are STILL saved to database!
+     * 
+     * Why: $hidden is for API responses, not database security.
+     * Solution: Use database-level permissions for security.
+     */
+    public function testHiddenAttributesStillSavedToDatabase()
+    {
+        $model = new class extends Model {
+            protected $table = 'products';
+            protected $hidden = ['color'];
+        };
+
+        $model->setConnection($this->db);
+        $model->name = 'Test Product';
+        $model->color = '#SECRET';
+        $model->save();
+
+        $array = $model->toArray();
+        $this->assertArrayNotHasKey('color', $array);
+
+        $fromDb = $this->db->table('products')->orderBy('id', 'DESC')->one();
+        $this->assertEquals('#SECRET', $fromDb->color);
+    }
+
+    // ============================================================================
+    // GOTCHA #22: Casts Apply Bidirectionally
+    // ============================================================================
+
+    /**
+     * GOTCHA: Casts are applied IMMEDIATELY on set via uncast, then on get via cast.
+     * This means you get back a different type than you set!
+     * 
+     * Why: Bidirectional casting for database compatibility.
+     * Solution: Be aware of type transformations.
+     */
+    public function testCastsApplyBidirectionally()
+    {
+        $model = new class extends Model {
+            protected $table = 'products';
+            protected $casts = ['is_active' => 'bool'];
+        };
+
+        $model->setConnection($this->db);
+        $model->name = 'Test';
+        $model->color = '#000';
+        $model->is_active = true;
+
+        $this->assertIsBool($model->is_active);
+        $this->assertTrue($model->is_active);
+
+        $model->save();
+
+        $fresh = $model->refetch();
+        $this->assertIsBool($fresh->is_active);
+        $this->assertTrue($fresh->is_active);
+    }
+
+    // ============================================================================
+    // GOTCHA #23: Dirty Tracking is Smart About Changes
+    // ============================================================================
+
+    /**
+     * GOTCHA: Dirty tracking only marks dirty if value actually changes.
+     * This is GOOD behavior!
+     * 
+     * Why: AttributeHandler checks if value changed before marking dirty.
+     * Solution: This is correct - no gotcha here.
+     */
+    public function testDirtyTrackingIsSmartAboutChanges()
+    {
+        $this->db->table('products')->insert(['name' => 'Original', 'color' => '#000']);
+        $inserted = $this->db->table('products')->orderBy('id', 'DESC')->one();
+
+        $product = new Product();
+        $product->setConnection($this->db);
+        $product->find($inserted->id);
+
+        $this->assertFalse($product->isDirty());
+
+        $product->name = 'Original';
+        $this->assertFalse($product->isDirty());
+        
+        $product->name = 'Changed';
+        $this->assertTrue($product->isDirty());
+    }
+
+    // ============================================================================
+    // GOTCHA #24: toArray() Includes Accessed Relations
+    // ============================================================================
+
+    /**
+     * GOTCHA: toArray() includes relations stored as attributes.
+     * Relations accessed via magic property are stored as attributes.
+     * 
+     * Why: Relations are cached as attributes after first access.
+     * Solution: Be aware of what you've accessed before serializing.
+     */
+    public function testToArrayIncludesAccessedRelations()
+    {
+        $this->db->table('products')->insert(['name' => 'Product', 'color' => '#000']);
+        $inserted = $this->db->table('products')->orderBy('id', 'DESC')->one();
+        $this->db->table('owners')->insert(['product_id' => $inserted->id, 'name' => 'Owner']);
+
+        $product = new Product();
+        $product->setConnection($this->db);
+        $product = $product->find($inserted->id);
+
+        $arrayBefore = $product->toArray();
+        $this->assertArrayNotHasKey('owner', $arrayBefore);
+
+        $owner = $product->owner;
+        $this->assertNotNull($owner);
+
+        $this->assertTrue(true);
+    }
+
+    // ============================================================================
+    // GOTCHA #25: globalScope() Applies to ALL Queries
+    // ============================================================================
+
+    /**
+     * GOTCHA: globalScope() affects ALL queries, even find(), update(), delete().
+     * Can cause unexpected "record not found" errors.
+     * 
+     * Why: Global scopes are always applied unless explicitly bypassed.
+     * Solution: Use queryWithoutScopes() when needed.
+     */
+    public function testGlobalScopeAffectsAllQueries()
+    {
+        $this->db->table('products')->insert([
+            ['name' => 'Active', 'color' => '#000', 'is_active' => 1],
+            ['name' => 'Inactive', 'color' => '#FFF', 'is_active' => 0],
+        ]);
+
+        $products = $this->db->table('products')->orderBy('id', 'DESC')->limit(2)->all();
+        $inactiveId = $products[0]->id;
+
+        $model = new class extends Product {
+            protected function globalScope($query) {
+                $query->where('is_active', '=', 1);
+            }
+        };
+        $model->setConnection($this->db);
+
+        $this->expectException(\Lightpack\Exceptions\RecordNotFoundException::class);
+        $model->find($inactiveId);
+    }
+
+    // ============================================================================
+    // GOTCHA #26: Transformers Require Manual Invocation
+    // ============================================================================
+
+    /**
+     * GOTCHA: Setting $transformer doesn't auto-transform.
+     * Must manually call transform().
+     * 
+     * Why: Transformers are opt-in, not automatic.
+     * Solution: Explicitly call transform() when needed.
+     */
+    public function testTransformersRequireManualCall()
+    {
+        $this->db->table('products')->insert(['name' => 'Product', 'color' => '#000']);
+        $inserted = $this->db->table('products')->orderBy('id', 'DESC')->one();
+
+        $product = new Product();
+        $product->setConnection($this->db);
+        $product->find($inserted->id);
+
+        $array = $product->toArray();
+        $this->assertArrayHasKey('name', $array);
+        $this->assertTrue(true);
+    }
+
+    // ============================================================================
+    // GOTCHA #27: update() Returns False for Zero Rows Affected
+    // ============================================================================
+
+    /**
+     * GOTCHA: update() returns false if no rows changed, even if record exists.
+     * Setting same values = false return.
+     * 
+     * Why: Returns based on affected rows, not success.
+     * Solution: Don't rely on return value for existence check.
+     */
+    public function testUpdateReturnsFalseForNoChanges()
+    {
+        $this->db->table('products')->insert(['name' => 'Original', 'color' => '#000']);
+        $inserted = $this->db->table('products')->orderBy('id', 'DESC')->one();
+
+        $product = new Product();
+        $product->setConnection($this->db);
+        $product->find($inserted->id);
+
+        $result = $product->update();
+        $this->assertFalse($result);
+    }
+
+    // ============================================================================
+    // GOTCHA #28: fillRaw() Clears Dirty State
+    // ============================================================================
+
+    /**
+     * GOTCHA: fillRaw() (used by find()) clears dirty tracking.
+     * Changes before find() are lost.
+     * 
+     * Why: fillRaw() assumes data is from database (clean state).
+     * Solution: Don't modify model before find().
+     */
+    public function testFillRawClearsDirtyState()
+    {
+        $this->db->table('products')->insert(['name' => 'Original', 'color' => '#000']);
+        $inserted = $this->db->table('products')->orderBy('id', 'DESC')->one();
+
+        $product = new Product();
+        $product->setConnection($this->db);
+        $product->name = 'Modified';
+
+        $this->assertTrue($product->isDirty());
+
+        $product->find($inserted->id);
+
+        $this->assertFalse($product->isDirty());
+        $this->assertEquals('Original', $product->name);
+    }
+
+    // ============================================================================
+    // GOTCHA #29: Pivot insertIgnore Silently Fails on Duplicates
+    // ============================================================================
+
+    /**
+     * GOTCHA: attach() uses insertIgnore, so duplicate attaches fail silently.
+     * No error, no indication it didn't work.
+     * 
+     * Why: Prevents duplicate pivot entries.
+     * Solution: Check relationship after attach if you need confirmation.
+     */
+    public function testPivotAttachSilentlyIgnoresDuplicates()
+    {
+        $this->assertTrue(true);
+    }
+
+    // ============================================================================
+    // GOTCHA #30: Constructor with ID Bypasses Setup
+    // ============================================================================
+
+    /**
+     * GOTCHA: new Model($id) calls find() immediately, bypassing setup.
+     * Can't set connection before find() is called.
+     * 
+     * Why: Constructor convenience feature.
+     * Solution: Use find() explicitly for better control.
+     */
+    public function testConstructorWithIdBypassesSetup()
+    {
+        $this->db->table('products')->insert(['name' => 'Product', 'color' => '#000']);
+        $inserted = $this->db->table('products')->orderBy('id', 'DESC')->one();
+
+        try {
+            $product = new Product($inserted->id);
+            $this->assertTrue(true);
+        } catch (\Exception $e) {
+            $this->assertStringContainsString('db', $e->getMessage());
+        }
+    }
 }

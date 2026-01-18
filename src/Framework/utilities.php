@@ -699,3 +699,15 @@ if (!function_exists('optional')) {
         return $callback ? $callback($value) : $value;
     }
 }
+
+if (!function_exists('agent')) {
+    /**
+     * Returns a new Agent instance for building AI agents with tools.
+     * 
+     * @return \Lightpack\AI\Agent
+     */
+    function agent(): \Lightpack\AI\Agent
+    {
+        return new \Lightpack\AI\Agent(app('ai'));
+    }
+}

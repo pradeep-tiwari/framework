@@ -56,15 +56,15 @@ class AgentTest extends TestCase
     
     public function testAskWithNoTools()
     {
-        $mockTaskBuilder = $this->createMockTaskBuilder();
-        
         $this->mockAI->expects($this->once())
             ->method('ask')
             ->willReturn('Answer without tools');
         
-        $answer = $this->agent->ask('What is 2+2?');
+        $result = $this->agent->ask('What is 2+2?');
         
-        $this->assertEquals('Answer without tools', $answer);
+        $this->assertInstanceOf(\Lightpack\AI\AgentResult::class, $result);
+        $this->assertEquals('Answer without tools', $result->answer());
+        $this->assertEmpty($result->toolsUsed());
     }
     
     public function testAskWithTools()
@@ -86,9 +86,12 @@ class AgentTest extends TestCase
             ->method('ask')
             ->willReturn('The answer is 4');
         
-        $answer = $this->agent->ask('What is 2+2?');
+        $result = $this->agent->ask('What is 2+2?');
         
-        $this->assertEquals('The answer is 4', $answer);
+        $this->assertInstanceOf(\Lightpack\AI\AgentResult::class, $result);
+        $this->assertEquals('The answer is 4', $result->answer());
+        $this->assertContains('calculator', $result->toolsUsed());
+        $this->assertEquals(['result' => 4], $result->toolResult('calculator'));
     }
     
     public function testToolExecutionHandlesErrors()
@@ -110,9 +113,10 @@ class AgentTest extends TestCase
             ->method('ask')
             ->willReturn('Handled error gracefully');
         
-        $answer = $this->agent->ask('Test error handling');
+        $result = $this->agent->ask('Test error handling');
         
-        $this->assertEquals('Handled error gracefully', $answer);
+        $this->assertEquals('Handled error gracefully', $result->answer());
+        $this->assertArrayHasKey('error', $result->toolResult('failing_tool'));
     }
     
     public function testConversationCreation()
@@ -128,14 +132,139 @@ class AgentTest extends TestCase
         $this->assertInstanceOf(\Lightpack\AI\Conversation::class, $conversation);
     }
     
+    public function testToolWithParameters()
+    {
+        $this->agent->tool('search', function($params) {
+            return [
+                'category' => $params['category'],
+                'max_price' => $params['max_price']
+            ];
+        }, 'Search products', [
+            'category' => ['string', 'Product category'],
+            'max_price' => ['number', 'Maximum price']
+        ]);
+        
+        $mockTaskBuilder = $this->createMockTaskBuilder([
+            'tools' => ['search'],
+            'parameters' => [
+                'search' => ['category' => 'laptops', 'max_price' => 1000]
+            ],
+            'reasoning' => 'Search with parameters'
+        ]);
+        
+        $this->mockAI->expects($this->once())
+            ->method('task')
+            ->willReturn($mockTaskBuilder);
+        
+        $this->mockAI->expects($this->once())
+            ->method('ask')
+            ->willReturn('Found laptops under $1000');
+        
+        $result = $this->agent->ask('Find laptops under $1000');
+        
+        $this->assertEquals('Found laptops under $1000', $result->answer());
+        $toolResult = $result->toolResult('search');
+        $this->assertEquals('laptops', $toolResult['category']);
+        $this->assertEquals(1000, $toolResult['max_price']);
+    }
+    
+    public function testTemperatureControl()
+    {
+        $this->agent->tool('helper', fn($q) => 'tool result', 'Helper tool');
+        $this->agent->temperature(0.7);
+        
+        $mockTaskBuilder = $this->createMockTaskBuilder([
+            'tools' => ['helper'],
+            'reasoning' => 'Using helper'
+        ]);
+        
+        $mockTaskBuilder->expects($this->once())
+            ->method('temperature')
+            ->with(0.7)
+            ->willReturnSelf();
+        
+        $this->mockAI->expects($this->once())
+            ->method('task')
+            ->willReturn($mockTaskBuilder);
+        
+        $this->mockAI->expects($this->once())
+            ->method('ask')
+            ->willReturn('Creative answer');
+        
+        $result = $this->agent->ask('Be creative');
+        
+        $this->assertEquals('Creative answer', $result->answer());
+    }
+    
+    public function testSystemPrompt()
+    {
+        $this->agent->tool('helper', fn($q) => 'tool result', 'Helper tool');
+        $this->agent->system('You are a helpful assistant. Be concise.');
+        
+        $mockTaskBuilder = $this->createMockTaskBuilder([
+            'tools' => ['helper'],
+            'reasoning' => 'Using helper'
+        ]);
+        
+        $this->mockAI->expects($this->once())
+            ->method('task')
+            ->willReturn($mockTaskBuilder);
+        
+        $this->mockAI->expects($this->once())
+            ->method('ask')
+            ->willReturn('Concise answer');
+        
+        $result = $this->agent->ask('Help me');
+        
+        $this->assertEquals('Concise answer', $result->answer());
+    }
+    
+    public function testAgentResultToString()
+    {
+        $result = new \Lightpack\AI\AgentResult('Test answer');
+        
+        $this->assertEquals('Test answer', (string) $result);
+    }
+    
+    public function testAgentResultToArray()
+    {
+        $result = new \Lightpack\AI\AgentResult(
+            'Answer',
+            ['tool1' => 'result1'],
+            ['tool1'],
+            'Reasoning'
+        );
+        
+        $array = $result->toArray();
+        
+        $this->assertEquals('Answer', $array['answer']);
+        $this->assertEquals(['tool1' => 'result1'], $array['tool_results']);
+        $this->assertEquals(['tool1'], $array['tools_used']);
+        $this->assertEquals('Reasoning', $array['reasoning']);
+    }
+    
+    public function testAgentResultUsedTool()
+    {
+        $result = new \Lightpack\AI\AgentResult(
+            'Answer',
+            ['search' => 'results'],
+            ['search', 'filter']
+        );
+        
+        $this->assertTrue($result->usedTool('search'));
+        $this->assertTrue($result->usedTool('filter'));
+        $this->assertFalse($result->usedTool('other'));
+    }
+    
     private function createMockTaskBuilder(?array $runResult = null)
     {
         $mockTaskBuilder = $this->getMockBuilder(\stdClass::class)
-            ->addMethods(['prompt', 'expect', 'run'])
+            ->addMethods(['prompt', 'expect', 'run', 'temperature'])
             ->getMock();
         
         $mockTaskBuilder->method('prompt')->willReturnSelf();
         $mockTaskBuilder->method('expect')->willReturnSelf();
+        $mockTaskBuilder->method('temperature')->willReturnSelf();
         
         if ($runResult !== null) {
             $mockTaskBuilder->method('run')->willReturn($runResult);

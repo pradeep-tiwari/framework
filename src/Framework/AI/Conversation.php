@@ -25,16 +25,16 @@ class Conversation
         $this->loadHistory();
     }
     
-    public function ask(string $query): string
+    public function ask(string $query): AgentResult
     {
-        $answer = $this->agent->ask($query, [
+        $result = $this->agent->ask($query, [
             'conversation_history' => $this->getFormattedHistory()
         ]);
         
-        $this->addToHistory($query, $answer);
+        $this->addToHistory($query, $result->answer());
         $this->saveHistory();
         
-        return $answer;
+        return $result;
     }
     
     public function getHistory(): array

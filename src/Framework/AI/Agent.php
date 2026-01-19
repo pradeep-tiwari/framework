@@ -8,29 +8,51 @@ class Agent
 {
     protected array $tools = [];
     protected AI $ai;
+    protected ?float $temperature = null;
+    protected ?string $systemPrompt = null;
     
     public function __construct(AI $ai)
     {
         $this->ai = $ai;
     }
     
-    public function tool(string $name, callable $fn, ?string $description = null): self
+    public function tool(string $name, callable $fn, ?string $description = null, array $parameters = []): self
     {
         $this->tools[$name] = [
             'fn' => $fn,
-            'description' => $description ?? "Tool: {$name}"
+            'description' => $description ?? "Tool: {$name}",
+            'parameters' => $parameters
         ];
         
         return $this;
     }
     
-    public function ask(string $query, array $context = []): string
+    public function temperature(float $temperature): self
+    {
+        $this->temperature = $temperature;
+        return $this;
+    }
+    
+    public function system(string $prompt): self
+    {
+        $this->systemPrompt = $prompt;
+        return $this;
+    }
+    
+    public function ask(string $query, array $context = []): AgentResult
     {
         $plan = $this->planTools($query, $context);
         
-        $results = $this->executeTools($plan['tools'], $query);
+        $results = $this->executeTools($plan, $query);
         
-        return $this->generateAnswer($query, $results, $context);
+        $answer = $this->generateAnswer($query, $results, $context);
+        
+        return new AgentResult(
+            $answer,
+            $results,
+            $plan['tools'] ?? [],
+            $plan['reasoning'] ?? ''
+        );
     }
     
     public function conversation(string $sessionId): Conversation
@@ -41,34 +63,55 @@ class Agent
     protected function planTools(string $query, array $context): array
     {
         if (empty($this->tools)) {
-            return ['tools' => [], 'reasoning' => 'No tools available'];
+            return ['tools' => [], 'parameters' => [], 'reasoning' => 'No tools available'];
         }
         
         $toolList = $this->getToolDescriptions();
         
         $prompt = "Query: {$query}\n\nAvailable tools:\n{$toolList}";
         
+        if ($this->systemPrompt) {
+            $prompt = "{$this->systemPrompt}\n\n{$prompt}";
+        }
+        
         if (!empty($context)) {
             $prompt .= "\n\nContext: " . json_encode($context, JSON_PRETTY_PRINT);
         }
         
-        return $this->ai->task()
-            ->prompt($prompt)
-            ->expect([
-                'tools' => ['array', 'Tool names to use (empty array if none needed)'],
-                'reasoning' => ['string', 'Brief explanation of tool selection']
-            ])
-            ->run();
+        $schema = [
+            'tools' => ['array', 'Tool names to use (empty array if none needed)'],
+            'reasoning' => ['string', 'Brief explanation of tool selection']
+        ];
+        
+        if ($this->hasToolsWithParameters()) {
+            $schema['parameters'] = ['object', 'Parameters for each tool (key: tool name, value: parameters object)'];
+        }
+        
+        $task = $this->ai->task()->prompt($prompt)->expect($schema);
+        
+        if ($this->temperature !== null) {
+            $task->temperature($this->temperature);
+        }
+        
+        return $task->run();
     }
     
-    protected function executeTools(array $toolNames, string $query): array
+    protected function executeTools(array $plan, string $query): array
     {
         $results = [];
+        $toolNames = $plan['tools'] ?? [];
+        $parameters = $plan['parameters'] ?? [];
         
         foreach ($toolNames as $name) {
             if (isset($this->tools[$name])) {
                 try {
-                    $results[$name] = $this->tools[$name]['fn']($query);
+                    $toolParams = $parameters[$name] ?? [];
+                    
+                    if (empty($this->tools[$name]['parameters'])) {
+                        $results[$name] = $this->tools[$name]['fn']($query);
+                    } else {
+                        $results[$name] = $this->tools[$name]['fn']($toolParams);
+                    }
                 } catch (\Exception $e) {
                     $results[$name] = [
                         'error' => $e->getMessage(),
@@ -103,10 +146,32 @@ class Agent
         $descriptions = [];
         
         foreach ($this->tools as $name => $tool) {
-            $descriptions[] = "- {$name}: {$tool['description']}";
+            $desc = "- {$name}: {$tool['description']}";
+            
+            if (!empty($tool['parameters'])) {
+                $params = [];
+                foreach ($tool['parameters'] as $paramName => $paramDef) {
+                    $type = is_array($paramDef) ? $paramDef[0] : 'string';
+                    $description = is_array($paramDef) && isset($paramDef[1]) ? $paramDef[1] : '';
+                    $params[] = "  - {$paramName} ({$type}): {$description}";
+                }
+                $desc .= "\n" . implode("\n", $params);
+            }
+            
+            $descriptions[] = $desc;
         }
         
         return implode("\n", $descriptions);
+    }
+    
+    protected function hasToolsWithParameters(): bool
+    {
+        foreach ($this->tools as $tool) {
+            if (!empty($tool['parameters'])) {
+                return true;
+            }
+        }
+        return false;
     }
     
     public function getTools(): array

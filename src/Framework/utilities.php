@@ -702,12 +702,12 @@ if (!function_exists('optional')) {
 
 if (!function_exists('agent')) {
     /**
-     * Returns a new Agent instance for building AI agents with tools.
+     * Get an AI agent instance.
      * 
-     * @return \Lightpack\AI\Agent
+     * @return \Lightpack\AI\Agent\Agent
      */
-    function agent(): \Lightpack\AI\Agent
+    function agent(): \Lightpack\AI\Agent\Agent
     {
-        return new \Lightpack\AI\Agent(app('ai'));
+        return new \Lightpack\AI\Agent\Agent(app('ai'));
     }
 }

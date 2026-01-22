@@ -1,6 +1,8 @@
 <?php
 
-use Lightpack\AI\Agent;
+use Lightpack\AI\Agent\Agent;
+use Lightpack\AI\Agent\AgentResult;
+use Lightpack\AI\Agent\Conversation;
 use Lightpack\AI\AI;
 use PHPUnit\Framework\TestCase;
 
@@ -62,7 +64,7 @@ class AgentTest extends TestCase
         
         $result = $this->agent->ask('What is 2+2?');
         
-        $this->assertInstanceOf(\Lightpack\AI\AgentResult::class, $result);
+        $this->assertInstanceOf(AgentResult::class, $result);
         $this->assertEquals('Answer without tools', $result->answer());
         $this->assertEmpty($result->toolsUsed());
     }
@@ -88,7 +90,7 @@ class AgentTest extends TestCase
         
         $result = $this->agent->ask('What is 2+2?');
         
-        $this->assertInstanceOf(\Lightpack\AI\AgentResult::class, $result);
+        $this->assertInstanceOf(AgentResult::class, $result);
         $this->assertEquals('The answer is 4', $result->answer());
         $this->assertContains('calculator', $result->toolsUsed());
         $this->assertEquals(['result' => 4], $result->toolResult('calculator'));
@@ -129,7 +131,7 @@ class AgentTest extends TestCase
         
         $conversation = $this->agent->conversation('session_123');
         
-        $this->assertInstanceOf(\Lightpack\AI\Conversation::class, $conversation);
+        $this->assertInstanceOf(Conversation::class, $conversation);
     }
     
     public function testToolWithParameters()
@@ -221,14 +223,14 @@ class AgentTest extends TestCase
     
     public function testAgentResultToString()
     {
-        $result = new \Lightpack\AI\AgentResult('Test answer');
+        $result = new AgentResult('Test answer');
         
         $this->assertEquals('Test answer', (string) $result);
     }
     
     public function testAgentResultToArray()
     {
-        $result = new \Lightpack\AI\AgentResult(
+        $result = new AgentResult(
             'Answer',
             ['tool1' => 'result1'],
             ['tool1'],
@@ -245,7 +247,7 @@ class AgentTest extends TestCase
     
     public function testAgentResultUsedTool()
     {
-        $result = new \Lightpack\AI\AgentResult(
+        $result = new AgentResult(
             'Answer',
             ['search' => 'results'],
             ['search', 'filter']

@@ -1,7 +1,8 @@
 <?php
 
-use Lightpack\AI\Agent;
-use Lightpack\AI\Conversation;
+use Lightpack\AI\Agent\Agent;
+use Lightpack\AI\Agent\AgentResult;
+use Lightpack\AI\Agent\Conversation;
 use PHPUnit\Framework\TestCase;
 
 class ConversationTest extends TestCase
@@ -43,7 +44,7 @@ class ConversationTest extends TestCase
     
     public function testAskAddsToHistory()
     {
-        $mockResult = new \Lightpack\AI\AgentResult('Agent response');
+        $mockResult = new AgentResult('Agent response');
         
         $this->mockAgent->expects($this->once())
             ->method('ask')
@@ -51,7 +52,7 @@ class ConversationTest extends TestCase
         
         $result = $this->conversation->ask('User question');
         
-        $this->assertInstanceOf(\Lightpack\AI\AgentResult::class, $result);
+        $this->assertInstanceOf(AgentResult::class, $result);
         $this->assertEquals('Agent response', $result->answer());
         
         $history = $this->conversation->getHistory();
@@ -67,9 +68,9 @@ class ConversationTest extends TestCase
         $this->mockAgent->expects($this->exactly(3))
             ->method('ask')
             ->willReturnOnConsecutiveCalls(
-                new \Lightpack\AI\AgentResult('Answer 1'),
-                new \Lightpack\AI\AgentResult('Answer 2'),
-                new \Lightpack\AI\AgentResult('Answer 3')
+                new AgentResult('Answer 1'),
+                new AgentResult('Answer 2'),
+                new AgentResult('Answer 3')
             );
         
         $this->conversation->ask('Question 1');
@@ -84,7 +85,7 @@ class ConversationTest extends TestCase
     public function testHistoryLimitEnforced()
     {
         $this->mockAgent->method('ask')
-            ->willReturn(new \Lightpack\AI\AgentResult('Response'));
+            ->willReturn(new AgentResult('Response'));
         
         for ($i = 1; $i <= 10; $i++) {
             $this->conversation->ask("Question {$i}");
@@ -100,7 +101,7 @@ class ConversationTest extends TestCase
     public function testClearHistory()
     {
         $this->mockAgent->method('ask')
-            ->willReturn(new \Lightpack\AI\AgentResult('Response'));
+            ->willReturn(new AgentResult('Response'));
         
         $this->conversation->ask('Question 1');
         $this->conversation->ask('Question 2');
@@ -122,7 +123,7 @@ class ConversationTest extends TestCase
     public function testForgetDeletesCache()
     {
         $this->mockAgent->method('ask')
-            ->willReturn(new \Lightpack\AI\AgentResult('Response'));
+            ->willReturn(new AgentResult('Response'));
         
         $this->conversation->ask('Question');
         
@@ -135,7 +136,7 @@ class ConversationTest extends TestCase
     public function testHistoryPersistsAcrossInstances()
     {
         $this->mockAgent->method('ask')
-            ->willReturn(new \Lightpack\AI\AgentResult('Response'));
+            ->willReturn(new AgentResult('Response'));
         
         $this->conversation->ask('Question 1');
         
@@ -159,7 +160,7 @@ class ConversationTest extends TestCase
     {
         $this->mockAgent->expects($this->exactly(2))
             ->method('ask')
-            ->willReturn(new \Lightpack\AI\AgentResult('Response'));
+            ->willReturn(new AgentResult('Response'));
         
         $this->conversation->ask('First question');
         $this->conversation->ask('New question');

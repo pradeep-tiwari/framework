@@ -1,6 +1,6 @@
 <?php
 
-namespace Lightpack\AI;
+namespace Lightpack\AI\Agent;
 
 use Lightpack\AI\AI;
 

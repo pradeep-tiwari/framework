@@ -269,7 +269,13 @@ class AgentTest extends TestCase
         $mockTaskBuilder->method('temperature')->willReturnSelf();
         
         if ($runResult !== null) {
-            $mockTaskBuilder->method('run')->willReturn($runResult);
+            // Wrap in proper TaskBuilder result structure
+            $mockTaskBuilder->method('run')->willReturn([
+                'success' => true,
+                'data' => $runResult,
+                'raw' => json_encode($runResult),
+                'errors' => []
+            ]);
         }
         
         return $mockTaskBuilder;

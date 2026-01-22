@@ -223,10 +223,28 @@ class TaskBuilder
      */
     protected function coerceSchemaOnObject(array $data): array
     {
-        foreach ($this->expectSchema as $key => $type) {
+        foreach ($this->expectSchema as $key => $typeInfo) {
             if (!array_key_exists($key, $data)) {
                 $data[$key] = null;
             }
+            
+            // Extract type from array format: ['type', 'description']
+            $type = is_array($typeInfo) ? $typeInfo[0] : $typeInfo;
+            
+            // Handle array type specially - AI sometimes returns single values as strings
+            if ($type === 'array') {
+                if (!is_array($data[$key]) && $data[$key] !== null) {
+                    // Wrap non-array values in an array
+                    $data[$key] = [$data[$key]];
+                }
+                continue;
+            }
+            
+            // Skip type coercion for objects and nulls
+            if ($type === 'object' || $data[$key] === null) {
+                continue;
+            }
+            
             settype($data[$key], $type);
         }
         return $data;
@@ -311,7 +329,15 @@ class TaskBuilder
      */
     protected function extractJson(string $text): ?string
     {
-        // 1. Try to extract a JSON array (most robust, preferred format)
+        // If expecting a schema object (not an array), prioritize objects over arrays
+        // This prevents extracting nested arrays instead of the full response object
+        if ($this->expectSchema && !$this->expectArrayKey) {
+            if (preg_match('/\{.*\}/s', $text, $matches)) {
+                return $matches[0];
+            }
+        }
+        
+        // 1. Try to extract a JSON array (for expectArray cases)
         if (preg_match('/(\[.*\])/s', $text, $matches)) {
             return $matches[0];
         }

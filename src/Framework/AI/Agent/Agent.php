@@ -93,7 +93,11 @@ class Agent
             $task->temperature($this->temperature);
         }
         
-        return $task->run();
+        $result = $task->run();
+        
+        // task()->run() returns ['success' => bool, 'data' => array, 'raw' => string, 'errors' => array]
+        // Return the data part, or empty structure if planning failed
+        return $result['success'] ? $result['data'] : ['tools' => [], 'parameters' => [], 'reasoning' => 'Planning failed'];
     }
     
     protected function executeTools(array $plan, string $query): array
@@ -101,6 +105,14 @@ class Agent
         $results = [];
         $toolNames = $plan['tools'] ?? [];
         $parameters = $plan['parameters'] ?? [];
+        
+        // Handle case where AI returns parameters directly for single tool
+        // Expected: {"parameters": {"tool_name": {...}}}
+        // Sometimes AI returns: {"parameters": {...}} when there's only one tool
+        if (count($toolNames) === 1 && !empty($parameters) && !isset($parameters[$toolNames[0]])) {
+            // If parameters doesn't have the tool name as a key, assume it's the params for the single tool
+            $parameters = [$toolNames[0] => $parameters];
+        }
         
         foreach ($toolNames as $name) {
             if (isset($this->tools[$name])) {

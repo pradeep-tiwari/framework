@@ -1,6 +1,8 @@
 <?php
 namespace Lightpack\AI;
 
+use Lightpack\AI\Agent\Agent;
+
 class TaskBuilder
 {
     protected array $messages = [];
@@ -18,6 +20,9 @@ class TaskBuilder
     protected ?string $rawResponse = null;
     protected ?bool $useCache = null;
     protected ?int $cacheTtl = null;
+    protected array $tools = [];
+    protected bool $strictTools = false;
+    protected ?Agent $agent = null;
     
     public function __construct($provider)
     {
@@ -111,8 +116,42 @@ class TaskBuilder
         return $this;
     }
 
+    /**
+     * Register tools for agent execution.
+     * 
+     * @param array $tools Array of tools: ['name' => ['fn' => callable, 'description' => string, 'params' => array]]
+     */
+    public function tools(array $tools): self
+    {
+        $this->tools = $tools;
+        return $this;
+    }
+
+    /**
+     * Enable strict mode: AI can ONLY use tool results, no hallucination.
+     */
+    public function strict(bool $strict = true): self
+    {
+        $this->strictTools = $strict;
+        return $this;
+    }
+
+    /**
+     * Create a conversation session.
+     */
+    public function conversation(string $sessionId, int $maxHistory = 10, int $ttl = 3600)
+    {
+        return $this->getAgent()->conversation($this, $sessionId, $maxHistory, $ttl);
+    }
+
     public function run(): array
     {
+        // If tools registered, delegate to Agent
+        if (!empty($this->tools)) {
+            return $this->getAgent()->execute($this);
+        }
+        
+        // Otherwise, existing flow (unchanged)
         $params = $this->buildParams();
         if ($this->useCache !== null) {
             $params['cache'] = $this->useCache;
@@ -284,6 +323,17 @@ class TaskBuilder
             $example[$key] = $type === 'string' ? 'example' : ($type === 'int' ? 0 : null);
         }
         return $example;
+    }
+
+    /**
+     * Get or create Agent instance.
+     */
+    protected function getAgent(): Agent
+    {
+        if ($this->agent === null) {
+            $this->agent = new Agent($this->provider);
+        }
+        return $this->agent;
     }
 
     /**

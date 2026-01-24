@@ -47,7 +47,12 @@ class TaskBuilder
             if (is_int($key)) {
                 $normalized[$type] = 'string';
             } else {
-                $normalized[$key] = $type;
+                // Handle both 'key' => 'type' and 'key' => ['type', 'description']
+                if (is_array($type)) {
+                    $normalized[$key] = $type[0]; // Extract just the type
+                } else {
+                    $normalized[$key] = $type;
+                }
             }
         }
         $this->expectSchema = $normalized;
@@ -136,6 +141,9 @@ class TaskBuilder
         } elseif ($this->expectSchema && is_array($data)) {
             $data = $this->coerceSchemaOnObject($data);
             $success = true;
+        } elseif (!$this->expectSchema && !$this->expectArrayKey) {
+            // Plain text mode - no schema expected, always success if we got a response
+            $success = !empty($this->rawResponse);
         }
 
         // Check required fields BEFORE coercion
@@ -227,7 +235,13 @@ class TaskBuilder
             if (!array_key_exists($key, $data)) {
                 $data[$key] = null;
             }
-            settype($data[$key], $type);
+            
+            // Don't coerce null values - preserve them
+            if ($data[$key] !== null) {
+                // Map 'number' to 'float' for settype compatibility
+                $phpType = $type === 'number' ? 'float' : $type;
+                settype($data[$key], $phpType);
+            }
         }
         return $data;
     }

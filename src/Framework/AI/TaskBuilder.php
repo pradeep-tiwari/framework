@@ -52,7 +52,12 @@ class TaskBuilder
             if (is_int($key)) {
                 $normalized[$type] = 'string';
             } else {
-                $normalized[$key] = $type;
+                // Handle both 'key' => 'type' and 'key' => ['type', 'description']
+                if (is_array($type)) {
+                    $normalized[$key] = $type[0]; // Extract just the type
+                } else {
+                    $normalized[$key] = $type;
+                }
             }
         }
         $this->expectSchema = $normalized;

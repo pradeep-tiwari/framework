@@ -5,7 +5,6 @@ namespace Lightpack\AI;
 use Lightpack\Http\Http;
 use Lightpack\Cache\Cache;
 use Lightpack\Config\Config;
-use Lightpack\Logger\Logger;
 use Lightpack\AI\VectorSearch\VectorSearchInterface;
 use Lightpack\AI\VectorSearch\InMemoryVectorSearch;
 
@@ -17,7 +16,6 @@ abstract class AI
         protected Http $http,
         protected Cache $cache,
         protected Config $config,
-        protected Logger $logger,
     ) {}
 
     /**
@@ -113,7 +111,7 @@ abstract class AI
     protected function getVectorSearch(): VectorSearchInterface
     {
         if ($this->vectorSearch === null) {
-            $this->vectorSearch = new InMemoryVectorSearch($this->logger);
+            $this->vectorSearch = new InMemoryVectorSearch();
         }
         return $this->vectorSearch;
     }
@@ -165,13 +163,11 @@ abstract class AI
 
             if ($response->failed()) {
                 $errorMsg = $response->error() ?: 'HTTP error ' . $response->status();
-                $this->logger->error(static::class . ' API response: ' . $response->body());
                 throw new \Exception(static::class . ' API error: ' . $errorMsg);
             }
 
             return json_decode($response->body(), true);
         } catch (\Exception $e) {
-            $this->logger->error(static::class . ' API error: ' . $e->getMessage());
             throw $e;
         }
     }

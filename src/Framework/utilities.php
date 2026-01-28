@@ -585,18 +585,6 @@ if (!function_exists('ai')) {
     }
 }
 
-if (!function_exists('agent')) {
-    /**
-     * Create a new AI agent instance.
-     * 
-     * @return \Lightpack\AI\Agent\Agent
-     */
-    function agent(): \Lightpack\AI\Agent\Agent
-    {
-        return new \Lightpack\AI\Agent\Agent(ai());
-    }
-}
-
 if (!function_exists('sms')) {
     /**
      * Return configured instance of sms provider.

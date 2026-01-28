@@ -18,6 +18,7 @@ class TaskBuilder
     protected ?string $rawResponse = null;
     protected ?bool $useCache = null;
     protected ?int $cacheTtl = null;
+    protected array $tools = [];
     
     public function __construct($provider)
     {
@@ -116,8 +117,23 @@ class TaskBuilder
         return $this;
     }
 
+    public function tool(string $name, callable $fn, ?string $description = null, array $params = []): self
+    {
+        $this->tools[$name] = [
+            'fn' => $fn,
+            'description' => $description ?? "Tool: {$name}",
+            'params' => $params,
+        ];
+
+        return $this;
+    }
+
     public function run(): array
     {
+        if (!empty($this->tools) && ($this->prompt !== null || !empty($this->messages))) {
+            return $this->runWithTools();
+        }
+
         $params = $this->buildParams();
         if ($this->useCache !== null) {
             $params['cache'] = $this->useCache;
@@ -167,6 +183,350 @@ class TaskBuilder
         ];
     }
 
+    protected function runWithTools(): array
+    {
+        $this->errors = [];
+
+        $userQuery = $this->prompt ?? $this->lastUserMessage() ?? '';
+        if ($userQuery === '') {
+            return [
+                'success' => false,
+                'data' => null,
+                'raw' => null,
+                'errors' => ['No user prompt provided'],
+                'tools_used' => [],
+                'tool_results' => [],
+            ];
+        }
+
+        $decisionPrompt = $this->buildToolDecisionPrompt($userQuery);
+        $decisionText = $this->generateRawText($decisionPrompt, temperature: 0.0);
+        $decision = $this->decodeJsonObject($decisionText);
+
+        if (!is_array($decision)) {
+            return [
+                'success' => false,
+                'data' => null,
+                'raw' => $decisionText,
+                'errors' => ['Failed to parse tool decision JSON'],
+                'tools_used' => [],
+                'tool_results' => [],
+            ];
+        }
+
+        $toolName = $decision['tool'] ?? null;
+        $toolParams = $decision['params'] ?? null;
+
+        if (!is_string($toolName) || $toolName === '') {
+            return [
+                'success' => false,
+                'data' => null,
+                'raw' => $decisionText,
+                'errors' => ['Tool decision missing "tool"'],
+                'tools_used' => [],
+                'tool_results' => [],
+            ];
+        }
+
+        if ($toolName === 'none') {
+            $answer = $this->generateRawText($this->buildToolNoneAnswerPrompt($userQuery), temperature: $this->temperature ?? 0.3);
+
+            return [
+                'success' => true,
+                'data' => null,
+                'raw' => $answer,
+                'errors' => [],
+                'tools_used' => [],
+                'tool_results' => [],
+            ];
+        }
+
+        if (!isset($this->tools[$toolName])) {
+            return [
+                'success' => false,
+                'data' => null,
+                'raw' => $decisionText,
+                'errors' => ["Unknown tool: {$toolName}"],
+                'tools_used' => [],
+                'tool_results' => [],
+            ];
+        }
+
+        if (!is_array($toolParams)) {
+            return [
+                'success' => false,
+                'data' => null,
+                'raw' => $decisionText,
+                'errors' => ['Tool decision missing "params" object'],
+                'tools_used' => [],
+                'tool_results' => [],
+            ];
+        }
+
+        $toolDef = $this->tools[$toolName];
+        $validatedParams = $this->validateToolParams($toolParams, $toolDef['params'] ?? []);
+        if ($validatedParams === null) {
+            return [
+                'success' => false,
+                'data' => null,
+                'raw' => $decisionText,
+                'errors' => $this->errors,
+                'tools_used' => [$toolName],
+                'tool_results' => [],
+            ];
+        }
+
+        try {
+            $toolResult = ($toolDef['fn'])($validatedParams);
+        } catch (\Throwable $e) {
+            return [
+                'success' => false,
+                'data' => null,
+                'raw' => null,
+                'errors' => ['Tool execution failed: ' . $e->getMessage()],
+                'tools_used' => [$toolName],
+                'tool_results' => [],
+            ];
+        }
+
+        $finalPrompt = $this->buildToolFinalAnswerPrompt($userQuery, $toolName, $toolResult);
+        $answer = $this->generateRawText($finalPrompt, temperature: $this->temperature ?? 0.3);
+
+        return [
+            'success' => true,
+            'data' => null,
+            'raw' => $answer,
+            'errors' => [],
+            'tools_used' => [$toolName],
+            'tool_results' => [$toolName => $toolResult],
+        ];
+    }
+
+    protected function buildToolDecisionPrompt(string $userQuery): string
+    {
+        $toolLines = [];
+        foreach ($this->tools as $name => $tool) {
+            $toolLines[] = $this->describeToolForPrompt($name, $tool);
+        }
+
+        $toolList = implode("\n", $toolLines);
+
+        return "Decide if you should call ONE tool to help answer the user.\n\n"
+            . "User: {$userQuery}\n\n"
+            . "Available Tools:\n{$toolList}\n\n"
+            . "Rules:\n"
+            . "- Return ONLY a JSON object. No markdown, no extra text.\n"
+            . "- Choose tool=\"none\" if no tool is needed or if required parameters are missing.\n"
+            . "- If you choose a tool, include a JSON object params with all required parameters.\n\n"
+            . "Response format:\n"
+            . '{"tool":"tool_name_or_none","params":{}}';
+    }
+
+    protected function buildToolNoneAnswerPrompt(string $userQuery): string
+    {
+        return "User: {$userQuery}\n\n"
+            . "Provide a helpful answer. If you need more details, ask a clarifying question.";
+    }
+
+    protected function buildToolFinalAnswerPrompt(string $userQuery, string $toolName, mixed $toolResult): string
+    {
+        $toolResultText = $this->formatForPrompt($toolResult);
+
+        return "User: {$userQuery}\n\n"
+            . "Tool Used: {$toolName}\n\n"
+            . "Tool Result:\n{$toolResultText}\n\n"
+            . "Rules:\n"
+            . "- Use ONLY the Tool Result for facts.\n"
+            . "- If the Tool Result does not contain enough information, say so explicitly.\n"
+            . "- Do not invent details.\n\n"
+            . "Answer:";
+    }
+
+    protected function describeToolForPrompt(string $name, array $tool): string
+    {
+        $desc = (string)($tool['description'] ?? "Tool: {$name}");
+        $params = $tool['params'] ?? [];
+        $paramLines = [];
+
+        foreach ($params as $key => $type) {
+            if (is_int($key)) {
+                continue;
+            }
+
+            $paramType = is_array($type) ? ($type[0] ?? 'string') : $type;
+            $paramDesc = is_array($type) ? ($type[1] ?? '') : '';
+            $line = "- {$key}: {$paramType}";
+            if ($paramDesc !== '') {
+                $line .= " ({$paramDesc})";
+            }
+            $paramLines[] = $line;
+        }
+
+        $paramsText = empty($paramLines) ? '- (no parameters)' : implode("\n", $paramLines);
+
+        return "{$name}: {$desc}\nParameters:\n{$paramsText}\n";
+    }
+
+    protected function validateToolParams(array $params, array $schema): ?array
+    {
+        $this->errors = [];
+
+        $normalized = [];
+        foreach ($schema as $key => $type) {
+            if (is_int($key)) {
+                $normalized[$type] = 'string';
+            } else {
+                $normalized[$key] = is_array($type) ? ($type[0] ?? 'string') : $type;
+            }
+        }
+
+        foreach ($normalized as $key => $type) {
+            if (!array_key_exists($key, $params) || $params[$key] === null) {
+                $this->errors[] = "Missing required parameter: {$key}";
+                continue;
+            }
+
+            $value = $params[$key];
+            if (!$this->valueMatchesType($value, $type)) {
+                $this->errors[] = "Invalid parameter type for {$key}: expected {$type}";
+                continue;
+            }
+
+            if ($type === 'int') {
+                $params[$key] = (int)$value;
+            } elseif ($type === 'number') {
+                $params[$key] = (float)$value;
+            } elseif ($type === 'bool') {
+                $params[$key] = (bool)$value;
+            } elseif ($type === 'string') {
+                $params[$key] = (string)$value;
+            }
+        }
+
+        return empty($this->errors) ? $params : null;
+    }
+
+    protected function valueMatchesType(mixed $value, string $type): bool
+    {
+        return match ($type) {
+            'string' => is_string($value) || is_numeric($value) || is_bool($value),
+            'int' => is_int($value) || (is_string($value) && preg_match('/^-?\d+$/', $value) === 1),
+            'number' => is_int($value) || is_float($value) || (is_string($value) && is_numeric($value)),
+            'bool' => is_bool($value) || $value === 0 || $value === 1 || $value === '0' || $value === '1',
+            'array' => is_array($value),
+            default => true,
+        };
+    }
+
+    protected function generateRawText(string $prompt, float $temperature = 0.3): string
+    {
+        $task = new self($this->provider);
+        if ($this->model !== null) {
+            $task->model($this->model);
+        }
+        if ($this->maxTokens !== null) {
+            $task->maxTokens($this->maxTokens);
+        }
+        if ($this->system !== null) {
+            $task->system($this->system);
+        }
+        $task->prompt($prompt)->temperature($temperature);
+
+        $result = $task->run();
+        return (string)($result['raw'] ?? '');
+    }
+
+    protected function decodeJsonObject(string $text): ?array
+    {
+        $json = $this->extractJson($text) ?? $text;
+        $decoded = json_decode($json, true);
+        return is_array($decoded) ? $decoded : null;
+    }
+
+    protected function lastUserMessage(): ?string
+    {
+        for ($i = count($this->messages) - 1; $i >= 0; $i--) {
+            if (($this->messages[$i]['role'] ?? null) === 'user') {
+                return (string)($this->messages[$i]['content'] ?? '');
+            }
+        }
+
+        return null;
+    }
+
+    protected function formatForPrompt(mixed $value): string
+    {
+        $maxChars = 12000;
+        $maxDepth = 5;
+        $maxItems = 50;
+        $maxStringLen = 800;
+
+        if (is_string($value)) {
+            return $this->truncateString($value, $maxChars);
+        }
+
+        if (is_scalar($value) || $value === null) {
+            return $this->truncateString((string)$value, $maxChars);
+        }
+
+        $normalized = $this->normalizeForPrompt($value, $maxDepth, $maxItems, $maxStringLen);
+        $json = json_encode($normalized, JSON_PRETTY_PRINT | JSON_PARTIAL_OUTPUT_ON_ERROR);
+        if (!is_string($json)) {
+            $json = '[unserializable tool result]';
+        }
+
+        return $this->truncateString($json, $maxChars);
+    }
+
+    protected function normalizeForPrompt(mixed $value, int $maxDepth, int $maxItems, int $maxStringLen): mixed
+    {
+        if ($maxDepth <= 0) {
+            return '[max depth reached]';
+        }
+
+        if (is_string($value)) {
+            return $this->truncateString($value, $maxStringLen);
+        }
+
+        if (is_scalar($value) || $value === null) {
+            return $value;
+        }
+
+        if (is_array($value)) {
+            $out = [];
+            $count = 0;
+
+            foreach ($value as $k => $v) {
+                if ($count >= $maxItems) {
+                    $out['__truncated__'] = true;
+                    $out['__truncated_reason__'] = 'max items reached';
+                    break;
+                }
+
+                $key = is_string($k) ? $this->truncateString($k, 120) : $k;
+                $out[$key] = $this->normalizeForPrompt($v, $maxDepth - 1, $maxItems, $maxStringLen);
+                $count++;
+            }
+
+            return $out;
+        }
+
+        if (is_object($value)) {
+            return $this->normalizeForPrompt(get_object_vars($value), $maxDepth - 1, $maxItems, $maxStringLen);
+        }
+
+        return '[unsupported tool result type]';
+    }
+
+    protected function truncateString(string $value, int $maxLen): string
+    {
+        if (strlen($value) <= $maxLen) {
+            return $value;
+        }
+
+        return substr($value, 0, $maxLen) . '...';
+    }
+
     /**
      * Build request parameters for the provider.
      */
@@ -175,26 +535,30 @@ class TaskBuilder
         $params = [];
         if (!empty($this->messages)) {
             $params['messages'] = $this->messages;
-            if ($this->system) {
+            if ($this->system !== null) {
                 array_unshift($params['messages'], ['role' => 'system', 'content' => $this->system]);
             }
-            if (($this->expectSchema || $this->expectArrayKey)) {
-                $schemaInstruction = $this->buildSchemaInstruction();
-                array_unshift($params['messages'], ['role' => 'system', 'content' => $schemaInstruction]);
-            }
-        } else {
-            $finalPrompt = $this->prompt;
-            if (($this->expectSchema || $this->expectArrayKey)) {
-                $finalPrompt .= ' ' . $this->buildSchemaInstruction();
-            }
-            $params['prompt'] = $finalPrompt;
-            if ($this->system) {
-                $params['system'] = $this->system;
-            }
         }
-        if ($this->model) $params['model'] = $this->model;
-        if ($this->temperature) $params['temperature'] = $this->temperature;
-        if ($this->maxTokens) $params['max_tokens'] = $this->maxTokens;
+
+        if ($this->prompt) {
+            $params['prompt'] = $this->prompt;
+        }
+
+        if ($this->temperature !== null) {
+            $params['temperature'] = $this->temperature;
+        }
+
+        if ($this->maxTokens !== null) {
+            $params['max_tokens'] = $this->maxTokens;
+        }
+
+        if ($this->model) {
+            $params['model'] = $this->model;
+        }
+
+        if ($this->example) {
+            $params['example'] = $this->example;
+        }
         return $params;
     }
 

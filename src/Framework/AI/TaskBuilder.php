@@ -298,8 +298,6 @@ class TaskBuilder
         }
 
         $context = new ToolContext(
-            messages: $this->messages,
-            toolResults: [],
             metadata: $this->metadata
         );
 

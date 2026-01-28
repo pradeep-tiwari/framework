@@ -1,6 +1,11 @@
 <?php
 namespace Lightpack\AI;
 
+use Lightpack\AI\Tools\ToolContext;
+use Lightpack\AI\Tools\ToolInvoker;
+use Lightpack\AI\Support\JsonExtractor;
+use Lightpack\AI\Support\SchemaValidator;
+
 class TaskBuilder
 {
     protected array $messages = [];
@@ -19,6 +24,7 @@ class TaskBuilder
     protected ?bool $useCache = null;
     protected ?int $cacheTtl = null;
     protected array $tools = [];
+    protected array $metadata = [];
     
     public function __construct($provider)
     {
@@ -117,12 +123,20 @@ class TaskBuilder
         return $this;
     }
 
-    public function tool(string $name, callable $fn, ?string $description = null, array $params = []): self
+    public function metadata(array $metadata): self
     {
+        $this->metadata = $metadata;
+        return $this;
+    }
+
+    public function tool(string $name, mixed $fn, ?string $description = null, array $params = []): self
+    {
+        $meta = ToolInvoker::extractMeta($fn);
+        
         $this->tools[$name] = [
             'fn' => $fn,
-            'description' => $description ?? "Tool: {$name}",
-            'params' => $params,
+            'description' => $description ?? $meta['description'] ?? "Tool: {$name}",
+            'params' => !empty($params) ? $params : $meta['params'],
         ];
 
         return $this;
@@ -269,20 +283,28 @@ class TaskBuilder
         }
 
         $toolDef = $this->tools[$toolName];
-        $validatedParams = $this->validateToolParams($toolParams, $toolDef['params'] ?? []);
+        
+        $validator = new SchemaValidator();
+        $validatedParams = $validator->validate($toolParams, $toolDef['params'] ?? []);
         if ($validatedParams === null) {
             return [
                 'success' => false,
                 'data' => null,
                 'raw' => $decisionText,
-                'errors' => $this->errors,
+                'errors' => $validator->errors(),
                 'tools_used' => [$toolName],
                 'tool_results' => [],
             ];
         }
 
+        $context = new ToolContext(
+            messages: $this->messages,
+            toolResults: [],
+            metadata: $this->metadata
+        );
+
         try {
-            $toolResult = ($toolDef['fn'])($validatedParams);
+            $toolResult = ToolInvoker::invoke($toolDef['fn'], $validatedParams, $context);
         } catch (\Throwable $e) {
             return [
                 'success' => false,
@@ -372,57 +394,6 @@ class TaskBuilder
         return "{$name}: {$desc}\nParameters:\n{$paramsText}\n";
     }
 
-    protected function validateToolParams(array $params, array $schema): ?array
-    {
-        $this->errors = [];
-
-        $normalized = [];
-        foreach ($schema as $key => $type) {
-            if (is_int($key)) {
-                $normalized[$type] = 'string';
-            } else {
-                $normalized[$key] = is_array($type) ? ($type[0] ?? 'string') : $type;
-            }
-        }
-
-        foreach ($normalized as $key => $type) {
-            if (!array_key_exists($key, $params) || $params[$key] === null) {
-                $this->errors[] = "Missing required parameter: {$key}";
-                continue;
-            }
-
-            $value = $params[$key];
-            if (!$this->valueMatchesType($value, $type)) {
-                $this->errors[] = "Invalid parameter type for {$key}: expected {$type}";
-                continue;
-            }
-
-            if ($type === 'int') {
-                $params[$key] = (int)$value;
-            } elseif ($type === 'number') {
-                $params[$key] = (float)$value;
-            } elseif ($type === 'bool') {
-                $params[$key] = (bool)$value;
-            } elseif ($type === 'string') {
-                $params[$key] = (string)$value;
-            }
-        }
-
-        return empty($this->errors) ? $params : null;
-    }
-
-    protected function valueMatchesType(mixed $value, string $type): bool
-    {
-        return match ($type) {
-            'string' => is_string($value) || is_numeric($value) || is_bool($value),
-            'int' => is_int($value) || (is_string($value) && preg_match('/^-?\d+$/', $value) === 1),
-            'number' => is_int($value) || is_float($value) || (is_string($value) && is_numeric($value)),
-            'bool' => is_bool($value) || $value === 0 || $value === 1 || $value === '0' || $value === '1',
-            'array' => is_array($value),
-            default => true,
-        };
-    }
-
     protected function generateRawText(string $prompt, float $temperature = 0.3): string
     {
         $task = new self($this->provider);
@@ -443,9 +414,7 @@ class TaskBuilder
 
     protected function decodeJsonObject(string $text): ?array
     {
-        $json = $this->extractJson($text) ?? $text;
-        $decoded = json_decode($json, true);
-        return is_array($decoded) ? $decoded : null;
+        return JsonExtractor::decode($text);
     }
 
 
@@ -562,7 +531,7 @@ class TaskBuilder
      */
     protected function extractAndDecodeJson(string $text)
     {
-        $json = $this->extractJson($text) ?? $text;
+        $json = JsonExtractor::extract($text) ?? $text;
         return json_decode($json, true);
     }
 
@@ -658,48 +627,4 @@ class TaskBuilder
         }
         return $example;
     }
-
-    /**
-     * Extract JSON array, multi-object, or object from a string (for messy LLM outputs).
-     */
-    /**
-     * Attempt to extract valid JSON (array or object) from messy LLM output.
-     * Handles the most common LLM output quirks:
-     *
-     *   1. JSON array:
-     *      - Example input: 'Here is your data: [{"a":1},{"b":2}]'
-     *      - Extracted:      '[{"a":1},{"b":2}]'
-     *
-     *   2. Multiple JSON objects (newline or space separated):
-     *      - Example input: '{"a":1}\n{"b":2}\n{"c":3}'
-     *      - Extracted:      '[{"a":1},{"b":2},{"c":3}]'
-     *
-     *   3. Single JSON object:
-     *      - Example input: 'Result: {"a":1, "b":2}'
-     *      - Extracted:      '{"a":1, "b":2}'
-     *
-     *   4. If nothing found, returns null.
-     *
-     * This makes the builder robust to unpredictable LLM output formatting.
-     */
-    protected function extractJson(string $text): ?string
-    {
-        // 1. Try to extract a JSON array (most robust, preferred format)
-        if (preg_match('/(\[.*\])/s', $text, $matches)) {
-            return $matches[0];
-        }
-        // 2. If multiple JSON objects (e.g., separated by newlines), wrap as array
-        if (preg_match_all('/\{.*?\}/s', $text, $matches) && count($matches[0]) > 1) {
-            // Join all found objects into a valid JSON array
-            return '[' . implode(',', $matches[0]) . ']';
-        }
-        // 3. Fallback: extract a single JSON object
-        if (preg_match('/\{.*\}/s', $text, $matches)) {
-            return $matches[0];
-        }
-        // 4. Nothing found: return null
-        return null;
-    }
 }
-
-

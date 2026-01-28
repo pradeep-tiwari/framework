@@ -187,6 +187,10 @@ class TaskBuilder
     {
         $this->errors = [];
 
+        // Tool-first API requires explicit ->prompt() call. 
+        // We don't extract from ->messages() to avoid losing conversation context 
+        // in tool decisions (e.g., "show me the cheapest one" needs prior context).
+        // For multi-turn tool conversations, use ->prompt() on each turn.
         $userQuery = $this->prompt ?? '';
 
         if (empty($userQuery)) {

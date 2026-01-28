@@ -187,8 +187,9 @@ class TaskBuilder
     {
         $this->errors = [];
 
-        $userQuery = $this->prompt ?? $this->lastUserMessage() ?? '';
-        if ($userQuery === '') {
+        $userQuery = $this->prompt ?? '';
+
+        if (empty($userQuery)) {
             return [
                 'success' => false,
                 'data' => null,
@@ -443,16 +444,6 @@ class TaskBuilder
         return is_array($decoded) ? $decoded : null;
     }
 
-    protected function lastUserMessage(): ?string
-    {
-        for ($i = count($this->messages) - 1; $i >= 0; $i--) {
-            if (($this->messages[$i]['role'] ?? null) === 'user') {
-                return (string)($this->messages[$i]['content'] ?? '');
-            }
-        }
-
-        return null;
-    }
 
     protected function formatForPrompt(mixed $value): string
     {

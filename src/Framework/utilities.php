@@ -699,3 +699,15 @@ if (!function_exists('optional')) {
         return $callback ? $callback($value) : $value;
     }
 }
+
+if (!function_exists('http')) {
+    /**
+     * Get a new HTTP client instance for making API requests.
+     * 
+     * @return \Lightpack\Http\Http
+     */
+    function http(): \Lightpack\Http\Http
+    {
+        return new \Lightpack\Http\Http();
+    }
+}

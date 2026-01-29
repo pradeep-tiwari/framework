@@ -120,11 +120,12 @@ abstract class AI
      * Calculate cosine similarity between two vectors.
      * Returns value between 0 (completely different) and 1 (identical).
      * 
-     * Note: This is a utility method that delegates to InMemoryVectorSearch.
+     * Note: This is a utility method that delegates to
+     * InMemoryVectorSearch. If you're using a custom VectorSearchInterface,
+     * this method will throw an exception since vector databases
+     * handle similarity calculations server-side.
      * 
-     * @param array $a First vector
-     * @param array $b Second vector
-     * @return float Similarity score (0-1)
+     * @internal
      */
     public function cosineSimilarity(array $a, array $b): float
     {

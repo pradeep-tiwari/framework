@@ -24,7 +24,7 @@ class TaskBuilder
     protected ?bool $useCache = null;
     protected ?int $cacheTtl = null;
     protected array $tools = [];
-    protected array $metadata = [];
+    protected array $context = [];
     
     public function __construct($provider)
     {
@@ -123,9 +123,9 @@ class TaskBuilder
         return $this;
     }
 
-    public function metadata(array $metadata): self
+    public function context(array $context): self
     {
-        $this->metadata = $metadata;
+        $this->context = $context;
         return $this;
     }
 
@@ -298,7 +298,7 @@ class TaskBuilder
         }
 
         $context = new ToolContext(
-            metadata: $this->metadata
+            metadata: $this->context
         );
 
         try {

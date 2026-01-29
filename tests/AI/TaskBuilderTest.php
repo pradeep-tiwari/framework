@@ -291,7 +291,7 @@ class TaskBuilderTest extends TestCase
         };
 
         $result = (new TaskBuilder($provider))
-            ->metadata(['user_id' => 42, 'tenant_id' => 'acme'])
+            ->context(['user_id' => 42, 'tenant_id' => 'acme'])
             ->tool('test_tool', TestTool::class)
             ->prompt('order product')
             ->run();

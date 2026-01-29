@@ -37,16 +37,13 @@ abstract class AI
      *   @type array  $usage          Token usage stats (if available).
      *   @type mixed  $raw            The full raw provider response.
      * }
-     *
-     * @param array $params See interface docblock for supported keys.
-     * @return array See interface docblock for return structure.
      */
-    abstract public function generate(array $params);
+    abstract public function generate(array $params): array;
 
     /**
      * Start a fluent AI task builder for this provider.
      */
-    public function task()
+    public function task(): TaskBuilder
     {
         return new TaskBuilder($this);
     }
@@ -57,7 +54,7 @@ abstract class AI
     public function ask(string $question): string
     {
         $result = $this->task()->prompt($question)->run();
-        return $result['raw'];
+        return $result['raw'] ?? '';
     }
 
     /**
@@ -154,23 +151,19 @@ abstract class AI
         throw new \Exception(static::class . ' does not support embeddings');
     }
 
-    protected function makeApiRequest(string $endpoint, array $body, array $headers = [], int $timeout = 10)
+    protected function makeApiRequest(string $endpoint, array $body, array $headers = [], int $timeout = 10): array
     {
-        try {
-            $response = $this->http
-                ->headers($headers)
-                ->timeout($timeout)
-                ->post($endpoint, $body);
+        $response = $this->http
+            ->headers($headers)
+            ->timeout($timeout)
+            ->post($endpoint, $body);
 
-            if ($response->failed()) {
-                $errorMsg = $response->error() ?: 'HTTP error ' . $response->status();
-                throw new \Exception(static::class . ' API error: ' . $errorMsg);
-            }
-
-            return json_decode($response->body(), true);
-        } catch (\Exception $e) {
-            throw $e;
+        if ($response->failed()) {
+            $errorMsg = $response->error() ?: 'HTTP error ' . $response->status();
+            throw new \Exception(static::class . ' API error: ' . $errorMsg);
         }
+
+        return json_decode($response->body(), true);
     }
 
     /**
@@ -182,7 +175,7 @@ abstract class AI
     protected function generateCacheKey(array $params): string
     {
         $data = [];
-        $fields = ['model', 'messages', 'temperature', 'max_tokens', 'system'];
+        $fields = ['model', 'messages', 'prompt', 'temperature', 'max_tokens', 'system'];
         foreach ($fields as $field) {
             if (array_key_exists($field, $params)) {
                 $data[$field] = $params[$field];

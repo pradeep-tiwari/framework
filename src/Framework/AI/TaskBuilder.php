@@ -8,6 +8,11 @@ use Lightpack\AI\Support\SchemaValidator;
 
 class TaskBuilder
 {
+    private const MAX_PROMPT_CHARS = 12000;
+    private const MAX_NESTING_LEVEL = 5;
+    private const MAX_ITEMS = 50;
+    private const MAX_STRING_LENGTH = 800;
+
     protected array $messages = [];
     protected $provider;
     protected ?string $prompt = null;
@@ -394,20 +399,12 @@ class TaskBuilder
 
     protected function generateRawText(string $prompt, float $temperature = 0.3): string
     {
-        $task = new self($this->provider);
-        if ($this->model !== null) {
-            $task->model($this->model);
-        }
-        if ($this->maxTokens !== null) {
-            $task->maxTokens($this->maxTokens);
-        }
-        if ($this->system !== null) {
-            $task->system($this->system);
-        }
-        $task->prompt($prompt)->temperature($temperature);
-
-        $result = $task->run();
-        return (string)($result['raw'] ?? '');
+        $params = $this->buildParams();
+        $params['prompt'] = $prompt;
+        $params['temperature'] = $temperature;
+        
+        $result = $this->provider->generate($params);
+        return (string)($result['text'] ?? '');
     }
 
     protected function decodeJsonObject(string $text): ?array
@@ -418,26 +415,21 @@ class TaskBuilder
 
     protected function formatForPrompt(mixed $value): string
     {
-        $maxChars = 12000;
-        $maxDepth = 5;
-        $maxItems = 50;
-        $maxStringLen = 800;
-
         if (is_string($value)) {
-            return $this->truncateString($value, $maxChars);
+            return $this->truncateString($value, self::MAX_PROMPT_CHARS);
         }
 
         if (is_scalar($value) || $value === null) {
-            return $this->truncateString((string)$value, $maxChars);
+            return $this->truncateString((string)$value, self::MAX_PROMPT_CHARS);
         }
 
-        $normalized = $this->normalizeForPrompt($value, $maxDepth, $maxItems, $maxStringLen);
+        $normalized = $this->normalizeForPrompt($value, self::MAX_NESTING_LEVEL, self::MAX_ITEMS, self::MAX_STRING_LENGTH);
         $json = json_encode($normalized, JSON_PRETTY_PRINT | JSON_PARTIAL_OUTPUT_ON_ERROR);
         if (!is_string($json)) {
             $json = '[unserializable tool result]';
         }
 
-        return $this->truncateString($json, $maxChars);
+        return $this->truncateString($json, self::MAX_PROMPT_CHARS);
     }
 
     protected function normalizeForPrompt(mixed $value, int $maxDepth, int $maxItems, int $maxStringLen): mixed
@@ -503,7 +495,10 @@ class TaskBuilder
         }
 
         if ($this->prompt) {
-            $params['prompt'] = $this->prompt;
+            $schemaInstruction = $this->buildSchemaInstruction();
+            $params['prompt'] = $schemaInstruction 
+                ? $this->prompt . "\n\n" . $schemaInstruction
+                : $this->prompt;
         }
 
         if ($this->temperature !== null) {

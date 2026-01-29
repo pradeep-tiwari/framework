@@ -10,8 +10,6 @@ namespace Lightpack\AI\VectorSearch;
  */ 
 class InMemoryVectorSearch implements VectorSearchInterface
 {
-    public function __construct() {}
-
     /**
      * Search for similar items using cosine similarity.
      * 

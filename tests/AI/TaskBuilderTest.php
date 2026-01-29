@@ -2,12 +2,50 @@
 
 use PHPUnit\Framework\TestCase;
 use Lightpack\AI\TaskBuilder;
+use Lightpack\AI\Tools\ToolInterface;
+use Lightpack\AI\Tools\ToolContext;
 
 class FakeProvider
 {
     public function generate($params)
     {
         return ['text' => '{"name":"Alice","age":30}'];
+    }
+}
+
+class TestTool implements ToolInterface
+{
+    public static $invoked = false;
+    public static $receivedParams = [];
+    public static $receivedContext = null;
+
+    public function __invoke(array $params, ToolContext $context): mixed
+    {
+        self::$invoked = true;
+        self::$receivedParams = $params;
+        self::$receivedContext = $context;
+        
+        return ['result' => 'success', 'product_id' => $params['product_id']];
+    }
+
+    public static function description(): string
+    {
+        return 'Test tool for unit testing';
+    }
+
+    public static function params(): array
+    {
+        return [
+            'product_id' => ['string', 'Product identifier'],
+            'quantity' => ['int', 'Quantity to order']
+        ];
+    }
+
+    public static function reset(): void
+    {
+        self::$invoked = false;
+        self::$receivedParams = [];
+        self::$receivedContext = null;
     }
 }
 
@@ -196,5 +234,106 @@ class TaskBuilderTest extends TestCase
         $this->assertFalse($result['success']);
         $this->assertContains('Missing required parameter: order_id', $result['errors']);
         $this->assertSame(['get_status'], $result['tools_used']);
+    }
+
+    public function testToolClassWithAutoExtractedMetadata()
+    {
+        TestTool::reset();
+
+        $provider = new class {
+            public function generate($params)
+            {
+                $prompt = $params['prompt'] ?? '';
+
+                if (str_contains($prompt, 'Decide if you should call ONE tool')) {
+                    return ['text' => '{"tool":"test_tool","params":{"product_id":"ABC123","quantity":5}}'];
+                }
+
+                if (str_contains($prompt, 'Tool Used: test_tool')) {
+                    return ['text' => 'Product ABC123 ordered successfully'];
+                }
+
+                return ['text' => 'fallback'];
+            }
+        };
+
+        $result = (new TaskBuilder($provider))
+            ->tool('test_tool', TestTool::class)
+            ->prompt('order product ABC123')
+            ->run();
+
+        $this->assertTrue(TestTool::$invoked);
+        $this->assertTrue($result['success']);
+        $this->assertEquals('ABC123', TestTool::$receivedParams['product_id']);
+        $this->assertEquals(5, TestTool::$receivedParams['quantity']);
+        $this->assertInstanceOf(ToolContext::class, TestTool::$receivedContext);
+    }
+
+    public function testToolClassWithMetadata()
+    {
+        TestTool::reset();
+
+        $provider = new class {
+            public function generate($params)
+            {
+                $prompt = $params['prompt'] ?? '';
+
+                if (str_contains($prompt, 'Decide if you should call ONE tool')) {
+                    return ['text' => '{"tool":"test_tool","params":{"product_id":"XYZ789","quantity":3}}'];
+                }
+
+                if (str_contains($prompt, 'Tool Used: test_tool')) {
+                    return ['text' => 'Order placed for user 42'];
+                }
+
+                return ['text' => 'fallback'];
+            }
+        };
+
+        $result = (new TaskBuilder($provider))
+            ->metadata(['user_id' => 42, 'tenant_id' => 'acme'])
+            ->tool('test_tool', TestTool::class)
+            ->prompt('order product')
+            ->run();
+
+        $this->assertTrue(TestTool::$invoked);
+        $this->assertTrue($result['success']);
+        $this->assertEquals(42, TestTool::$receivedContext->get('user_id'));
+        $this->assertEquals('acme', TestTool::$receivedContext->get('tenant_id'));
+        $this->assertTrue(TestTool::$receivedContext->has('user_id'));
+        $this->assertFalse(TestTool::$receivedContext->has('nonexistent'));
+    }
+
+    public function testToolClassInstance()
+    {
+        TestTool::reset();
+
+        $provider = new class {
+            public function generate($params)
+            {
+                $prompt = $params['prompt'] ?? '';
+
+                if (str_contains($prompt, 'Decide if you should call ONE tool')) {
+                    return ['text' => '{"tool":"test_tool","params":{"product_id":"INST001","quantity":1}}'];
+                }
+
+                if (str_contains($prompt, 'Tool Used: test_tool')) {
+                    return ['text' => 'Instance tool executed'];
+                }
+
+                return ['text' => 'fallback'];
+            }
+        };
+
+        $toolInstance = new TestTool();
+
+        $result = (new TaskBuilder($provider))
+            ->tool('test_tool', $toolInstance)
+            ->prompt('test instance')
+            ->run();
+
+        $this->assertTrue(TestTool::$invoked);
+        $this->assertTrue($result['success']);
+        $this->assertEquals('INST001', TestTool::$receivedParams['product_id']);
     }
 }

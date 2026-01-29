@@ -11,8 +11,8 @@ class ToolView
 
 namespace App\Tools;
 
-use Lightpack\AI\Tools\ToolInterface;
 use Lightpack\AI\Tools\ToolContext;
+use Lightpack\AI\Tools\ToolInterface;
 
 class __TOOL_NAME__ implements ToolInterface
 {

@@ -2,8 +2,6 @@
 
 namespace Lightpack\AI;
 
-use Lightpack\AI\Tools\ToolExecutor;
-
 /**
  * Handles multi-turn agent execution logic.
  * Extracted from TaskBuilder to separate agent concerns from single-turn task execution.
@@ -12,7 +10,7 @@ class AgentExecutor
 {
     private int $maxTurns;
     private ?string $goal;
-    private ConversationMemory $memory;
+    private TurnHistory $history;
     private array $tools;
     private $taskExecutor;
 
@@ -26,7 +24,7 @@ class AgentExecutor
         $this->goal = $goal;
         $this->tools = $tools;
         $this->taskExecutor = $taskExecutor;
-        $this->memory = new ConversationMemory();
+        $this->history = new TurnHistory();
     }
 
     /**
@@ -41,9 +39,9 @@ class AgentExecutor
         $allToolsUsed = [];
         $allToolResults = [];
         
-        // Initialize memory with user's request
+        // Initialize history with user's request
         if ($originalPrompt) {
-            $this->memory->add('user', $originalPrompt, 0);
+            $this->history->addTurn('user', $originalPrompt, 0);
         }
         
         while ($currentTurn < $this->maxTurns) {
@@ -58,8 +56,8 @@ class AgentExecutor
                 $allToolResults = array_merge($allToolResults, $result['tool_results']);
             }
             
-            // Store turn result in memory
-            $this->memory->add(
+            // Store turn result in history
+            $this->history->addTurn(
                 'assistant',
                 $result['raw'] ?? '',
                 $currentTurn + 1,
@@ -70,7 +68,7 @@ class AgentExecutor
             if ($this->isTaskComplete($result)) {
                 return array_merge($result, [
                     'agent_turns' => $currentTurn + 1,
-                    'agent_memory' => $this->memory->getAll(),
+                    'agent_memory' => $this->history->getAllTurns(),
                     'goal_achieved' => true,
                     'tools_used' => $allToolsUsed,
                     'tool_results' => $allToolResults,
@@ -81,16 +79,16 @@ class AgentExecutor
         }
         
         // Max turns reached without completion
-        $recentEntries = $this->memory->getRecent(1);
-        $lastEntry = !empty($recentEntries) ? $recentEntries[0] : [];
+        $recentTurns = $this->history->getRecentTurns(1);
+        $lastTurn = !empty($recentTurns) ? $recentTurns[0] : [];
         
         return [
             'success' => false,
             'data' => null,
-            'raw' => $lastEntry['content'] ?? '',
+            'raw' => $lastTurn['content'] ?? '',
             'errors' => ['Agent reached maximum turns without achieving goal'],
             'agent_turns' => $currentTurn,
-            'agent_memory' => $this->memory->getAll(),
+            'agent_memory' => $this->history->getAllTurns(),
             'goal_achieved' => false,
             'tools_used' => $allToolsUsed,
             'tool_results' => $allToolResults,
@@ -116,19 +114,19 @@ class AgentExecutor
     }
 
     /**
-     * Get the current memory.
+     * Get the current turn history.
      */
-    public function getMemory(): array
+    public function getHistory(): array
     {
-        return $this->memory->getAll();
+        return $this->history->getAllTurns();
     }
 
     /**
-     * Build context string from memory for next turn.
+     * Build context string from turn history for next turn.
      */
-    public function buildMemoryContext(): string
+    public function buildHistoryContext(): string
     {
-        return $this->memory->buildContext();
+        return $this->history->formatForPrompt();
     }
 
     /**
@@ -136,15 +134,15 @@ class AgentExecutor
      */
     public function prepareNextTurnPrompt(): string
     {
-        $memoryContext = $this->buildMemoryContext();
+        $historyContext = $this->buildHistoryContext();
         
         if ($this->goal) {
             return "Goal: {$this->goal}\n\n"
-                . "Previous Context:\n{$memoryContext}\n\n"
+                . "Previous Context:\n{$historyContext}\n\n"
                 . "Continue working towards the goal. What should you do next?";
         }
         
-        return "Previous Context:\n{$memoryContext}\n\n"
+        return "Previous Context:\n{$historyContext}\n\n"
             . "Continue with the task. What should you do next?";
     }
 }

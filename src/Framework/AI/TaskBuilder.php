@@ -26,7 +26,6 @@ class TaskBuilder
     protected ?float $temperature = null;
     protected ?int $maxTokens = null;
     protected ?string $system = null;
-    protected ?string $rawResponse = null;
     protected ?bool $useCache = null;
     protected ?int $cacheTtl = null;
     protected array $tools = [];
@@ -34,7 +33,6 @@ class TaskBuilder
     // Agent loop properties
     protected int $maxTurns = 1;
     protected ?string $agentGoal = null;
-    protected array $agentMemory = [];
 
     public function __construct($provider)
     {
@@ -191,9 +189,9 @@ class TaskBuilder
             $params['cache_ttl'] = $this->cacheTtl;
         }
         $result = $this->provider->generate($params);
-        $this->rawResponse = $result['text'] ?? '';
+        $rawResponse = $result['text'] ?? '';
 
-        $data = $this->extractAndDecodeJson($this->rawResponse);
+        $data = $this->extractAndDecodeJson($rawResponse);
         $success = false;
         $this->errors = [];
 
@@ -208,7 +206,7 @@ class TaskBuilder
             $success = true;
         } elseif (!$this->expectSchema && !$this->expectArrayKey) {
             // Plain text mode - no schema expected, always success if we got a response
-            $success = !empty($this->rawResponse);
+            $success = !empty($rawResponse);
         }
 
         // Check required fields BEFORE coercion
@@ -227,7 +225,7 @@ class TaskBuilder
         return [
             'success' => $success,
             'data' => $success ? $data : null,
-            'raw' => $this->rawResponse,
+            'raw' => $rawResponse,
             'errors' => $this->errors,
         ];
     }
@@ -482,11 +480,6 @@ class TaskBuilder
         return $data;
     }
 
-    public function raw(): string
-    {
-        return $this->rawResponse;
-    }
-
     protected function buildSchemaInstruction(): string
     {
         if ($this->expectSchema) {
@@ -560,12 +553,7 @@ class TaskBuilder
         );
 
         // Run agent loop
-        $result = $agent->run($originalPrompt);
-
-        // Store memory back to TaskBuilder for backward compatibility
-        $this->agentMemory = $agent->getMemory();
-
-        return $result;
+        return $agent->run($originalPrompt);
     }
 
     /**
@@ -586,9 +574,9 @@ class TaskBuilder
             $params['cache_ttl'] = $this->cacheTtl;
         }
         $result = $this->provider->generate($params);
-        $this->rawResponse = $result['text'] ?? '';
+        $rawResponse = $result['text'] ?? '';
 
-        $data = $this->extractAndDecodeJson($this->rawResponse);
+        $data = $this->extractAndDecodeJson($rawResponse);
         $success = false;
         $this->errors = [];
 
@@ -601,7 +589,7 @@ class TaskBuilder
             $data = $this->coerceSchemaOnObject($data);
             $success = true;
         } elseif (!$this->expectSchema && !$this->expectArrayKey) {
-            $success = !empty($this->rawResponse);
+            $success = !empty($rawResponse);
         }
 
         if ($success && !empty($this->requiredFields)) {
@@ -618,7 +606,7 @@ class TaskBuilder
         return [
             'success' => $success,
             'data' => $success ? $data : null,
-            'raw' => $this->rawResponse,
+            'raw' => $rawResponse,
             'errors' => $this->errors,
         ];
     }

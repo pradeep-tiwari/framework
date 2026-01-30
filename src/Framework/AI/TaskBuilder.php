@@ -1,4 +1,5 @@
 <?php
+
 namespace Lightpack\AI;
 
 use Lightpack\AI\Tools\ToolInvoker;
@@ -29,12 +30,12 @@ class TaskBuilder
     protected ?bool $useCache = null;
     protected ?int $cacheTtl = null;
     protected array $tools = [];
-    
+
     // Agent loop properties
     protected int $maxTurns = 1;
     protected ?string $agentGoal = null;
     protected array $agentMemory = [];
-    
+
     public function __construct($provider)
     {
         $this->provider = $provider;
@@ -160,7 +161,7 @@ class TaskBuilder
     public function tool(string $name, mixed $fn, ?string $description = null, array $params = []): self
     {
         $meta = ToolInvoker::extractMeta($fn);
-        
+
         $this->tools[$name] = [
             'fn' => $fn,
             'description' => $description ?? $meta['description'] ?? "Tool: {$name}",
@@ -176,7 +177,7 @@ class TaskBuilder
         if ($this->maxTurns > 1) {
             return $this->runAgentMode();
         }
-        
+
         // Single-turn mode (existing behavior)
         if (!empty($this->tools) && ($this->prompt !== null || !empty($this->messages))) {
             return $this->runWithTools();
@@ -255,7 +256,7 @@ class TaskBuilder
         // Use ToolExecutor for tool workflow
         $executor = new ToolExecutor($this->tools);
         $aiGenerator = fn($prompt, $temp) => $this->generateRawText($prompt, temperature: $temp);
-        
+
         $result = $executor->executeToolWorkflow($userQuery, $aiGenerator);
 
         // Handle tool execution result
@@ -274,7 +275,7 @@ class TaskBuilder
         if ($result['tool_name'] === 'none') {
             $prompt = "User: {$userQuery}\n\n"
                 . "Provide a helpful answer. If you need more details, ask a clarifying question.";
-            
+
             $answer = $this->generateRawText($prompt, temperature: $this->temperature ?? 0.3);
 
             return [
@@ -297,7 +298,7 @@ class TaskBuilder
             . "- If the Tool Result does not contain enough information, say so explicitly.\n"
             . "- Do not invent details.\n\n"
             . "Answer:";
-        
+
         $answer = $this->generateRawText($finalPrompt, temperature: $this->temperature ?? 0.3);
 
         return [
@@ -316,7 +317,7 @@ class TaskBuilder
         $params = $this->buildParams();
         $params['prompt'] = $prompt;
         $params['temperature'] = $temperature;
-        
+
         $result = $this->provider->generate($params);
         return (string)($result['text'] ?? '');
     }
@@ -410,7 +411,7 @@ class TaskBuilder
 
         if ($this->prompt) {
             $schemaInstruction = $this->buildSchemaInstruction();
-            $params['prompt'] = $schemaInstruction 
+            $params['prompt'] = $schemaInstruction
                 ? $this->prompt . "\n\n" . $schemaInstruction
                 : $this->prompt;
         }
@@ -470,7 +471,7 @@ class TaskBuilder
             if (!array_key_exists($key, $data)) {
                 $data[$key] = null;
             }
-            
+
             // Don't coerce null values - preserve them
             if ($data[$key] !== null) {
                 // Map 'number' to 'float' for settype compatibility
@@ -543,27 +544,27 @@ class TaskBuilder
     {
         $originalPrompt = $this->prompt;
         $agent = null; // Will be set before use
-        
+
         // Create agent executor with task executor callback
         $agent = new AgentExecutor(
             maxTurns: $this->maxTurns,
             goal: $this->agentGoal,
             tools: $this->tools,
-            taskExecutor: function() use (&$agent) {
+            taskExecutor: function () use (&$agent) {
                 // Prepare prompt for next turn
                 $this->prompt = $agent->prepareNextTurnPrompt();
-                
+
                 // Execute single turn
                 return $this->executeSingleTurn();
             }
         );
-        
+
         // Run agent loop
         $result = $agent->run($originalPrompt);
-        
+
         // Store memory back to TaskBuilder for backward compatibility
         $this->agentMemory = $agent->getMemory();
-        
+
         return $result;
     }
 
@@ -576,7 +577,7 @@ class TaskBuilder
         if (!empty($this->tools) && ($this->prompt !== null || !empty($this->messages))) {
             return $this->executeAgentTurnWithTools();
         }
-        
+
         $params = $this->buildParams();
         if ($this->useCache !== null) {
             $params['cache'] = $this->useCache;
@@ -645,7 +646,7 @@ class TaskBuilder
         // Use ToolExecutor for tool workflow
         $executor = new ToolExecutor($this->tools);
         $aiGenerator = fn($prompt, $temp) => $this->generateRawText($prompt, temperature: $temp);
-        
+
         $result = $executor->executeToolWorkflow($userQuery, $aiGenerator);
 
         // Handle tool execution result
@@ -683,5 +684,4 @@ class TaskBuilder
             'tool_results' => [$result['tool_name'] => $result['tool_result']],
         ];
     }
-
 }

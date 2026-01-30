@@ -31,6 +31,11 @@ class TaskBuilder
     protected array $tools = [];
     protected array $context = [];
     
+    // Agent loop properties
+    protected int $maxTurns = 1;
+    protected ?string $agentGoal = null;
+    protected array $agentMemory = [];
+    
     public function __construct($provider)
     {
         $this->provider = $provider;
@@ -134,6 +139,31 @@ class TaskBuilder
         return $this;
     }
 
+    /**
+     * Enable multi-turn agent mode with maximum number of turns.
+     * 
+     * @param int $maxTurns Maximum number of thinking-and-action cycles (default: 10)
+     * @return self
+     */
+    public function loop(int $maxTurns = 10): self
+    {
+        $this->maxTurns = $maxTurns;
+        return $this;
+    }
+
+    /**
+     * Set the goal for agent mode.
+     * Agent will work toward this goal across multiple turns.
+     * 
+     * @param string $goal The objective to achieve
+     * @return self
+     */
+    public function goal(string $goal): self
+    {
+        $this->agentGoal = $goal;
+        return $this;
+    }
+
     public function tool(string $name, mixed $fn, ?string $description = null, array $params = []): self
     {
         $meta = ToolInvoker::extractMeta($fn);
@@ -149,6 +179,12 @@ class TaskBuilder
 
     public function run(): array
     {
+        // Multi-turn agent mode
+        if ($this->maxTurns > 1) {
+            return $this->runAgentMode();
+        }
+        
+        // Single-turn mode (existing behavior)
         if (!empty($this->tools) && ($this->prompt !== null || !empty($this->messages))) {
             return $this->runWithTools();
         }
@@ -619,5 +655,191 @@ class TaskBuilder
             $example[$key] = $type === 'string' ? 'example' : ($type === 'int' ? 0 : null);
         }
         return $example;
+    }
+
+    /**
+     * Run in multi-turn agent mode.
+     * Agent will execute multiple turns until goal is achieved or max turns reached.
+     */
+    protected function runAgentMode(): array
+    {
+        $currentTurn = 0;
+        $originalPrompt = $this->prompt;
+        
+        // Initialize memory with user's request
+        if ($originalPrompt) {
+            $this->agentMemory[] = [
+                'role' => 'user',
+                'content' => $originalPrompt,
+                'turn' => 0
+            ];
+        }
+        
+        while ($currentTurn < $this->maxTurns) {
+            // Execute single turn
+            $result = $this->executeSingleTurn();
+            
+            // Store turn result in memory
+            $this->agentMemory[] = [
+                'role' => 'assistant',
+                'content' => $result['raw'] ?? '',
+                'tools_used' => $result['tools_used'] ?? [],
+                'turn' => $currentTurn + 1
+            ];
+            
+            // Check if goal achieved or task complete
+            if ($this->isTaskComplete($result)) {
+                return array_merge($result, [
+                    'agent_turns' => $currentTurn + 1,
+                    'agent_memory' => $this->agentMemory,
+                    'goal_achieved' => true
+                ]);
+            }
+            
+            // Prepare for next turn
+            $this->prepareNextTurn($result);
+            $currentTurn++;
+        }
+        
+        // Max turns reached without completion
+        $lastResult = end($this->agentMemory);
+        return [
+            'success' => false,
+            'data' => null,
+            'raw' => $lastResult['content'] ?? '',
+            'errors' => ['Agent reached maximum turns without achieving goal'],
+            'agent_turns' => $currentTurn,
+            'agent_memory' => $this->agentMemory,
+            'goal_achieved' => false
+        ];
+    }
+
+    /**
+     * Execute a single turn (either with tools or plain generation).
+     */
+    protected function executeSingleTurn(): array
+    {
+        if (!empty($this->tools) && ($this->prompt !== null || !empty($this->messages))) {
+            return $this->runWithTools();
+        }
+        
+        $params = $this->buildParams();
+        if ($this->useCache !== null) {
+            $params['cache'] = $this->useCache;
+        }
+        if ($this->cacheTtl !== null) {
+            $params['cache_ttl'] = $this->cacheTtl;
+        }
+        $result = $this->provider->generate($params);
+        $this->rawResponse = $result['text'] ?? '';
+
+        $data = $this->extractAndDecodeJson($this->rawResponse);
+        $success = false;
+        $this->errors = [];
+
+        $originalData = is_array($data) ? $data : [];
+
+        if ($this->expectArrayKey && is_array($data)) {
+            $data = $this->coerceSchemaOnArray($data);
+            $success = true;
+        } elseif ($this->expectSchema && is_array($data)) {
+            $data = $this->coerceSchemaOnObject($data);
+            $success = true;
+        } elseif (!$this->expectSchema && !$this->expectArrayKey) {
+            $success = !empty($this->rawResponse);
+        }
+
+        if ($success && !empty($this->requiredFields)) {
+            if ($this->expectArrayKey && is_array($originalData)) {
+                $this->validateRequiredFieldsInArray($originalData);
+            } else {
+                $this->validateRequiredFieldsInObject($originalData);
+            }
+            if (!empty($this->errors)) {
+                $success = false;
+            }
+        }
+
+        return [
+            'success' => $success,
+            'data' => $success ? $data : null,
+            'raw' => $this->rawResponse,
+            'errors' => $this->errors,
+        ];
+    }
+
+    /**
+     * Check if the task is complete.
+     */
+    protected function isTaskComplete(array $result): bool
+    {
+        // If no tools were used and we got a successful response, task is complete
+        if (empty($result['tools_used']) && $result['success']) {
+            return true;
+        }
+        
+        // If we have a substantive response with no more tool calls needed, we're done
+        if (!empty($result['raw']) && empty($result['tools_used'])) {
+            return true;
+        }
+        
+        return false;
+    }
+
+    /**
+     * Check if the agent's goal has been achieved.
+     */
+    protected function checkGoalAchievement(array $result): bool
+    {
+        // Simple heuristic: if the response contains substantive content and no tools were called,
+        // assume goal is achieved
+        if (empty($result['tools_used']) && !empty($result['raw'])) {
+            return true;
+        }
+        
+        // For more sophisticated checking, could ask AI if goal is met
+        // But keeping it simple for now to avoid extra API calls
+        return false;
+    }
+
+    /**
+     * Prepare the task builder for the next turn.
+     */
+    protected function prepareNextTurn(array $result): void
+    {
+        // Build context from previous turns
+        $memoryContext = $this->buildMemoryContext();
+        
+        // Update prompt with context and goal
+        if ($this->agentGoal) {
+            $this->prompt = "Goal: {$this->agentGoal}\n\n"
+                . "Previous context:\n{$memoryContext}\n\n"
+                . "Continue working toward the goal. What should you do next?";
+        } else {
+            $this->prompt = "Previous context:\n{$memoryContext}\n\n"
+                . "Continue the task. What should you do next?";
+        }
+    }
+
+    /**
+     * Build a summary of memory context for the next turn.
+     */
+    protected function buildMemoryContext(): string
+    {
+        $context = [];
+        $recentTurns = array_slice($this->agentMemory, -3); // Last 3 turns for context
+        
+        foreach ($recentTurns as $memory) {
+            if ($memory['role'] === 'user') {
+                $context[] = "User: {$memory['content']}";
+            } elseif ($memory['role'] === 'assistant') {
+                $tools = !empty($memory['tools_used']) 
+                    ? ' (used tools: ' . implode(', ', $memory['tools_used']) . ')'
+                    : '';
+                $context[] = "Turn {$memory['turn']}{$tools}: {$memory['content']}";
+            }
+        }
+        
+        return implode("\n", $context);
     }
 }

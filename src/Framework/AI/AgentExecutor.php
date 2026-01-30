@@ -11,18 +11,15 @@ class AgentExecutor
     private int $maxTurns;
     private ?string $goal;
     private TurnHistory $history;
-    private array $tools;
     private $taskExecutor;
 
     public function __construct(
         int $maxTurns,
         ?string $goal,
-        array $tools,
         callable $taskExecutor
     ) {
         $this->maxTurns = $maxTurns;
         $this->goal = $goal;
-        $this->tools = $tools;
         $this->taskExecutor = $taskExecutor;
         $this->history = new TurnHistory();
     }

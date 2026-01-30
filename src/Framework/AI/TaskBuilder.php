@@ -542,7 +542,6 @@ class TaskBuilder
         $agent = new AgentExecutor(
             maxTurns: $this->maxTurns,
             goal: $this->agentGoal,
-            tools: $this->tools,
             taskExecutor: function () use (&$agent) {
                 // Prepare prompt for next turn
                 $this->prompt = $agent->prepareNextTurnPrompt();

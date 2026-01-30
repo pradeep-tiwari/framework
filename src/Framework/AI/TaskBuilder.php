@@ -665,6 +665,8 @@ class TaskBuilder
     {
         $currentTurn = 0;
         $originalPrompt = $this->prompt;
+        $allToolsUsed = [];
+        $allToolResults = [];
         
         // Initialize memory with user's request
         if ($originalPrompt) {
@@ -679,6 +681,14 @@ class TaskBuilder
             // Execute single turn
             $result = $this->executeSingleTurn();
             
+            // Accumulate tools used across all turns
+            if (!empty($result['tools_used'])) {
+                $allToolsUsed = array_merge($allToolsUsed, $result['tools_used']);
+            }
+            if (!empty($result['tool_results'])) {
+                $allToolResults = array_merge($allToolResults, $result['tool_results']);
+            }
+            
             // Store turn result in memory
             $this->agentMemory[] = [
                 'role' => 'assistant',
@@ -692,7 +702,9 @@ class TaskBuilder
                 return array_merge($result, [
                     'agent_turns' => $currentTurn + 1,
                     'agent_memory' => $this->agentMemory,
-                    'goal_achieved' => true
+                    'goal_achieved' => true,
+                    'tools_used' => $allToolsUsed,
+                    'tool_results' => $allToolResults,
                 ]);
             }
             
@@ -710,7 +722,9 @@ class TaskBuilder
             'errors' => ['Agent reached maximum turns without achieving goal'],
             'agent_turns' => $currentTurn,
             'agent_memory' => $this->agentMemory,
-            'goal_achieved' => false
+            'goal_achieved' => false,
+            'tools_used' => $allToolsUsed,
+            'tool_results' => $allToolResults,
         ];
     }
 
@@ -719,8 +733,9 @@ class TaskBuilder
      */
     protected function executeSingleTurn(): array
     {
+        // In agent mode with tools, we need different behavior than single-turn mode
         if (!empty($this->tools) && ($this->prompt !== null || !empty($this->messages))) {
-            return $this->runWithTools();
+            return $this->executeAgentTurnWithTools();
         }
         
         $params = $this->buildParams();
@@ -765,6 +780,132 @@ class TaskBuilder
             'data' => $success ? $data : null,
             'raw' => $this->rawResponse,
             'errors' => $this->errors,
+        ];
+    }
+
+    /**
+     * Execute a single agent turn with tools.
+     * Unlike runWithTools(), this doesn't generate final answer - just executes tool and returns.
+     */
+    protected function executeAgentTurnWithTools(): array
+    {
+        $this->errors = [];
+        $userQuery = $this->prompt ?? '';
+
+        if (empty($userQuery)) {
+            return [
+                'success' => false,
+                'data' => null,
+                'raw' => null,
+                'errors' => ['No user prompt provided'],
+                'tools_used' => [],
+                'tool_results' => [],
+            ];
+        }
+
+        // Ask AI which tool to call (or none)
+        $decisionPrompt = $this->buildToolDecisionPrompt($userQuery);
+        $decisionText = $this->generateRawText($decisionPrompt, temperature: 0.0);
+        $decision = $this->decodeJsonObject($decisionText);
+
+        if (!is_array($decision)) {
+            return [
+                'success' => false,
+                'data' => null,
+                'raw' => $decisionText,
+                'errors' => ['Failed to parse tool decision JSON'],
+                'tools_used' => [],
+                'tool_results' => [],
+            ];
+        }
+
+        $toolName = $decision['tool'] ?? null;
+        $toolParams = $decision['params'] ?? null;
+
+        // If AI says "none", it's providing final answer
+        if ($toolName === 'none') {
+            return [
+                'success' => true,
+                'data' => null,
+                'raw' => $decisionText,
+                'errors' => [],
+                'tools_used' => [],
+                'tool_results' => [],
+            ];
+        }
+
+        if (!is_string($toolName) || $toolName === '') {
+            return [
+                'success' => false,
+                'data' => null,
+                'raw' => $decisionText,
+                'errors' => ['Tool decision missing "tool"'],
+                'tools_used' => [],
+                'tool_results' => [],
+            ];
+        }
+
+        if (!isset($this->tools[$toolName])) {
+            return [
+                'success' => false,
+                'data' => null,
+                'raw' => $decisionText,
+                'errors' => ["Unknown tool: {$toolName}"],
+                'tools_used' => [],
+                'tool_results' => [],
+            ];
+        }
+
+        if (!is_array($toolParams)) {
+            return [
+                'success' => false,
+                'data' => null,
+                'raw' => $decisionText,
+                'errors' => ['Tool decision missing "params" object'],
+                'tools_used' => [],
+                'tool_results' => [],
+            ];
+        }
+
+        $toolDef = $this->tools[$toolName];
+        
+        $validator = new SchemaValidator();
+        $validatedParams = $validator->validate($toolParams, $toolDef['params'] ?? []);
+        if ($validatedParams === null) {
+            return [
+                'success' => false,
+                'data' => null,
+                'raw' => $decisionText,
+                'errors' => $validator->errors(),
+                'tools_used' => [$toolName],
+                'tool_results' => [],
+            ];
+        }
+
+        $context = new ToolContext(metadata: $this->context);
+
+        try {
+            $toolResult = ToolInvoker::invoke($toolDef['fn'], $validatedParams, $context);
+        } catch (\Throwable $e) {
+            return [
+                'success' => false,
+                'data' => null,
+                'raw' => null,
+                'errors' => ['Tool execution failed: ' . $e->getMessage()],
+                'tools_used' => [$toolName],
+                'tool_results' => [],
+            ];
+        }
+
+        // In agent mode, return tool result without generating final answer
+        // Agent will decide in next turn whether to call another tool or finish
+        return [
+            'success' => true,
+            'data' => null,
+            'raw' => "Tool {$toolName} executed successfully",
+            'errors' => [],
+            'tools_used' => [$toolName],
+            'tool_results' => [$toolName => $toolResult],
         ];
     }
 

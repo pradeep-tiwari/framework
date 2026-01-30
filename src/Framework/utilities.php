@@ -489,7 +489,7 @@ if (!function_exists('storage')) {
     /**
      * Returns the storage object.
      */
-    function storage(): \Lightpack\Storage\Storage
+    function storage(): \Lightpack\Storage\StorageInterface
     {
         return app('storage');
     }

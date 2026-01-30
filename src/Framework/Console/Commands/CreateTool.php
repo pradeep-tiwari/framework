@@ -2,10 +2,10 @@
 
 namespace Lightpack\Console\Commands;
 
-use Lightpack\Console\ICommand;
+use Lightpack\Console\CommandInterface;
 use Lightpack\Console\Views\ToolView;
 
-class CreateTool implements ICommand
+class CreateTool implements CommandInterface
 {
     public function run(array $arguments = [])
     {

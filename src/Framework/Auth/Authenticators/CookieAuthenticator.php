@@ -2,12 +2,12 @@
 
 namespace Lightpack\Auth\Authenticators;
 
-use Lightpack\Auth\Identity;
+use Lightpack\Auth\IdentityInterface;
 use Lightpack\Auth\AbstractAuthenticator;
 
 class CookieAuthenticator extends AbstractAuthenticator
 {
-    public function verify(): ?Identity
+    public function verify(): ?IdentityInterface
     {
         if (!cookie()->has('remember_token')) {
             return null;

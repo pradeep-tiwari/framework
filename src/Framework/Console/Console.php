@@ -61,7 +61,7 @@ class Console
         'create:tool' => CreateTool::class,
     ];
 
-    public static function register(string $command, ICommand $handler)
+    public static function register(string $command, CommandInterface $handler)
     {
         self::$commands[$command] = $handler;
     }

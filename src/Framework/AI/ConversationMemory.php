@@ -63,22 +63,6 @@ class ConversationMemory
     }
 
     /**
-     * Get entry count.
-     */
-    public function count(): int
-    {
-        return count($this->entries);
-    }
-
-    /**
-     * Clear all memory.
-     */
-    public function clear(): void
-    {
-        $this->entries = [];
-    }
-
-    /**
      * Build context string from memory for prompts.
      * 
      * @param int|null $recentOnly If set, only include last N entries
@@ -109,53 +93,5 @@ class ConversationMemory
         }
         
         return implode("\n\n", $contextParts);
-    }
-
-    /**
-     * Compress memory by removing less important entries.
-     * Keeps first entry (original request) and recent entries.
-     * 
-     * @param int $keepRecent Number of recent entries to keep
-     */
-    public function compress(int $keepRecent = 5): void
-    {
-        if (count($this->entries) <= $keepRecent + 1) {
-            return; // Nothing to compress
-        }
-
-        $firstEntry = array_shift($this->entries);
-        $this->entries = array_slice($this->entries, -$keepRecent);
-        array_unshift($this->entries, $firstEntry);
-    }
-
-    /**
-     * Get summary of memory (useful for debugging).
-     */
-    public function getSummary(): array
-    {
-        return [
-            'total_entries' => count($this->entries),
-            'user_messages' => count(array_filter($this->entries, fn($e) => $e['role'] === 'user')),
-            'assistant_messages' => count(array_filter($this->entries, fn($e) => $e['role'] === 'assistant')),
-            'tools_used' => $this->getToolsUsedSummary(),
-        ];
-    }
-
-    /**
-     * Get summary of tools used across all turns.
-     */
-    protected function getToolsUsedSummary(): array
-    {
-        $toolCounts = [];
-        
-        foreach ($this->entries as $entry) {
-            if (isset($entry['tools_used'])) {
-                foreach ($entry['tools_used'] as $tool) {
-                    $toolCounts[$tool] = ($toolCounts[$tool] ?? 0) + 1;
-                }
-            }
-        }
-        
-        return $toolCounts;
     }
 }

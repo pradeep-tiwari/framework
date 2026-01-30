@@ -2,7 +2,7 @@
 
 namespace Lightpack\Auth;
 
-abstract class AbstractAuthenticator
+abstract class Authenticator
 {
     /** @var \Lightpack\Auth\IdentifierInterface */
     protected $identifier;

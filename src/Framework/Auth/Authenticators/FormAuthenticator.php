@@ -2,10 +2,10 @@
 
 namespace Lightpack\Auth\Authenticators;
 
-use Lightpack\Auth\AbstractAuthenticator;
+use Lightpack\Auth\Authenticator;
 use Lightpack\Auth\IdentityInterface;
 
-class FormAuthenticator extends AbstractAuthenticator
+class FormAuthenticator extends Authenticator
 {
     public function verify(): ?IdentityInterface
     {

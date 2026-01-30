@@ -11,12 +11,10 @@ use Lightpack\AI\Support\SchemaValidator;
 class ToolExecutor
 {
     private array $tools = [];
-    private array $context = [];
 
-    public function __construct(array $tools = [], array $context = [])
+    public function __construct(array $tools = [])
     {
         $this->tools = $tools;
-        $this->context = $context;
     }
 
     /**
@@ -124,10 +122,9 @@ class ToolExecutor
         }
 
         $toolDef = $this->tools[$toolName];
-        $context = new ToolContext(metadata: $this->context);
 
         try {
-            $result = ToolInvoker::invoke($toolDef['fn'], $params, $context);
+            $result = ToolInvoker::invoke($toolDef['fn'], $params);
             return [
                 'success' => true,
                 'result' => $result,

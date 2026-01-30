@@ -11,12 +11,11 @@ class ToolView
 
 namespace App\Tools;
 
-use Lightpack\AI\Tools\ToolContext;
 use Lightpack\AI\Tools\ToolInterface;
 
 class __TOOL_NAME__ implements ToolInterface
 {
-    public function __invoke(array $params, ToolContext $context): mixed
+    public function __invoke(array $params): mixed
     {
         // Implement your tool logic here
         

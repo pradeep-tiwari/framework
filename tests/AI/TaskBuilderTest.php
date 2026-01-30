@@ -3,7 +3,6 @@
 use PHPUnit\Framework\TestCase;
 use Lightpack\AI\TaskBuilder;
 use Lightpack\AI\Tools\ToolInterface;
-use Lightpack\AI\Tools\ToolContext;
 
 class FakeProvider
 {
@@ -17,13 +16,11 @@ class TestTool implements ToolInterface
 {
     public static $invoked = false;
     public static $receivedParams = [];
-    public static $receivedContext = null;
 
-    public function __invoke(array $params, ToolContext $context): mixed
+    public function __invoke(array $params): mixed
     {
         self::$invoked = true;
         self::$receivedParams = $params;
-        self::$receivedContext = $context;
         
         return ['result' => 'success', 'product_id' => $params['product_id']];
     }
@@ -45,7 +42,6 @@ class TestTool implements ToolInterface
     {
         self::$invoked = false;
         self::$receivedParams = [];
-        self::$receivedContext = null;
     }
 }
 
@@ -266,7 +262,6 @@ class TaskBuilderTest extends TestCase
         $this->assertTrue($result['success']);
         $this->assertEquals('ABC123', TestTool::$receivedParams['product_id']);
         $this->assertEquals(5, TestTool::$receivedParams['quantity']);
-        $this->assertInstanceOf(ToolContext::class, TestTool::$receivedContext);
     }
 
     public function testToolClassWithMetadata()
@@ -291,17 +286,12 @@ class TaskBuilderTest extends TestCase
         };
 
         $result = (new TaskBuilder($provider))
-            ->context(['user_id' => 42, 'tenant_id' => 'acme'])
             ->tool('test_tool', TestTool::class)
             ->prompt('order product')
             ->run();
 
         $this->assertTrue(TestTool::$invoked);
         $this->assertTrue($result['success']);
-        $this->assertEquals(42, TestTool::$receivedContext->get('user_id'));
-        $this->assertEquals('acme', TestTool::$receivedContext->get('tenant_id'));
-        $this->assertTrue(TestTool::$receivedContext->has('user_id'));
-        $this->assertFalse(TestTool::$receivedContext->has('nonexistent'));
     }
 
     public function testToolClassInstance()

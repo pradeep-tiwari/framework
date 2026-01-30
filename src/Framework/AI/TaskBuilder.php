@@ -29,7 +29,6 @@ class TaskBuilder
     protected ?bool $useCache = null;
     protected ?int $cacheTtl = null;
     protected array $tools = [];
-    protected array $context = [];
     
     // Agent loop properties
     protected int $maxTurns = 1;
@@ -130,12 +129,6 @@ class TaskBuilder
     public function cacheTtl(int $ttl): self
     {
         $this->cacheTtl = $ttl;
-        return $this;
-    }
-
-    public function context(array $context): self
-    {
-        $this->context = $context;
         return $this;
     }
 
@@ -260,7 +253,7 @@ class TaskBuilder
         }
 
         // Use ToolExecutor for tool workflow
-        $executor = new ToolExecutor($this->tools, $this->context);
+        $executor = new ToolExecutor($this->tools);
         $aiGenerator = fn($prompt, $temp) => $this->generateRawText($prompt, temperature: $temp);
         
         $result = $executor->executeToolWorkflow($userQuery, $aiGenerator);
@@ -556,7 +549,6 @@ class TaskBuilder
             maxTurns: $this->maxTurns,
             goal: $this->agentGoal,
             tools: $this->tools,
-            context: $this->context,
             taskExecutor: function() use (&$agent) {
                 // Prepare prompt for next turn
                 $this->prompt = $agent->prepareNextTurnPrompt();
@@ -651,7 +643,7 @@ class TaskBuilder
         }
 
         // Use ToolExecutor for tool workflow
-        $executor = new ToolExecutor($this->tools, $this->context);
+        $executor = new ToolExecutor($this->tools);
         $aiGenerator = fn($prompt, $temp) => $this->generateRawText($prompt, temperature: $temp);
         
         $result = $executor->executeToolWorkflow($userQuery, $aiGenerator);

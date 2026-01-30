@@ -14,20 +14,17 @@ class AgentExecutor
     private ?string $goal;
     private ConversationMemory $memory;
     private array $tools;
-    private array $context;
     private $taskExecutor;
 
     public function __construct(
         int $maxTurns,
         ?string $goal,
         array $tools,
-        array $context,
         callable $taskExecutor
     ) {
         $this->maxTurns = $maxTurns;
         $this->goal = $goal;
         $this->tools = $tools;
-        $this->context = $context;
         $this->taskExecutor = $taskExecutor;
         $this->memory = new ConversationMemory();
     }

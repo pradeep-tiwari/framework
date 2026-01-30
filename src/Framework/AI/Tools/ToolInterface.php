@@ -6,7 +6,7 @@ interface ToolInterface
     /**
      * Execute the tool with validated parameters.
      */
-    public function __invoke(array $params, ToolContext $context): mixed;
+    public function __invoke(array $params): mixed;
     
     /**
      * Describe what this tool does (used by AI for decision-making).

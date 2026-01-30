@@ -21,6 +21,7 @@ class Http
     protected mixed $response = null;
     protected int $statusCode = 0;
     protected array $files = [];
+    protected array $responseHeaders = [];
 
     public function __construct()
     {
@@ -200,6 +201,7 @@ class Http
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+        curl_setopt($ch, CURLOPT_HEADER, true);
 
         // Set headers
         $headers = [];
@@ -237,11 +239,17 @@ class Http
         }
 
         // Execute request
-        $this->response = curl_exec($ch);
+        $response = curl_exec($ch);
         $this->error = curl_error($ch);
         $this->statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
 
         curl_close($ch);
+
+        // Separate headers and body
+        $headerString = substr($response, 0, $headerSize);
+        $this->response = substr($response, $headerSize);
+        $this->responseHeaders = $this->parseHeaders($headerString);
 
         $this->resetState();
 
@@ -337,5 +345,49 @@ class Http
         $this->headers = [];
         $this->options = [];
         $this->files = [];
+    }
+
+    /**
+     * Get all response headers.
+     * 
+     * @return array Associative array of header name => value
+     */
+    public function responseHeaders(): array
+    {
+        return $this->responseHeaders;
+    }
+
+    /**
+     * Get a specific response header value.
+     * Header names are case-insensitive.
+     * 
+     * @param string $name Header name
+     * @return string|null Header value or null if not found
+     */
+    public function responseHeader(string $name): ?string
+    {
+        $name = strtolower($name);
+        return $this->responseHeaders[$name] ?? null;
+    }
+
+    /**
+     * Parse raw header string into associative array.
+     * 
+     * @param string $headerString Raw header string from cURL
+     * @return array Parsed headers (lowercase keys)
+     */
+    protected function parseHeaders(string $headerString): array
+    {
+        $headers = [];
+        $lines = explode("\r\n", $headerString);
+
+        foreach ($lines as $line) {
+            if (strpos($line, ':') !== false) {
+                [$name, $value] = explode(':', $line, 2);
+                $headers[strtolower(trim($name))] = trim($value);
+            }
+        }
+
+        return $headers;
     }
 }

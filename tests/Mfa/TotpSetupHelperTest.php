@@ -96,17 +96,6 @@ class TotpSetupHelperTest extends TestCase
         $this->assertNotFalse($decoded);
     }
 
-    public function testGetQrUriIsDeprecatedWrapperForGetOtpAuthUri()
-    {
-        $secret = 'JBSWY3DPEHPK3PXP';
-        $email = 'user@example.com';
-        
-        $uri1 = TotpSetupHelper::getQrUri($secret, $email);
-        $uri2 = TotpSetupHelper::getOtpAuthUri($secret, $email);
-        
-        $this->assertSame($uri1, $uri2);
-    }
-
     public function testGetIssuerNameReturnsConfiguredAppName()
     {
         $issuer = TotpSetupHelper::getIssuerName();

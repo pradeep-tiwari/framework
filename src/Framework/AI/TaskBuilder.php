@@ -1,10 +1,10 @@
 <?php
 namespace Lightpack\AI;
 
-use Lightpack\AI\Tools\ToolContext;
 use Lightpack\AI\Tools\ToolInvoker;
+use Lightpack\AI\Tools\ToolExecutor;
+use Lightpack\AI\AgentExecutor;
 use Lightpack\AI\Support\JsonExtractor;
-use Lightpack\AI\Support\SchemaValidator;
 
 class TaskBuilder
 {
@@ -259,37 +259,30 @@ class TaskBuilder
             ];
         }
 
-        $decisionPrompt = $this->buildToolDecisionPrompt($userQuery);
-        $decisionText = $this->generateRawText($decisionPrompt, temperature: 0.0);
-        $decision = $this->decodeJsonObject($decisionText);
+        // Use ToolExecutor for tool workflow
+        $executor = new ToolExecutor($this->tools, $this->context);
+        $aiGenerator = fn($prompt, $temp) => $this->generateRawText($prompt, temperature: $temp);
+        
+        $result = $executor->executeToolWorkflow($userQuery, $aiGenerator);
 
-        if (!is_array($decision)) {
+        // Handle tool execution result
+        if (!$result['success']) {
             return [
                 'success' => false,
                 'data' => null,
-                'raw' => $decisionText,
-                'errors' => ['Failed to parse tool decision JSON'],
-                'tools_used' => [],
+                'raw' => $result['decision_raw'],
+                'errors' => [$result['error']],
+                'tools_used' => $result['tool_name'] ? [$result['tool_name']] : [],
                 'tool_results' => [],
             ];
         }
 
-        $toolName = $decision['tool'] ?? null;
-        $toolParams = $decision['params'] ?? null;
-
-        if (!is_string($toolName) || $toolName === '') {
-            return [
-                'success' => false,
-                'data' => null,
-                'raw' => $decisionText,
-                'errors' => ['Tool decision missing "tool"'],
-                'tools_used' => [],
-                'tool_results' => [],
-            ];
-        }
-
-        if ($toolName === 'none') {
-            $answer = $this->generateRawText($this->buildToolNoneAnswerPrompt($userQuery), temperature: $this->temperature ?? 0.3);
+        // If AI decided no tool needed, generate answer directly
+        if ($result['tool_name'] === 'none') {
+            $prompt = "User: {$userQuery}\n\n"
+                . "Provide a helpful answer. If you need more details, ask a clarifying question.";
+            
+            $answer = $this->generateRawText($prompt, temperature: $this->temperature ?? 0.3);
 
             return [
                 'success' => true,
@@ -301,61 +294,17 @@ class TaskBuilder
             ];
         }
 
-        if (!isset($this->tools[$toolName])) {
-            return [
-                'success' => false,
-                'data' => null,
-                'raw' => $decisionText,
-                'errors' => ["Unknown tool: {$toolName}"],
-                'tools_used' => [],
-                'tool_results' => [],
-            ];
-        }
-
-        if (!is_array($toolParams)) {
-            return [
-                'success' => false,
-                'data' => null,
-                'raw' => $decisionText,
-                'errors' => ['Tool decision missing "params" object'],
-                'tools_used' => [],
-                'tool_results' => [],
-            ];
-        }
-
-        $toolDef = $this->tools[$toolName];
+        // Tool was executed successfully, generate final answer
+        $toolResultText = $this->formatForPrompt($result['tool_result']);
+        $finalPrompt = "User: {$userQuery}\n\n"
+            . "Tool Used: {$result['tool_name']}\n\n"
+            . "Tool Result:\n{$toolResultText}\n\n"
+            . "Rules:\n"
+            . "- Use ONLY the Tool Result for facts.\n"
+            . "- If the Tool Result does not contain enough information, say so explicitly.\n"
+            . "- Do not invent details.\n\n"
+            . "Answer:";
         
-        $validator = new SchemaValidator();
-        $validatedParams = $validator->validate($toolParams, $toolDef['params'] ?? []);
-        if ($validatedParams === null) {
-            return [
-                'success' => false,
-                'data' => null,
-                'raw' => $decisionText,
-                'errors' => $validator->errors(),
-                'tools_used' => [$toolName],
-                'tool_results' => [],
-            ];
-        }
-
-        $context = new ToolContext(
-            metadata: $this->context
-        );
-
-        try {
-            $toolResult = ToolInvoker::invoke($toolDef['fn'], $validatedParams, $context);
-        } catch (\Throwable $e) {
-            return [
-                'success' => false,
-                'data' => null,
-                'raw' => null,
-                'errors' => ['Tool execution failed: ' . $e->getMessage()],
-                'tools_used' => [$toolName],
-                'tool_results' => [],
-            ];
-        }
-
-        $finalPrompt = $this->buildToolFinalAnswerPrompt($userQuery, $toolName, $toolResult);
         $answer = $this->generateRawText($finalPrompt, temperature: $this->temperature ?? 0.3);
 
         return [
@@ -363,75 +312,11 @@ class TaskBuilder
             'data' => null,
             'raw' => $answer,
             'errors' => [],
-            'tools_used' => [$toolName],
-            'tool_results' => [$toolName => $toolResult],
+            'tools_used' => [$result['tool_name']],
+            'tool_results' => [$result['tool_name'] => $result['tool_result']],
         ];
     }
 
-    protected function buildToolDecisionPrompt(string $userQuery): string
-    {
-        $toolLines = [];
-        foreach ($this->tools as $name => $tool) {
-            $toolLines[] = $this->describeToolForPrompt($name, $tool);
-        }
-
-        $toolList = implode("\n", $toolLines);
-
-        return "Decide if you should call ONE tool to help answer the user.\n\n"
-            . "User: {$userQuery}\n\n"
-            . "Available Tools:\n{$toolList}\n\n"
-            . "Rules:\n"
-            . "- Return ONLY a JSON object. No markdown, no extra text.\n"
-            . "- Choose tool=\"none\" if no tool is needed or if required parameters are missing.\n"
-            . "- If you choose a tool, include a JSON object params with all required parameters.\n\n"
-            . "Response format:\n"
-            . '{"tool":"tool_name_or_none","params":{}}';
-    }
-
-    protected function buildToolNoneAnswerPrompt(string $userQuery): string
-    {
-        return "User: {$userQuery}\n\n"
-            . "Provide a helpful answer. If you need more details, ask a clarifying question.";
-    }
-
-    protected function buildToolFinalAnswerPrompt(string $userQuery, string $toolName, mixed $toolResult): string
-    {
-        $toolResultText = $this->formatForPrompt($toolResult);
-
-        return "User: {$userQuery}\n\n"
-            . "Tool Used: {$toolName}\n\n"
-            . "Tool Result:\n{$toolResultText}\n\n"
-            . "Rules:\n"
-            . "- Use ONLY the Tool Result for facts.\n"
-            . "- If the Tool Result does not contain enough information, say so explicitly.\n"
-            . "- Do not invent details.\n\n"
-            . "Answer:";
-    }
-
-    protected function describeToolForPrompt(string $name, array $tool): string
-    {
-        $desc = (string)($tool['description'] ?? "Tool: {$name}");
-        $params = $tool['params'] ?? [];
-        $paramLines = [];
-
-        foreach ($params as $key => $type) {
-            if (is_int($key)) {
-                continue;
-            }
-
-            $paramType = is_array($type) ? ($type[0] ?? 'string') : $type;
-            $paramDesc = is_array($type) ? ($type[1] ?? '') : '';
-            $line = "- {$key}: {$paramType}";
-            if ($paramDesc !== '') {
-                $line .= " ({$paramDesc})";
-            }
-            $paramLines[] = $line;
-        }
-
-        $paramsText = empty($paramLines) ? '- (no parameters)' : implode("\n", $paramLines);
-
-        return "{$name}: {$desc}\nParameters:\n{$paramsText}\n";
-    }
 
     protected function generateRawText(string $prompt, float $temperature = 0.3): string
     {
@@ -663,69 +548,31 @@ class TaskBuilder
      */
     protected function runAgentMode(): array
     {
-        $currentTurn = 0;
         $originalPrompt = $this->prompt;
-        $allToolsUsed = [];
-        $allToolResults = [];
+        $agent = null; // Will be set before use
         
-        // Initialize memory with user's request
-        if ($originalPrompt) {
-            $this->agentMemory[] = [
-                'role' => 'user',
-                'content' => $originalPrompt,
-                'turn' => 0
-            ];
-        }
+        // Create agent executor with task executor callback
+        $agent = new AgentExecutor(
+            maxTurns: $this->maxTurns,
+            goal: $this->agentGoal,
+            tools: $this->tools,
+            context: $this->context,
+            taskExecutor: function() use (&$agent) {
+                // Prepare prompt for next turn
+                $this->prompt = $agent->prepareNextTurnPrompt();
+                
+                // Execute single turn
+                return $this->executeSingleTurn();
+            }
+        );
         
-        while ($currentTurn < $this->maxTurns) {
-            // Execute single turn
-            $result = $this->executeSingleTurn();
-            
-            // Accumulate tools used across all turns
-            if (!empty($result['tools_used'])) {
-                $allToolsUsed = array_merge($allToolsUsed, $result['tools_used']);
-            }
-            if (!empty($result['tool_results'])) {
-                $allToolResults = array_merge($allToolResults, $result['tool_results']);
-            }
-            
-            // Store turn result in memory
-            $this->agentMemory[] = [
-                'role' => 'assistant',
-                'content' => $result['raw'] ?? '',
-                'tools_used' => $result['tools_used'] ?? [],
-                'turn' => $currentTurn + 1
-            ];
-            
-            // Check if goal achieved or task complete
-            if ($this->isTaskComplete($result)) {
-                return array_merge($result, [
-                    'agent_turns' => $currentTurn + 1,
-                    'agent_memory' => $this->agentMemory,
-                    'goal_achieved' => true,
-                    'tools_used' => $allToolsUsed,
-                    'tool_results' => $allToolResults,
-                ]);
-            }
-            
-            // Prepare for next turn
-            $this->prepareNextTurn($result);
-            $currentTurn++;
-        }
+        // Run agent loop
+        $result = $agent->run($originalPrompt);
         
-        // Max turns reached without completion
-        $lastResult = end($this->agentMemory);
-        return [
-            'success' => false,
-            'data' => null,
-            'raw' => $lastResult['content'] ?? '',
-            'errors' => ['Agent reached maximum turns without achieving goal'],
-            'agent_turns' => $currentTurn,
-            'agent_memory' => $this->agentMemory,
-            'goal_achieved' => false,
-            'tools_used' => $allToolsUsed,
-            'tool_results' => $allToolResults,
-        ];
+        // Store memory back to TaskBuilder for backward compatibility
+        $this->agentMemory = $agent->getMemory();
+        
+        return $result;
     }
 
     /**
@@ -803,96 +650,32 @@ class TaskBuilder
             ];
         }
 
-        // Ask AI which tool to call (or none)
-        $decisionPrompt = $this->buildToolDecisionPrompt($userQuery);
-        $decisionText = $this->generateRawText($decisionPrompt, temperature: 0.0);
-        $decision = $this->decodeJsonObject($decisionText);
+        // Use ToolExecutor for tool workflow
+        $executor = new ToolExecutor($this->tools, $this->context);
+        $aiGenerator = fn($prompt, $temp) => $this->generateRawText($prompt, temperature: $temp);
+        
+        $result = $executor->executeToolWorkflow($userQuery, $aiGenerator);
 
-        if (!is_array($decision)) {
+        // Handle tool execution result
+        if (!$result['success']) {
             return [
                 'success' => false,
                 'data' => null,
-                'raw' => $decisionText,
-                'errors' => ['Failed to parse tool decision JSON'],
-                'tools_used' => [],
+                'raw' => $result['decision_raw'],
+                'errors' => [$result['error']],
+                'tools_used' => $result['tool_name'] ? [$result['tool_name']] : [],
                 'tool_results' => [],
             ];
         }
 
-        $toolName = $decision['tool'] ?? null;
-        $toolParams = $decision['params'] ?? null;
-
-        // If AI says "none", it's providing final answer
-        if ($toolName === 'none') {
+        // If AI decided no tool needed, it's providing final answer
+        if ($result['tool_name'] === 'none') {
             return [
                 'success' => true,
                 'data' => null,
-                'raw' => $decisionText,
+                'raw' => $result['decision_raw'],
                 'errors' => [],
                 'tools_used' => [],
-                'tool_results' => [],
-            ];
-        }
-
-        if (!is_string($toolName) || $toolName === '') {
-            return [
-                'success' => false,
-                'data' => null,
-                'raw' => $decisionText,
-                'errors' => ['Tool decision missing "tool"'],
-                'tools_used' => [],
-                'tool_results' => [],
-            ];
-        }
-
-        if (!isset($this->tools[$toolName])) {
-            return [
-                'success' => false,
-                'data' => null,
-                'raw' => $decisionText,
-                'errors' => ["Unknown tool: {$toolName}"],
-                'tools_used' => [],
-                'tool_results' => [],
-            ];
-        }
-
-        if (!is_array($toolParams)) {
-            return [
-                'success' => false,
-                'data' => null,
-                'raw' => $decisionText,
-                'errors' => ['Tool decision missing "params" object'],
-                'tools_used' => [],
-                'tool_results' => [],
-            ];
-        }
-
-        $toolDef = $this->tools[$toolName];
-        
-        $validator = new SchemaValidator();
-        $validatedParams = $validator->validate($toolParams, $toolDef['params'] ?? []);
-        if ($validatedParams === null) {
-            return [
-                'success' => false,
-                'data' => null,
-                'raw' => $decisionText,
-                'errors' => $validator->errors(),
-                'tools_used' => [$toolName],
-                'tool_results' => [],
-            ];
-        }
-
-        $context = new ToolContext(metadata: $this->context);
-
-        try {
-            $toolResult = ToolInvoker::invoke($toolDef['fn'], $validatedParams, $context);
-        } catch (\Throwable $e) {
-            return [
-                'success' => false,
-                'data' => null,
-                'raw' => null,
-                'errors' => ['Tool execution failed: ' . $e->getMessage()],
-                'tools_used' => [$toolName],
                 'tool_results' => [],
             ];
         }
@@ -902,85 +685,11 @@ class TaskBuilder
         return [
             'success' => true,
             'data' => null,
-            'raw' => "Tool {$toolName} executed successfully",
+            'raw' => "Tool {$result['tool_name']} executed successfully",
             'errors' => [],
-            'tools_used' => [$toolName],
-            'tool_results' => [$toolName => $toolResult],
+            'tools_used' => [$result['tool_name']],
+            'tool_results' => [$result['tool_name'] => $result['tool_result']],
         ];
     }
 
-    /**
-     * Check if the task is complete.
-     */
-    protected function isTaskComplete(array $result): bool
-    {
-        // If no tools were used and we got a successful response, task is complete
-        if (empty($result['tools_used']) && $result['success']) {
-            return true;
-        }
-        
-        // If we have a substantive response with no more tool calls needed, we're done
-        if (!empty($result['raw']) && empty($result['tools_used'])) {
-            return true;
-        }
-        
-        return false;
-    }
-
-    /**
-     * Check if the agent's goal has been achieved.
-     */
-    protected function checkGoalAchievement(array $result): bool
-    {
-        // Simple heuristic: if the response contains substantive content and no tools were called,
-        // assume goal is achieved
-        if (empty($result['tools_used']) && !empty($result['raw'])) {
-            return true;
-        }
-        
-        // For more sophisticated checking, could ask AI if goal is met
-        // But keeping it simple for now to avoid extra API calls
-        return false;
-    }
-
-    /**
-     * Prepare the task builder for the next turn.
-     */
-    protected function prepareNextTurn(array $result): void
-    {
-        // Build context from previous turns
-        $memoryContext = $this->buildMemoryContext();
-        
-        // Update prompt with context and goal
-        if ($this->agentGoal) {
-            $this->prompt = "Goal: {$this->agentGoal}\n\n"
-                . "Previous context:\n{$memoryContext}\n\n"
-                . "Continue working toward the goal. What should you do next?";
-        } else {
-            $this->prompt = "Previous context:\n{$memoryContext}\n\n"
-                . "Continue the task. What should you do next?";
-        }
-    }
-
-    /**
-     * Build a summary of memory context for the next turn.
-     */
-    protected function buildMemoryContext(): string
-    {
-        $context = [];
-        $recentTurns = array_slice($this->agentMemory, -3); // Last 3 turns for context
-        
-        foreach ($recentTurns as $memory) {
-            if ($memory['role'] === 'user') {
-                $context[] = "User: {$memory['content']}";
-            } elseif ($memory['role'] === 'assistant') {
-                $tools = !empty($memory['tools_used']) 
-                    ? ' (used tools: ' . implode(', ', $memory['tools_used']) . ')'
-                    : '';
-                $context[] = "Turn {$memory['turn']}{$tools}: {$memory['content']}";
-            }
-        }
-        
-        return implode("\n", $context);
-    }
 }

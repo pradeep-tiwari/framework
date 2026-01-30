@@ -24,7 +24,7 @@ class Http
 
     public function __construct()
     {
-        $this->options[CURLOPT_TIMEOUT] = 5;
+        $this->options[CURLOPT_TIMEOUT] = 30;
         $this->options[CURLOPT_FOLLOWLOCATION] = true;
     }
 
@@ -243,10 +243,7 @@ class Http
 
         curl_close($ch);
 
-        // Reset state for next request
-        $this->headers = [];
-        $this->options = [];
-        $this->files = [];
+        $this->resetState();
 
         return $this;
     }
@@ -306,6 +303,12 @@ class Http
     {
         $fp = fopen($savePath, 'w+');
         
+        if ($fp === false) {
+            throw new \RuntimeException(
+                sprintf('Failed to open file for writing: %s', $savePath)
+            );
+        }
+        
         $this->options[CURLOPT_URL] = $url;
         $this->options[CURLOPT_FILE] = $fp;
         $this->options[CURLOPT_FOLLOWLOCATION] = true;
@@ -324,6 +327,15 @@ class Http
             @unlink($savePath);
         }
         
+        $this->resetState();
+        
         return $success;
+    }
+
+    protected function resetState(): void
+    {
+        $this->headers = [];
+        $this->options = [];
+        $this->files = [];
     }
 }

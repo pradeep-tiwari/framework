@@ -43,7 +43,7 @@ class AgentExecutor
         
         while ($currentTurn < $this->maxTurns) {
             // Execute single turn
-            $result = ($this->taskExecutor)();
+            $result = ($this->taskExecutor)($this);
             
             // Accumulate tools used across all turns
             if (!empty($result['tools_used'])) {

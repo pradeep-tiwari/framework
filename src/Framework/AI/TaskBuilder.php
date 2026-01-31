@@ -536,13 +536,12 @@ class TaskBuilder
     protected function runAgentMode(): array
     {
         $originalPrompt = $this->prompt;
-        $agent = null; // Will be set before use
 
         // Create agent executor with task executor callback
         $agent = new AgentExecutor(
             maxTurns: $this->maxTurns,
             goal: $this->agentGoal,
-            taskExecutor: function () use (&$agent) {
+            taskExecutor: function (AgentExecutor $agent) {
                 // Prepare prompt for next turn
                 $this->prompt = $agent->prepareNextTurnPrompt();
 

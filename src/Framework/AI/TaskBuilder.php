@@ -647,12 +647,15 @@ class TaskBuilder
             ];
         }
 
-        // If AI decided no tool needed, it's providing final answer
+        // If AI decided no tool needed, generate final answer
         if ($result['tool_name'] === 'none') {
+            // Generate natural language answer instead of returning JSON decision
+            $answer = $this->generateRawText($userQuery, temperature: $this->temperature ?? 0.3);
+            
             return [
                 'success' => true,
                 'data' => null,
-                'raw' => $result['decision_raw'],
+                'raw' => $answer,
                 'errors' => [],
                 'tools_used' => [],
                 'tool_results' => [],

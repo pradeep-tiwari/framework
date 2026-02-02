@@ -53,12 +53,13 @@ class AgentExecutor
                 $allToolResults = array_merge($allToolResults, $result['tool_results']);
             }
             
-            // Store turn result in history
+            // Store turn result in history with tool results
             $this->history->addTurn(
                 'assistant',
                 $result['raw'] ?? '',
                 $currentTurn + 1,
-                $result['tools_used'] ?? []
+                $result['tools_used'] ?? [],
+                $result['tool_results'] ?? []
             );
             
             // Check if goal achieved or task complete

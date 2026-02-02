@@ -385,19 +385,4 @@ class HttpTest extends TestCase
         
         $this->assertGreaterThan(0, count($chunks));
     }
-
-    public function testStreamPostBackwardCompatibility()
-    {
-        $http = new Http();
-        $chunks = [];
-        
-        // Test deprecated streamPost() still works
-        $http->streamPost($this->baseUrl . '/post', [
-            'test' => 'data'
-        ], function($chunk) use (&$chunks) {
-            $chunks[] = $chunk;
-        });
-        
-        $this->assertGreaterThan(0, count($chunks));
-    }
 }

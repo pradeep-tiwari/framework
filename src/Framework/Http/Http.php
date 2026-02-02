@@ -357,14 +357,6 @@ class Http
     }
 
     /**
-     * @deprecated Use stream('POST', $url, $data, $onChunk) instead
-     */
-    public function streamPost(string $url, array $data, callable $onChunk): self
-    {
-        return $this->stream('POST', $url, $data, $onChunk);
-    }
-
-    /**
      * Set custom cURL options for the request.
      * 
      * @param array $options Array of CURLOPT_* options

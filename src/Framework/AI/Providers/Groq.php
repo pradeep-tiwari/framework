@@ -76,6 +76,53 @@ class Groq extends AI
 
     public function generateStream(array $params, callable $onChunk): void
     {
-        throw new \Exception('Streaming is not yet implemented for Groq provider');
+        $params['messages'] = $params['messages'] ?? [['role' => 'user', 'content' => $params['prompt'] ?? '']];
+        $endpoint = $params['endpoint'] ?? $this->config->get('ai.providers.groq.endpoint');
+        
+        $body = $this->prepareRequestBody($params);
+        $body['stream'] = true;
+        
+        $buffer = '';
+        
+        $this->http
+            ->headers($this->prepareHeaders())
+            ->timeout($this->config->get('ai.http_timeout'))
+            ->streamPost($endpoint, $body, function($chunk) use (&$buffer, $onChunk) {
+                $buffer .= $chunk;
+                
+                // Process complete lines (Server-Sent Events format)
+                while (($pos = strpos($buffer, "\n")) !== false) {
+                    $line = substr($buffer, 0, $pos);
+                    $buffer = substr($buffer, $pos + 1);
+                    
+                    // Skip empty lines
+                    if (trim($line) === '') {
+                        continue;
+                    }
+                    
+                    // Parse SSE data line (Groq uses OpenAI-compatible format)
+                    if (str_starts_with($line, 'data: ')) {
+                        $data = substr($line, 6);
+                        
+                        // Check for stream end
+                        if ($data === '[DONE]') {
+                            return;
+                        }
+                        
+                        // Parse JSON chunk
+                        $json = json_decode($data, true);
+                        if (!$json) {
+                            continue;
+                        }
+                        
+                        // Extract content from delta (same as OpenAI)
+                        $content = $json['choices'][0]['delta']['content'] ?? '';
+                        
+                        if ($content !== '') {
+                            $onChunk($content);
+                        }
+                    }
+                }
+            });
     }
 }

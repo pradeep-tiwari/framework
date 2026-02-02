@@ -169,6 +169,42 @@ class TaskBuilder
         return $this;
     }
 
+    /**
+     * Stream the AI response in real-time.
+     * 
+     * Calls the provided callback for each chunk of text as it arrives.
+     * This method does NOT support:
+     * - Schema extraction (expect/expectArray)
+     * - Tool calls
+     * - Agent mode (loop)
+     * - Caching
+     * 
+     * Use this for long-form content generation where you want to display
+     * results progressively as they're generated.
+     * 
+     * @param callable $onChunk Callback function: fn(string $textChunk) => void
+     * @return void
+     * @throws \Exception If streaming is incompatible with current configuration
+     */
+    public function stream(callable $onChunk): void
+    {
+        // Validate streaming compatibility
+        if ($this->maxTurns > 1) {
+            throw new \Exception('Streaming is not supported in agent mode (loop). Use run() instead.');
+        }
+        
+        if (!empty($this->tools)) {
+            throw new \Exception('Streaming is not supported with tools. Use run() instead.');
+        }
+        
+        if ($this->expectSchema || $this->expectArrayKey) {
+            throw new \Exception('Streaming is not supported with schema extraction (expect/expectArray). Use run() instead.');
+        }
+        
+        $params = $this->buildParams();
+        $this->provider->generateStream($params, $onChunk);
+    }
+
     public function run(): array
     {
         // Multi-turn agent mode

@@ -73,4 +73,9 @@ class Groq extends AI
             'raw' => $result,
         ];
     }
+
+    public function generateStream(array $params, callable $onChunk): void
+    {
+        throw new \Exception('Streaming is not yet implemented for Groq provider');
+    }
 }

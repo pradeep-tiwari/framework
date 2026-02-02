@@ -288,6 +288,71 @@ class Http
     }
 
     /**
+     * Make a streaming POST request with chunk callback.
+     * 
+     * Unlike regular post(), this streams the response in real-time
+     * by calling the provided callback for each chunk of data received.
+     * 
+     * @param string $url The endpoint URL
+     * @param array $data Request body data (will be JSON encoded)
+     * @param callable $onChunk Callback function: fn(string $chunk) => void
+     * @return self
+     * @throws \Exception If the request fails
+     */
+    public function streamPost(string $url, array $data, callable $onChunk): self
+    {
+        $ch = curl_init();
+        
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, false); // Don't buffer response
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        
+        // Prepare headers
+        $headers = [];
+        if (!isset($this->headers['Content-Type'])) {
+            $this->headers['Content-Type'] = 'application/json';
+        }
+        
+        foreach ($this->headers as $key => $value) {
+            $headers[] = "$key: $value";
+        }
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        
+        // Set request body
+        $body = json_encode($data);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+        
+        // Set custom options (timeout, etc.)
+        foreach ($this->options as $option => $value) {
+            curl_setopt($ch, $option, $value);
+        }
+        
+        // Set write callback for streaming
+        curl_setopt($ch, CURLOPT_WRITEFUNCTION, function($ch, $chunk) use ($onChunk) {
+            $onChunk($chunk);
+            return strlen($chunk); // Must return bytes processed
+        });
+        
+        // Execute streaming request
+        $success = curl_exec($ch);
+        $this->error = curl_error($ch);
+        $this->statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        
+        curl_close($ch);
+        
+        // Check for errors
+        if (!$success || $this->statusCode >= 400) {
+            $errorMsg = $this->error ?: 'HTTP error ' . $this->statusCode;
+            throw new \Exception('Streaming request failed: ' . $errorMsg);
+        }
+        
+        $this->resetState();
+        
+        return $this;
+    }
+
+    /**
      * Set custom cURL options for the request.
      * 
      * @param array $options Array of CURLOPT_* options

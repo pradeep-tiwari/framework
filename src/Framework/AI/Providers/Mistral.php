@@ -74,6 +74,11 @@ class Mistral extends AI
         ];
     }
 
+    public function generateStream(array $params, callable $onChunk): void
+    {
+        throw new \Exception('Streaming is not yet implemented for Mistral provider');
+    }
+
     protected function generateEmbedding(string|array $input, array $options = []): array
     {
         $model = $options['model'] ?? $this->config->get('ai.providers.mistral.embedding_model', 'mistral-embed');

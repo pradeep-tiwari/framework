@@ -34,6 +34,11 @@ class Gemini extends AI
         ];
     }
 
+    public function generateStream(array $params, callable $onChunk): void
+    {
+        throw new \Exception('Streaming is not yet implemented for Gemini provider');
+    }
+
     protected function prepareRequestBody(array $params): array
     {
         $messages = $params['messages'];

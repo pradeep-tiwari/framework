@@ -41,6 +41,19 @@ abstract class AI
     abstract public function generate(array $params): array;
 
     /**
+     * Generate a streaming response from the provider.
+     * 
+     * Calls the provided callback for each chunk of text as it arrives.
+     * This method does not return the complete response - use generate() for that.
+     * 
+     * @param array $params Same parameters as generate()
+     * @param callable $onChunk Callback function: fn(string $textChunk) => void
+     * @return void
+     * @throws \Exception If streaming is not supported by the provider
+     */
+    abstract public function generateStream(array $params, callable $onChunk): void;
+
+    /**
      * Start a fluent AI task builder for this provider.
      */
     public function task(): TaskBuilder

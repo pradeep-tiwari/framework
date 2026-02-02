@@ -102,7 +102,7 @@ class OpenAI extends AI
         $this->http
             ->headers($this->prepareHeaders())
             ->timeout($this->config->get('ai.http_timeout'))
-            ->streamPost($endpoint, $body, function($chunk) use (&$buffer, $onChunk) {
+            ->stream('POST', $endpoint, $body, function($chunk) use (&$buffer, $onChunk) {
                 $buffer .= $chunk;
                 
                 // Process complete lines (Server-Sent Events format)

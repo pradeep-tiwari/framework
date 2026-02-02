@@ -99,7 +99,7 @@ class Anthropic extends AI
         $this->http
             ->headers($this->prepareHeaders())
             ->timeout($this->config->get('ai.http_timeout', 10))
-            ->streamPost($endpoint, $body, function($chunk) use (&$buffer, $onChunk) {
+            ->stream('POST', $endpoint, $body, function($chunk) use (&$buffer, $onChunk) {
                 $buffer .= $chunk;
                 
                 // Process complete lines (Server-Sent Events format)

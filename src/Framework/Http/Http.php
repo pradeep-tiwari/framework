@@ -288,29 +288,31 @@ class Http
     }
 
     /**
-     * Make a streaming POST request with chunk callback.
+     * Make a streaming HTTP request with chunk callback.
      * 
-     * Unlike regular post(), this streams the response in real-time
+     * Unlike regular HTTP methods, this streams the response in real-time
      * by calling the provided callback for each chunk of data received.
      * 
+     * @param string $method HTTP method (GET, POST, PUT, DELETE, etc.)
      * @param string $url The endpoint URL
-     * @param array $data Request body data (will be JSON encoded)
+     * @param array|null $data Request body data (will be JSON encoded for POST/PUT/PATCH)
      * @param callable $onChunk Callback function: fn(string $chunk) => void
      * @return self
      * @throws \Exception If the request fails
      */
-    public function streamPost(string $url, array $data, callable $onChunk): self
+    public function stream(string $method, string $url, ?array $data, callable $onChunk): self
     {
         $ch = curl_init();
+        $method = strtoupper($method);
         
         curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, false); // Don't buffer response
         curl_setopt($ch, CURLOPT_HEADER, false);
         
         // Prepare headers
         $headers = [];
-        if (!isset($this->headers['Content-Type'])) {
+        if ($data !== null && !isset($this->headers['Content-Type'])) {
             $this->headers['Content-Type'] = 'application/json';
         }
         
@@ -319,9 +321,11 @@ class Http
         }
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         
-        // Set request body
-        $body = json_encode($data);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+        // Set request body for methods that support it
+        if ($data !== null && in_array($method, ['POST', 'PUT', 'PATCH'])) {
+            $body = json_encode($data);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+        }
         
         // Set custom options (timeout, etc.)
         foreach ($this->options as $option => $value) {
@@ -350,6 +354,14 @@ class Http
         $this->resetState();
         
         return $this;
+    }
+
+    /**
+     * @deprecated Use stream('POST', $url, $data, $onChunk) instead
+     */
+    public function streamPost(string $url, array $data, callable $onChunk): self
+    {
+        return $this->stream('POST', $url, $data, $onChunk);
     }
 
     /**

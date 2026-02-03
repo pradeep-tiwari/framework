@@ -172,25 +172,25 @@ class TaskBuilder
     /**
      * Stream the AI response as Server-Sent Events (SSE).
      * 
-     * Returns an event stream response that can be directly returned from controllers.
+     * If callback provided: streams chunks directly to callback (for testing/CLI).
+     * If no callback: returns Response configured for SSE (for HTTP controllers).
      * 
-     * Example:
+     * Examples:
      * ```php
-     * return ai()->task()
-     *     ->prompt('Write an essay')
-     *     ->stream();
+     * // HTTP controller - returns Response
+     * return ai()->task()->prompt('Write an essay')->stream();
+     * 
+     * // Testing/CLI - callback receives chunks
+     * ai()->task()->prompt('Count')->stream(function($chunk) {
+     *     echo $chunk;
+     * });
      * ```
      * 
-     * Note: Streaming is incompatible with:
-     * - Agent mode (loop)
-     * - Tools
-     * - Schema extraction (expect/expectArray)
-     * - Caching
-     * 
-     * @return \Lightpack\Http\Response
+     * @param callable|null $callback Optional callback to receive chunks directly
+     * @return \Lightpack\Http\Response|void Returns Response if no callback, void if callback provided
      * @throws \Exception If streaming is incompatible with current configuration
      */
-    public function stream(): \Lightpack\Http\Response
+    public function stream(?callable $callback = null)
     {
         // Validate streaming compatibility
         if ($this->maxTurns > 1) {
@@ -205,6 +205,14 @@ class TaskBuilder
             throw new \Exception('Streaming is not supported with schema extraction (expect/expectArray). Use run() instead.');
         }
         
+        // If callback provided, stream directly to it (for testing/CLI)
+        if ($callback !== null) {
+            $params = $this->buildParams();
+            $this->provider->generateStream($params, $callback);
+            return;
+        }
+        
+        // Otherwise, return SSE Response (for HTTP controllers)
         return response()->sse(function($stream) {
             $params = $this->buildParams();
             $this->provider->generateStream($params, function($chunk) use ($stream) {

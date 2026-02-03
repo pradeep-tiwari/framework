@@ -188,10 +188,10 @@ class TaskBuilder
      * - Schema extraction (expect/expectArray)
      * - Caching
      * 
-     * @return \Lightpack\Http\EventStream
+     * @return \Lightpack\Http\Response
      * @throws \Exception If streaming is incompatible with current configuration
      */
-    public function stream(): \Lightpack\Http\EventStream
+    public function stream(): \Lightpack\Http\Response
     {
         // Validate streaming compatibility
         if ($this->maxTurns > 1) {
@@ -206,17 +206,13 @@ class TaskBuilder
             throw new \Exception('Streaming is not supported with schema extraction (expect/expectArray). Use run() instead.');
         }
         
-        $stream = new \Lightpack\Http\EventStream();
-        
-        $stream->using(function($stream) {
+        return response()->sse(function($stream) {
             $params = $this->buildParams();
             $this->provider->generateStream($params, function($chunk) use ($stream) {
                 $stream->push('chunk', ['text' => $chunk]);
             });
             $stream->push('done');
         });
-        
-        return $stream;
     }
 
     public function run(): array

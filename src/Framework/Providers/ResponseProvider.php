@@ -5,8 +5,6 @@ namespace Lightpack\Providers;
 use Lightpack\Http\Response;
 use Lightpack\Container\Container;
 use Lightpack\Http\Redirect;
-use Lightpack\Http\EventStream;
-use Lightpack\Utils\Url;
 
 class ResponseProvider implements ProviderInterface
 {
@@ -20,12 +18,7 @@ class ResponseProvider implements ProviderInterface
             return new Redirect();
         });
 
-        $container->register('event_stream', function ($container) {
-            return new EventStream();
-        });
-
         $container->alias(Response::class, 'response');
         $container->alias(Redirect::class, 'redirect');
-        $container->alias(EventStream::class, 'event_stream');
     }
 }

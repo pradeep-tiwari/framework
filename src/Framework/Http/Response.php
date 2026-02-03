@@ -507,6 +507,29 @@ class Response
     }
 
     /**
+     * Set up Server-Sent Events (SSE) streaming.
+     * 
+     * @param callable $callback Callback that receives EventStream instance
+     * @return self
+     */
+    public function sse(callable $callback): self
+    {
+        // Set SSE headers
+        $this->setHeader('Content-Type', 'text/event-stream')
+             ->setHeader('Cache-Control', 'no-cache')
+             ->setHeader('Connection', 'keep-alive')
+             ->setHeader('X-Accel-Buffering', 'no');
+        
+        // Set up streaming with EventStream
+        $this->stream(function() use ($callback) {
+            $stream = new EventStream();
+            $callback($stream);
+        });
+        
+        return $this;
+    }
+
+    /**
      * Enable caching for the response with given options
      *
      * @param int $maxAge Maximum age in seconds (e.g., 3600 for 1 hour)

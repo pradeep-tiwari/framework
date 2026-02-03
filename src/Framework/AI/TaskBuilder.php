@@ -172,8 +172,7 @@ class TaskBuilder
     /**
      * Stream the AI response as Server-Sent Events (SSE).
      * 
-     * Returns an EventStream response that can be directly returned from controllers.
-     * The stream will automatically send 'chunk' and 'done' events.
+     * Returns an event stream response that can be directly returned from controllers.
      * 
      * Example:
      * ```php

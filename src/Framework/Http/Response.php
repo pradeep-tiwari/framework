@@ -507,9 +507,9 @@ class Response
     }
 
     /**
-     * Set up Server-Sent Events (SSE) streaming.
+     * Configure response for Server-Sent Events (SSE) streaming.
      * 
-     * @param callable $callback Callback that receives EventStream instance
+     * @param callable $callback Callback that receives stream object with push() method
      * @return self
      */
     public function sse(callable $callback): self
@@ -520,13 +520,33 @@ class Response
              ->setHeader('Connection', 'keep-alive')
              ->setHeader('X-Accel-Buffering', 'no');
         
-        // Set up streaming with EventStream
+        // Set up streaming
         $this->stream(function() use ($callback) {
-            $stream = new EventStream();
-            $callback($stream);
+            $callback($this->createEventStream());
         });
         
         return $this;
+    }
+
+    /**
+     * Create an anonymous class for SSE event streaming.
+     * 
+     * @return object Object with push() method for sending SSE events
+     */
+    protected function createEventStream(): object
+    {
+        return new class {
+            public function push(string $event, array $data = []): void
+            {
+                $payload = array_merge(['event' => $event], $data);
+                echo "data: " . json_encode($payload) . "\n\n";
+                
+                if (ob_get_level() > 0) {
+                    ob_flush();
+                }
+                flush();
+            }
+        };
     }
 
     /**

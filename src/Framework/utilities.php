@@ -38,6 +38,25 @@ if (!function_exists('redirect')) {
     }
 }
 
+if (!function_exists('sse')) {
+    /**
+     * Creates a Server-Sent Events (SSE) stream response.
+     * 
+     * @param callable|null $callback Optional callback that receives EventStream instance
+     * @return Lightpack\Http\EventStream
+     */
+    function sse(?callable $callback = null)
+    {
+        $stream = app('event_stream');
+        
+        if ($callback) {
+            $stream->using($callback);
+        }
+        
+        return $stream;
+    }
+}
+
 if (!function_exists('csrf_input')) {
     /** 
      * Returns an HTML input for CSRF token.

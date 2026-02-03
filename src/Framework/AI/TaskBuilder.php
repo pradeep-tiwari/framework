@@ -170,23 +170,28 @@ class TaskBuilder
     }
 
     /**
-     * Stream the AI response in real-time.
+     * Stream the AI response as Server-Sent Events (SSE).
      * 
-     * Calls the provided callback for each chunk of text as it arrives.
-     * This method does NOT support:
-     * - Schema extraction (expect/expectArray)
-     * - Tool calls
+     * Returns an EventStream response that can be directly returned from controllers.
+     * The stream will automatically send 'chunk' and 'done' events.
+     * 
+     * Example:
+     * ```php
+     * return ai()->task()
+     *     ->prompt('Write an essay')
+     *     ->stream();
+     * ```
+     * 
+     * Note: Streaming is incompatible with:
      * - Agent mode (loop)
+     * - Tools
+     * - Schema extraction (expect/expectArray)
      * - Caching
      * 
-     * Use this for long-form content generation where you want to display
-     * results progressively as they're generated.
-     * 
-     * @param callable $onChunk Callback function: fn(string $textChunk) => void
-     * @return void
+     * @return \Lightpack\Http\EventStream
      * @throws \Exception If streaming is incompatible with current configuration
      */
-    public function stream(callable $onChunk): void
+    public function stream(): \Lightpack\Http\EventStream
     {
         // Validate streaming compatibility
         if ($this->maxTurns > 1) {
@@ -201,8 +206,17 @@ class TaskBuilder
             throw new \Exception('Streaming is not supported with schema extraction (expect/expectArray). Use run() instead.');
         }
         
-        $params = $this->buildParams();
-        $this->provider->generateStream($params, $onChunk);
+        $stream = new \Lightpack\Http\EventStream();
+        
+        $stream->using(function($stream) {
+            $params = $this->buildParams();
+            $this->provider->generateStream($params, function($chunk) use ($stream) {
+                $stream->push('chunk', ['text' => $chunk]);
+            });
+            $stream->push('done');
+        });
+        
+        return $stream;
     }
 
     public function run(): array

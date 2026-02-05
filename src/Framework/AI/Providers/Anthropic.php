@@ -84,8 +84,6 @@ class Anthropic extends AI
                             ];
                         }
                     }
-                } elseif ($type === 'image') {
-                    $normalized[] = $item;
                 } elseif ($type === 'document') {
                     // Convert generic document to Anthropic format
                     $normalized[] = [

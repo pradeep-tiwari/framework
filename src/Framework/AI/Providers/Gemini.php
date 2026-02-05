@@ -182,8 +182,6 @@ class Gemini extends AI
                             'data' => $item['data'],
                         ]
                     ];
-                } elseif (isset($item['inline_data'])) {
-                    $parts[] = ['inline_data' => $item['inline_data']];
                 }
             }
             

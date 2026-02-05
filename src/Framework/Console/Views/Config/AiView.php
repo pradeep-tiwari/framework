@@ -13,7 +13,7 @@ return [
     'ai' => [
         'driver' => get_env('AI_PROVIDER'), // openai, anthropic, mistral, groq, gemini
         'cache_ttl' => 3600, // Cache TTL in seconds (when caching is enabled)
-        'http_timeout' => 15, // 15 seconds HTTP timeout by default
+        'http_timeout' => 30, // 30 seconds HTTP timeout by default
         'temperature' => 0.7,
         'max_tokens' => 256,
 

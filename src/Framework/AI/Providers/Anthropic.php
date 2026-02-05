@@ -68,6 +68,22 @@ class Anthropic extends AI
                 
                 if ($type === 'text') {
                     $normalized[] = ['type' => 'text', 'text' => $item['text']];
+                } elseif ($type === 'image_url') {
+                    // Convert framework's image_url format to Anthropic format
+                    $imageUrl = $item['image_url']['url'] ?? $item['image_url'];
+                    if (str_starts_with($imageUrl, 'data:')) {
+                        preg_match('/data:([^;]+);base64,(.+)/', $imageUrl, $matches);
+                        if ($matches) {
+                            $normalized[] = [
+                                'type' => 'image',
+                                'source' => [
+                                    'type' => 'base64',
+                                    'media_type' => $matches[1],
+                                    'data' => $matches[2]
+                                ]
+                            ];
+                        }
+                    }
                 } elseif ($type === 'image') {
                     $normalized[] = $item;
                 } elseif ($type === 'document') {

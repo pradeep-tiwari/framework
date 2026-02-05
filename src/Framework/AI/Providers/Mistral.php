@@ -9,7 +9,8 @@ class Mistral extends AI
     {
         return $this->executeWithCache($params, function() use ($params) {
             $params['messages'] = $params['messages'] ?? [['role' => 'user', 'content' => $params['prompt'] ?? '']];
-            $endpoint = $params['endpoint'] ?? $this->config->get('ai.providers.mistral.endpoint');
+            $baseUrl = $this->config->get('ai.providers.mistral.base_url');
+            $endpoint = $params['endpoint'] ?? $baseUrl . '/chat/completions';
             
             $result = $this->makeApiRequest(
                 $endpoint,
@@ -77,7 +78,8 @@ class Mistral extends AI
     public function generateStream(array $params, callable $onChunk): void
     {
         $params['messages'] = $params['messages'] ?? [['role' => 'user', 'content' => $params['prompt'] ?? '']];
-        $endpoint = $params['endpoint'] ?? $this->config->get('ai.providers.mistral.endpoint');
+        $baseUrl = $this->config->get('ai.providers.mistral.base_url');
+        $endpoint = $params['endpoint'] ?? $baseUrl . '/chat/completions';
         
         $body = $this->prepareRequestBody($params);
         $body['stream'] = true;

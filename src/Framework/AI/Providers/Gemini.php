@@ -8,8 +8,11 @@ class Gemini extends AI
     public function generate(array $params): array
     {
         return $this->executeWithCache($params, function() use ($params) {
-            $params['messages'] = $params['messages'] ?? [['role' => 'user', 'content' => $params['prompt'] ?? '']];
-            $endpoint = $params['endpoint'] ?? $this->config->get('ai.providers.gemini.endpoint');
+            $baseUrl = $this->config->get('ai.providers.gemini.base_url');
+            $model = $params['model'] ?? $this->config->get('ai.providers.gemini.model');
+            $apiKey = $this->config->get('ai.providers.gemini.key');
+            
+            $endpoint = $params['endpoint'] ?? $baseUrl . '/models/' . $model . ':generateContent?key=' . $apiKey;
             
             $result = $this->makeApiRequest(
                 $endpoint,
@@ -24,23 +27,34 @@ class Gemini extends AI
 
     protected function parseOutput(array $result): array
     {
-        $choice = $result['choices'][0] ?? [];
+        $candidate = $result['candidates'][0] ?? [];
+        $content = $candidate['content'] ?? [];
+        $parts = $content['parts'] ?? [];
+        
+        $text = '';
+        foreach ($parts as $part) {
+            if (isset($part['text'])) {
+                $text .= $part['text'];
+            }
+        }
 
         return [
-            'text' => $choice['message']['content'] ?? '',
-            'finish_reason' => $choice['finish_reason'] ?? '',
-            'usage' => $result['usage'] ?? [],
+            'text' => $text,
+            'finish_reason' => $candidate['finishReason'] ?? '',
+            'usage' => $result['usageMetadata'] ?? [],
             'raw' => $result,
         ];
     }
 
     public function generateStream(array $params, callable $onChunk): void
     {
-        $params['messages'] = $params['messages'] ?? [['role' => 'user', 'content' => $params['prompt'] ?? '']];
-        $endpoint = $params['endpoint'] ?? $this->config->get('ai.providers.gemini.endpoint');
+        $baseUrl = $this->config->get('ai.providers.gemini.base_url');
+        $model = $params['model'] ?? $this->config->get('ai.providers.gemini.model');
+        $apiKey = $this->config->get('ai.providers.gemini.key');
+        
+        $endpoint = $params['endpoint'] ?? $baseUrl . '/models/' . $model . ':streamGenerateContent?key=' . $apiKey;
         
         $body = $this->prepareRequestBody($params);
-        $body['stream'] = true;
         
         $buffer = '';
         
@@ -50,36 +64,26 @@ class Gemini extends AI
             ->stream('POST', $endpoint, $body, function($chunk) use (&$buffer, $onChunk) {
                 $buffer .= $chunk;
                 
-                // Process complete lines (Server-Sent Events format)
                 while (($pos = strpos($buffer, "\n")) !== false) {
                     $line = substr($buffer, 0, $pos);
                     $buffer = substr($buffer, $pos + 1);
                     
-                    // Skip empty lines
                     if (trim($line) === '') {
                         continue;
                     }
                     
-                    // Parse SSE data line (Gemini uses OpenAI-compatible format)
-                    if (str_starts_with($line, 'data: ')) {
-                        $data = substr($line, 6);
-                        
-                        // Check for stream end
-                        if ($data === '[DONE]') {
-                            return;
-                        }
-                        
-                        // Parse JSON chunk
-                        $json = json_decode($data, true);
-                        if (!$json) {
-                            continue;
-                        }
-                        
-                        // Extract content from delta (same as OpenAI)
-                        $content = $json['choices'][0]['delta']['content'] ?? '';
-                        
-                        if ($content !== '') {
-                            $onChunk($content);
+                    $json = json_decode($line, true);
+                    if (!$json) {
+                        continue;
+                    }
+                    
+                    $candidate = $json['candidates'][0] ?? [];
+                    $content = $candidate['content'] ?? [];
+                    $parts = $content['parts'] ?? [];
+                    
+                    foreach ($parts as $part) {
+                        if (isset($part['text']) && $part['text'] !== '') {
+                            $onChunk($part['text']);
                         }
                     }
                 }
@@ -88,31 +92,102 @@ class Gemini extends AI
 
     protected function prepareRequestBody(array $params): array
     {
-        $messages = $params['messages'];
+        $messages = $params['messages'] ?? [['role' => 'user', 'content' => $params['prompt'] ?? '']];
+        
+        $contents = [];
+        
+        foreach ($messages as $msg) {
+            $role = $msg['role'] === 'assistant' ? 'model' : 'user';
+            $content = $msg['content'];
+            
+            $parts = $this->convertContentToParts($content);
+            
+            $contents[] = [
+                'role' => $role,
+                'parts' => $parts,
+            ];
+        }
+        
+        $body = [
+            'contents' => $contents,
+        ];
         
         if (!empty($params['system'])) {
-            array_unshift($messages, ['role' => 'system', 'content' => $params['system']]);
-        }
-
-        $messages = array_map(function($msg) {
-            return [
-                'role' => $msg['role'],
-                'content' => $this->normalizeContent($msg['content']),
+            $body['systemInstruction'] = [
+                'parts' => [['text' => $params['system']]]
             ];
-        }, $messages);
+        }
         
-        return [
-            'messages' => $messages,
-            'model' => $params['model'] ?? $this->config->get('ai.providers.gemini.model'),
-            'temperature' => $params['temperature'] ?? $this->config->get('ai.temperature'),
-            'max_tokens' => $params['max_tokens'] ?? $this->config->get('ai.max_tokens'),
-        ];
+        $generationConfig = [];
+        
+        if (isset($params['temperature'])) {
+            $generationConfig['temperature'] = $params['temperature'];
+        }
+        
+        if (isset($params['max_tokens'])) {
+            $generationConfig['maxOutputTokens'] = $params['max_tokens'];
+        }
+        
+        if (!empty($generationConfig)) {
+            $body['generationConfig'] = $generationConfig;
+        }
+        
+        return $body;
+    }
+
+    protected function convertContentToParts(mixed $content): array
+    {
+        if (is_string($content)) {
+            return [['text' => $content]];
+        }
+        
+        if (!is_array($content)) {
+            return [['text' => (string)$content]];
+        }
+        
+        if ($this->isMultimodalContent($content)) {
+            $parts = [];
+            
+            foreach ($content as $item) {
+                $type = $item['type'] ?? null;
+                
+                if ($type === 'text') {
+                    $parts[] = ['text' => $item['text']];
+                } elseif ($type === 'image_url') {
+                    $imageUrl = $item['image_url']['url'] ?? $item['image_url'];
+                    if (str_starts_with($imageUrl, 'data:')) {
+                        preg_match('/data:([^;]+);base64,(.+)/', $imageUrl, $matches);
+                        if ($matches) {
+                            $parts[] = [
+                                'inline_data' => [
+                                    'mime_type' => $matches[1],
+                                    'data' => $matches[2],
+                                ]
+                            ];
+                        }
+                    }
+                } elseif ($type === 'document') {
+                    // Convert generic document format to Gemini's inline_data format
+                    $parts[] = [
+                        'inline_data' => [
+                            'mime_type' => $item['mime_type'],
+                            'data' => $item['data'],
+                        ]
+                    ];
+                } elseif (isset($item['inline_data'])) {
+                    $parts[] = ['inline_data' => $item['inline_data']];
+                }
+            }
+            
+            return $parts;
+        }
+        
+        return [['text' => implode("\n", $content)]];
     }
 
     protected function prepareHeaders(): array
     {
         return [
-            'Authorization' => 'Bearer ' . $this->config->get('ai.providers.gemini.key'),
             'Content-Type' => 'application/json',
         ];
     }
@@ -121,10 +196,10 @@ class Gemini extends AI
     {
         $model = $options['model'] ?? $this->config->get('ai.providers.gemini.embedding_model', 'text-embedding-004');
         $apiKey = $this->config->get('ai.providers.gemini.key');
+        $baseUrl = $this->config->get('ai.providers.gemini.base_url');
         
-        // Single text
         if (is_string($input)) {
-            $endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' . $model . ':embedContent?key=' . $apiKey;
+            $endpoint = $baseUrl . '/models/' . $model . ':embedContent?key=' . $apiKey;
             
             $result = $this->makeApiRequest(
                 $endpoint,
@@ -136,8 +211,7 @@ class Gemini extends AI
             return $result['embedding']['values'] ?? [];
         }
         
-        // Batch - use efficient batch endpoint
-        $endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' . $model . ':batchEmbedContents?key=' . $apiKey;
+        $endpoint = $baseUrl . '/models/' . $model . ':batchEmbedContents?key=' . $apiKey;
         
         $requests = array_map(fn($text) => [
             'model' => 'models/' . $model,

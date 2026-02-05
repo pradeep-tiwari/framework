@@ -9,7 +9,8 @@ class OpenAI extends AI
     {
         return $this->executeWithCache($params, function() use ($params) {
             $params['messages'] = $params['messages'] ?? [['role' => 'user', 'content' => $params['prompt'] ?? '']];
-            $endpoint = $params['endpoint'] ?? $this->config->get('ai.providers.openai.endpoint');
+            $baseUrl = $this->config->get('ai.providers.openai.base_url');
+            $endpoint = $params['endpoint'] ?? $baseUrl . '/chat/completions';
             
             $result = $this->makeApiRequest(
                 $endpoint,
@@ -68,7 +69,8 @@ class OpenAI extends AI
     protected function generateEmbedding(string|array $input, array $options = []): array
     {
         $model = $options['model'] ?? $this->config->get('ai.providers.openai.embedding_model', 'text-embedding-3-small');
-        $endpoint = 'https://api.openai.com/v1/embeddings';
+        $baseUrl = $this->config->get('ai.providers.openai.base_url');
+        $endpoint = $baseUrl . '/embeddings';
         
         $result = $this->makeApiRequest(
             $endpoint,
@@ -92,7 +94,8 @@ class OpenAI extends AI
     public function generateStream(array $params, callable $onChunk): void
     {
         $params['messages'] = $params['messages'] ?? [['role' => 'user', 'content' => $params['prompt'] ?? '']];
-        $endpoint = $params['endpoint'] ?? $this->config->get('ai.providers.openai.endpoint');
+        $baseUrl = $this->config->get('ai.providers.openai.base_url');
+        $endpoint = $params['endpoint'] ?? $baseUrl . '/chat/completions';
         
         $body = $this->prepareRequestBody($params);
         $body['stream'] = true;

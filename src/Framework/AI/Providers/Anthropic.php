@@ -9,7 +9,8 @@ class Anthropic extends AI
     {
         return $this->executeWithCache($params, function() use ($params) {
             $params['messages'] = $params['messages'] ?? [['role' => 'user', 'content' => $params['prompt'] ?? '']];
-            $endpoint = $params['endpoint'] ?? $this->config->get('ai.providers.anthropic.endpoint');
+            $baseUrl = $this->config->get('ai.providers.anthropic.base_url');
+            $endpoint = $params['endpoint'] ?? $baseUrl . '/messages';
             
             $result = $this->makeApiRequest(
                 $endpoint,
@@ -89,7 +90,8 @@ class Anthropic extends AI
     public function generateStream(array $params, callable $onChunk): void
     {
         $params['messages'] = $params['messages'] ?? [['role' => 'user', 'content' => $params['prompt'] ?? '']];
-        $endpoint = $params['endpoint'] ?? $this->config->get('ai.providers.anthropic.endpoint');
+        $baseUrl = $this->config->get('ai.providers.anthropic.base_url');
+        $endpoint = $params['endpoint'] ?? $baseUrl . '/messages';
         
         $body = $this->prepareRequestBody($params);
         $body['stream'] = true;

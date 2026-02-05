@@ -36,7 +36,7 @@ class Groq extends AI
         $messages = array_map(function($msg) {
             return [
                 'role' => $msg['role'],
-                'content' => is_array($msg['content']) ? implode("\n", $msg['content']) : $msg['content'],
+                'content' => $this->normalizeContent($msg['content']),
             ];
         }, $messages);
 

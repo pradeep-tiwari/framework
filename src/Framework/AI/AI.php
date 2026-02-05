@@ -227,4 +227,40 @@ abstract class AI
 
         return $output;
     }
+
+    /**
+     * Detect if content is multimodal (structured with type keys).
+     * 
+     * Multimodal: [['type' => 'text', ...], ['type' => 'image_url', ...]]
+     * Legacy array: ['line1', 'line2']
+     * 
+     * @param mixed $content The content to check
+     * @return bool True if multimodal format detected
+     */
+    protected function isMultimodalContent(mixed $content): bool
+    {
+        return is_array($content) 
+            && !empty($content) 
+            && is_array($first = reset($content)) 
+            && isset($first['type']);
+    }
+
+    /**
+     * Normalize message content for API requests.
+     * 
+     * - Multimodal arrays (with 'type' keys) pass through unchanged
+     * - Legacy string arrays get joined with newlines
+     * - Strings pass through unchanged
+     * 
+     * @param mixed $content The content to normalize
+     * @return mixed Normalized content
+     */
+    protected function normalizeContent(mixed $content): mixed
+    {
+        if (is_array($content) && !$this->isMultimodalContent($content)) {
+            return implode("\n", $content);
+        }
+        
+        return $content;
+    }
 }

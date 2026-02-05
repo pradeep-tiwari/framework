@@ -74,7 +74,7 @@ class OpenAI extends AI
                 } elseif ($type === 'image_url') {
                     $normalized[] = $item;
                 } elseif ($type === 'document') {
-                    $dataUrl = 'data:' . $item['mime_type'] . ';base64,' . $item['data'];
+                    $dataUrl = $this->buildDataUrl($item['mime_type'], $item['data']);
                     $normalized[] = [
                         'type' => 'file',
                         'file' => [

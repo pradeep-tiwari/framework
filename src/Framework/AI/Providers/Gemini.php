@@ -163,16 +163,14 @@ class Gemini extends AI
                     $parts[] = ['text' => $item['text']];
                 } elseif ($type === 'image_url') {
                     $imageUrl = $item['image_url']['url'] ?? $item['image_url'];
-                    if (str_starts_with($imageUrl, 'data:')) {
-                        preg_match('/data:([^;]+);base64,(.+)/', $imageUrl, $matches);
-                        if ($matches) {
-                            $parts[] = [
-                                'inline_data' => [
-                                    'mime_type' => $matches[1],
-                                    'data' => $matches[2],
-                                ]
-                            ];
-                        }
+                    $parsed = $this->parseDataUrl($imageUrl);
+                    if ($parsed) {
+                        $parts[] = [
+                            'inline_data' => [
+                                'mime_type' => $parsed['mime_type'],
+                                'data' => $parsed['data'],
+                            ]
+                        ];
                     }
                 } elseif ($type === 'document') {
                     // Convert generic document format to Gemini's inline_data format

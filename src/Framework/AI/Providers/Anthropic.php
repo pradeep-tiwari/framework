@@ -71,18 +71,16 @@ class Anthropic extends AI
                 } elseif ($type === 'image_url') {
                     // Convert framework's image_url format to Anthropic format
                     $imageUrl = $item['image_url']['url'] ?? $item['image_url'];
-                    if (str_starts_with($imageUrl, 'data:')) {
-                        preg_match('/data:([^;]+);base64,(.+)/', $imageUrl, $matches);
-                        if ($matches) {
-                            $normalized[] = [
-                                'type' => 'image',
-                                'source' => [
-                                    'type' => 'base64',
-                                    'media_type' => $matches[1],
-                                    'data' => $matches[2]
-                                ]
-                            ];
-                        }
+                    $parsed = $this->parseDataUrl($imageUrl);
+                    if ($parsed) {
+                        $normalized[] = [
+                            'type' => 'image',
+                            'source' => [
+                                'type' => 'base64',
+                                'media_type' => $parsed['mime_type'],
+                                'data' => $parsed['data']
+                            ]
+                        ];
                     }
                 } elseif ($type === 'document') {
                     // Convert generic document to Anthropic format

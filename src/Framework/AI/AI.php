@@ -263,4 +263,36 @@ abstract class AI
         
         return $content;
     }
+
+    /**
+     * Parse a data URL to extract MIME type and base64 data.
+     * 
+     * @param string $dataUrl The data URL (e.g., 'data:image/jpeg;base64,/9j/4AAQ...')
+     * @return array|null Array with 'mime_type' and 'data' keys, or null if invalid
+     */
+    protected function parseDataUrl(string $dataUrl): ?array
+    {
+        if (!str_starts_with($dataUrl, 'data:')) {
+            return null;
+        }
+        
+        preg_match('/data:([^;]+);base64,(.+)/', $dataUrl, $matches);
+        
+        return $matches ? [
+            'mime_type' => $matches[1],
+            'data' => $matches[2]
+        ] : null;
+    }
+
+    /**
+     * Build a data URL from MIME type and base64 data.
+     * 
+     * @param string $mimeType The MIME type (e.g., 'image/jpeg')
+     * @param string $base64Data The base64-encoded data
+     * @return string The data URL
+     */
+    protected function buildDataUrl(string $mimeType, string $base64Data): string
+    {
+        return "data:{$mimeType};base64,{$base64Data}";
+    }
 }

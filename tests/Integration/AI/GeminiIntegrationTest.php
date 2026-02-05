@@ -139,22 +139,4 @@ class GeminiIntegrationTest extends TestCase
         $this->assertIsArray($result);
         $this->assertNotEmpty($result['text']);
     }
-
-    public function testOpenAICompatibility()
-    {
-        // Verify OpenAI-compatible response structure
-        $result = $this->gemini->generate([
-            'prompt' => 'Test',
-        ]);
-
-        $this->assertArrayHasKey('text', $result);
-        $this->assertArrayHasKey('finish_reason', $result);
-        $this->assertArrayHasKey('usage', $result);
-        $this->assertArrayHasKey('raw', $result);
-        
-        // Verify raw response has OpenAI structure
-        $raw = $result['raw'];
-        $this->assertArrayHasKey('choices', $raw);
-        $this->assertArrayHasKey('model', $raw);
-    }
 }

@@ -42,6 +42,7 @@ class GeminiStreamingTest extends TestCase
 
     public function testBasicStreaming()
     {
+        sleep(2); // Avoid burst rate limiting
         $chunks = [];
         $fullText = '';
         
@@ -64,6 +65,7 @@ class GeminiStreamingTest extends TestCase
 
     public function testStreamingWithSystemPrompt()
     {
+        sleep(2); // Avoid burst rate limiting
         $chunks = [];
         $fullText = '';
         
@@ -82,6 +84,7 @@ class GeminiStreamingTest extends TestCase
 
     public function testStreamingProgressiveOutput()
     {
+        sleep(2); // Avoid burst rate limiting
         $receivedAt = [];
         $startTime = microtime(true);
         

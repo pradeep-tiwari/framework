@@ -52,7 +52,7 @@ class Gemini extends AI
         $model = $params['model'] ?? $this->config->get('ai.providers.gemini.model');
         $apiKey = $this->config->get('ai.providers.gemini.key');
         
-        $endpoint = $params['endpoint'] ?? $baseUrl . '/models/' . $model . ':streamGenerateContent?key=' . $apiKey;
+        $endpoint = $params['endpoint'] ?? $baseUrl . '/models/' . $model . ':streamGenerateContent?alt=sse&key=' . $apiKey;
         
         $body = $this->prepareRequestBody($params);
         
@@ -64,26 +64,34 @@ class Gemini extends AI
             ->stream('POST', $endpoint, $body, function($chunk) use (&$buffer, $onChunk) {
                 $buffer .= $chunk;
                 
+                // Parse SSE format: lines starting with "data: " contain JSON
                 while (($pos = strpos($buffer, "\n")) !== false) {
                     $line = substr($buffer, 0, $pos);
                     $buffer = substr($buffer, $pos + 1);
                     
+                    // Skip empty lines
                     if (trim($line) === '') {
                         continue;
                     }
                     
-                    $json = json_decode($line, true);
-                    if (!$json) {
-                        continue;
-                    }
-                    
-                    $candidate = $json['candidates'][0] ?? [];
-                    $content = $candidate['content'] ?? [];
-                    $parts = $content['parts'] ?? [];
-                    
-                    foreach ($parts as $part) {
-                        if (isset($part['text']) && $part['text'] !== '') {
-                            $onChunk($part['text']);
+                    // SSE format: "data: {...}"
+                    if (str_starts_with($line, 'data: ')) {
+                        $jsonStr = substr($line, 6); // Remove "data: " prefix
+                        $json = json_decode($jsonStr, true);
+                        
+                        if (!$json) {
+                            continue;
+                        }
+                        
+                        // Extract text from Gemini native format
+                        $candidate = $json['candidates'][0] ?? [];
+                        $content = $candidate['content'] ?? [];
+                        $parts = $content['parts'] ?? [];
+                        
+                        foreach ($parts as $part) {
+                            if (isset($part['text']) && $part['text'] !== '') {
+                                $onChunk($part['text']);
+                            }
                         }
                     }
                 }

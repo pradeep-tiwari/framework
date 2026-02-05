@@ -41,8 +41,9 @@ class TaskBuilder
 
     /**
      * Add a message to the chat history (role: user, system, assistant).
+     * Content can be a string or multimodal array.
      */
-    public function message(string $role, string $content): self
+    public function message(string $role, mixed $content): self
     {
         $this->messages[] = ['role' => $role, 'content' => $content];
         return $this;

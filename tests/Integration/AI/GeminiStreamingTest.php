@@ -24,7 +24,7 @@ class GeminiStreamingTest extends TestCase
             $map = [
                 'ai.providers.gemini.key' => $this->apiKey,
                 'ai.providers.gemini.model' => 'gemini-2.0-flash',
-                'ai.providers.gemini.endpoint' => 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+                'ai.providers.gemini.base_url' => 'https://generativelanguage.googleapis.com/v1beta',
                 'ai.http_timeout' => 30,
                 'ai.temperature' => 0.7,
                 'ai.max_tokens' => 150,

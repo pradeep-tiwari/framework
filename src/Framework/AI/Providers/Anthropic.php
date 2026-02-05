@@ -55,6 +55,39 @@ class Anthropic extends AI
         ];
     }
 
+    protected function normalizeContent($content): string|array
+    {
+        if (is_string($content)) {
+            return $content;
+        }
+        
+        if (is_array($content)) {
+            $normalized = [];
+            foreach ($content as $item) {
+                $type = $item['type'] ?? null;
+                
+                if ($type === 'text') {
+                    $normalized[] = ['type' => 'text', 'text' => $item['text']];
+                } elseif ($type === 'image') {
+                    $normalized[] = $item;
+                } elseif ($type === 'document') {
+                    // Convert generic document to Anthropic format
+                    $normalized[] = [
+                        'type' => 'document',
+                        'source' => [
+                            'type' => 'base64',
+                            'media_type' => $item['mime_type'],
+                            'data' => $item['data']
+                        ]
+                    ];
+                }
+            }
+            return $normalized;
+        }
+        
+        return $content;
+    }
+
     /**
      * Prepare headers for Anthropic API.
      * Uses x-api-key, not Authorization.

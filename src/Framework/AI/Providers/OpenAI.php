@@ -58,6 +58,38 @@ class OpenAI extends AI
         ];
     }
 
+    protected function normalizeContent($content): string|array
+    {
+        if (is_string($content)) {
+            return $content;
+        }
+        
+        if (is_array($content)) {
+            $normalized = [];
+            foreach ($content as $item) {
+                $type = $item['type'] ?? null;
+                
+                if ($type === 'text') {
+                    $normalized[] = ['type' => 'text', 'text' => $item['text']];
+                } elseif ($type === 'image_url') {
+                    $normalized[] = $item;
+                } elseif ($type === 'document') {
+                    $dataUrl = 'data:' . $item['mime_type'] . ';base64,' . $item['data'];
+                    $normalized[] = [
+                        'type' => 'file',
+                        'file' => [
+                            'file_data' => $dataUrl,
+                            'filename' => 'document.pdf'
+                        ]
+                    ];
+                }
+            }
+            return $normalized;
+        }
+        
+        return $content;
+    }
+
     protected function prepareHeaders(): array
     {
         return [

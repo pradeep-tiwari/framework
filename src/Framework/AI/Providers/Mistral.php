@@ -49,6 +49,31 @@ class Mistral extends AI
         ];
     }
 
+    protected function normalizeContent($content): string|array
+    {
+        if (is_string($content)) {
+            return $content;
+        }
+        
+        if (is_array($content)) {
+            $normalized = [];
+            foreach ($content as $item) {
+                $type = $item['type'] ?? null;
+                
+                if ($type === 'text') {
+                    $normalized[] = ['type' => 'text', 'text' => $item['text']];
+                } elseif ($type === 'image_url') {
+                    $normalized[] = $item;
+                } elseif ($type === 'document') {
+                    continue;
+                }
+            }
+            return $normalized;
+        }
+        
+        return $content;
+    }
+
     /**
      * Prepare headers for Mistral API.
      */

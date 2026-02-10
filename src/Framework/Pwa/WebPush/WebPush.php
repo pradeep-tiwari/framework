@@ -332,8 +332,16 @@ class WebPush
 
         $signingInput = implode('.', $segments);
 
-        // Remove quotes if present (from .env file)
-        $privateKey = trim($privateKey, '"');
+        // If it looks like a file path, load the key from file
+        $privateKey = trim($privateKey);
+        $privateKey = DIR_ROOT . '/' . $privateKey;
+        
+        if (file_exists($privateKey)) {
+            $privateKey = file_get_contents($privateKey);
+            if ($privateKey === false) {
+                throw new \RuntimeException('Failed to read private key file');
+            }
+        }
         
         $key = openssl_pkey_get_private($privateKey);
         

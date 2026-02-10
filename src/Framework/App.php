@@ -192,6 +192,7 @@ final class App
             \Lightpack\Providers\SettingsProvider::class,
             \Lightpack\Providers\SecretsProvider::class,
             \Lightpack\Providers\MailProvider::class,
+            \Lightpack\Pwa\PwaProvider::class,
         ];
     }
 

@@ -711,3 +711,27 @@ if (!function_exists('http')) {
         return new \Lightpack\Http\Http();
     }
 }
+
+if (!function_exists('pwa')) {
+    /**
+     * Get the PWA instance for Progressive Web App features.
+     * 
+     * @return \Lightpack\Pwa\Pwa
+     */
+    function pwa(): \Lightpack\Pwa\Pwa
+    {
+        return app('pwa');
+    }
+}
+
+if (!function_exists('webpush')) {
+    /**
+     * Get the WebPush instance for sending push notifications.
+     * 
+     * @return \Lightpack\Pwa\WebPush\WebPush
+     */
+    function webpush(): \Lightpack\Pwa\WebPush\WebPush
+    {
+        return app('webpush');
+    }
+}

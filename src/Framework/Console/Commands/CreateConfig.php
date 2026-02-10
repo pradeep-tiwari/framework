@@ -143,6 +143,7 @@ PHP;
             'db'        => \Lightpack\Console\Views\Config\DbView::class,
             'logs'        => \Lightpack\Console\Views\Config\LogsView::class,
             'mfa'       => \Lightpack\Console\Views\Config\MfaView::class,
+            'pwa'       => \Lightpack\Console\Views\Config\PwaView::class,
             'redis'     => \Lightpack\Console\Views\Config\RedisView::class,
             'S3'        => \Lightpack\Console\Views\Config\S3View::class,
             'session'   => \Lightpack\Console\Views\Config\SessionView::class,

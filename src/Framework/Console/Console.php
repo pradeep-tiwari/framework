@@ -28,6 +28,9 @@ use Lightpack\Console\Commands\ServeCommand;
 use Lightpack\Console\Commands\WatchCommand;
 use Lightpack\Console\Commands\RetryFailedJobs;
 use Lightpack\Console\Commands\CreateTool;
+use Lightpack\Console\Commands\PwaInit;
+use Lightpack\Console\Commands\GenerateVapidKeys;
+use Lightpack\Console\Commands\GeneratePwaIcons;
 
 class Console
 {
@@ -59,6 +62,9 @@ class Console
         'watch' => WatchCommand::class,
         'jobs:retry' => RetryFailedJobs::class,
         'create:tool' => CreateTool::class,
+        'pwa:init' => PwaInit::class,
+        'pwa:generate-vapid' => GenerateVapidKeys::class,
+        'pwa:generate-icons' => GeneratePwaIcons::class,
     ];
 
     public static function register(string $command, CommandInterface $handler)

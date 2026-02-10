@@ -163,6 +163,7 @@ class CreateMigration implements CommandInterface
             'settings' => \Lightpack\Console\Views\Migrations\SettingsView::class,
             'webhooks' => \Lightpack\Console\Views\Migrations\WebhooksView::class,
             'taxonomies' => \Lightpack\Console\Views\Migrations\TaxonomiesView::class,
+            'pwa' => \Lightpack\Console\Views\Migrations\PwaSubscriptionsView::class,
         ];
     }
 }

@@ -14,10 +14,6 @@ class PwaSubscription extends Model
     protected $table = 'pwa_subscriptions';
     protected $timestamps = true;
 
-    protected $casts = [
-        'keys' => 'array',
-    ];
-
     /**
      * Create or update subscription
      */

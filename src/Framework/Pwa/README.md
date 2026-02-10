@@ -366,6 +366,264 @@ return [
 
 ---
 
+## 📈 **Scaling Push Notifications**
+
+### **Performance Characteristics**
+
+The native Web Push implementation is highly efficient:
+
+- **Encryption**: OpenSSL (C extension) - 10,000+ encryptions/second
+- **Algorithm**: AES-128-GCM with ECDH - minimal overhead
+- **Dependencies**: Zero external libraries - no network latency
+- **Infrastructure**: FCM handles delivery at Google scale
+
+### **Current Capacity**
+
+| Users | Strategy | Notes |
+|-------|----------|-------|
+| < 1,000 | Current implementation | Works great as-is |
+| 1,000 - 10,000 | Add queue system | Async processing recommended |
+| 10,000+ | Queue + batching + cleanup | Production-grade orchestration |
+
+### **Scaling Strategies**
+
+#### **1. Queue System (1,000+ users)**
+
+Move notification sending to background jobs:
+
+```php
+// Controller - don't send immediately
+Queue::push(new SendPushNotificationJob($userId, [
+    'title' => 'New Message',
+    'body' => 'You have a new message',
+]));
+
+// Job class
+class SendPushNotificationJob
+{
+    public function handle()
+    {
+        $subscription = PwaSubscription::forUser($this->userId)->first();
+        
+        webpush()
+            ->to($subscription)
+            ->title($this->data['title'])
+            ->body($this->data['body'])
+            ->send();
+    }
+}
+```
+
+#### **2. Batch Processing**
+
+Send to multiple users efficiently:
+
+```php
+// Send to all subscribers in batches
+$subscriptions = PwaSubscription::all();
+
+foreach (array_chunk($subscriptions, 100) as $batch) {
+    Queue::push(new SendBatchNotificationJob($batch, $payload));
+}
+
+// Batch job
+class SendBatchNotificationJob
+{
+    public function handle()
+    {
+        foreach ($this->subscriptions as $subscription) {
+            try {
+                webpush()
+                    ->to($subscription)
+                    ->title($this->payload['title'])
+                    ->body($this->payload['body'])
+                    ->send();
+            } catch (\Exception $e) {
+                logger()->error('Push notification failed', [
+                    'subscription_id' => $subscription->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+}
+```
+
+#### **3. Error Handling & Cleanup**
+
+Handle failures and remove invalid subscriptions:
+
+```php
+// In NativeWebPush::sendRequest() or custom wrapper
+protected function sendWithCleanup($subscription, $payload)
+{
+    $result = $this->send($subscription, $payload);
+    
+    // Handle HTTP status codes
+    switch ($result['status']) {
+        case 201:
+            // Success - do nothing
+            break;
+            
+        case 404:
+        case 410:
+            // Subscription expired or invalid - remove it
+            $subscription->delete();
+            logger()->info('Removed expired subscription', [
+                'endpoint' => $subscription->endpoint
+            ]);
+            break;
+            
+        case 429:
+            // Rate limited - retry later
+            Queue::later(60, new SendPushNotificationJob($subscription, $payload));
+            break;
+            
+        case 500:
+        case 502:
+        case 503:
+            // Server error - retry with backoff
+            $this->retryWithBackoff($subscription, $payload);
+            break;
+            
+        default:
+            logger()->error('Push notification failed', [
+                'status' => $result['status'],
+                'response' => $result['response'],
+            ]);
+    }
+    
+    return $result;
+}
+```
+
+#### **4. Rate Limiting**
+
+Respect FCM rate limits:
+
+```php
+// Simple rate limiter
+class PushRateLimiter
+{
+    protected $maxPerSecond = 100;
+    protected $sent = 0;
+    protected $lastReset;
+    
+    public function throttle()
+    {
+        if (time() > $this->lastReset) {
+            $this->sent = 0;
+            $this->lastReset = time();
+        }
+        
+        if ($this->sent >= $this->maxPerSecond) {
+            usleep(1000000); // Wait 1 second
+            $this->sent = 0;
+            $this->lastReset = time();
+        }
+        
+        $this->sent++;
+    }
+}
+
+// Usage in batch job
+$rateLimiter = new PushRateLimiter();
+
+foreach ($subscriptions as $subscription) {
+    $rateLimiter->throttle();
+    webpush()->to($subscription)->send();
+}
+```
+
+#### **5. Monitoring & Metrics**
+
+Track notification performance:
+
+```php
+// Track metrics
+class PushMetrics
+{
+    public static function track($event, $data = [])
+    {
+        // Log to database or metrics service
+        DB::table('push_metrics')->insert([
+            'event' => $event,
+            'data' => json_encode($data),
+            'created_at' => now(),
+        ]);
+    }
+}
+
+// Usage
+PushMetrics::track('notification_sent', [
+    'user_id' => $userId,
+    'status' => $httpCode,
+    'duration_ms' => $duration,
+]);
+
+PushMetrics::track('subscription_expired', [
+    'endpoint' => $endpoint,
+]);
+```
+
+### **Production Checklist**
+
+- [ ] Queue system configured (Redis/Database)
+- [ ] Batch processing implemented
+- [ ] Error handling and retry logic
+- [ ] Expired subscription cleanup
+- [ ] Rate limiting configured
+- [ ] Monitoring and alerting
+- [ ] VAPID keys secured in environment
+- [ ] HTTPS enabled in production
+- [ ] Database indexes on subscriptions table
+- [ ] Logging configured for debugging
+
+### **Database Optimization**
+
+Add indexes for better performance:
+
+```sql
+-- Index on endpoint for quick lookups
+CREATE INDEX idx_pwa_subscriptions_endpoint ON pwa_subscriptions(endpoint);
+
+-- Index on user_id for user-specific queries
+CREATE INDEX idx_pwa_subscriptions_user_id ON pwa_subscriptions(user_id);
+
+-- Index on created_at for cleanup queries
+CREATE INDEX idx_pwa_subscriptions_created_at ON pwa_subscriptions(created_at);
+```
+
+### **Recommended Architecture for Scale**
+
+```
+┌─────────────┐
+│   Web App   │
+└──────┬──────┘
+       │
+       ▼
+┌─────────────┐     ┌──────────────┐
+│   Queue     │────▶│  Worker Pool │
+└─────────────┘     └──────┬───────┘
+                           │
+                           ▼
+                    ┌──────────────┐
+                    │ NativeWebPush│
+                    └──────┬───────┘
+                           │
+                           ▼
+                    ┌──────────────┐
+                    │     FCM      │
+                    └──────┬───────┘
+                           │
+                           ▼
+                    ┌──────────────┐
+                    │   Browsers   │
+                    └──────────────┘
+```
+
+---
+
 ## 🧪 **Testing**
 
 ### **Test PWA Features**

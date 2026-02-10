@@ -114,28 +114,6 @@ class WebPush
     }
 
     /**
-     * Set TTL (time to live in seconds)
-     */
-    public function ttl(int $seconds): self
-    {
-        $this->options['TTL'] = $seconds;
-        return $this;
-    }
-
-    /**
-     * Set urgency level
-     */
-    public function urgency(string $urgency): self
-    {
-        $validUrgencies = ['very-low', 'low', 'normal', 'high'];
-        if (!in_array($urgency, $validUrgencies)) {
-            throw new \InvalidArgumentException("Invalid urgency: {$urgency}");
-        }
-        $this->options['urgency'] = $urgency;
-        return $this;
-    }
-
-    /**
      * Send push notification
      */
     public function send(): bool
@@ -144,19 +122,15 @@ class WebPush
             throw new \RuntimeException('No subscription set. Use to() method first.');
         }
 
-        $endpoint = $this->subscription['endpoint'];
-        $p256dh = $this->subscription['keys']['p256dh'] ?? $this->subscription['p256dh'];
-        $auth = $this->subscription['keys']['auth'] ?? $this->subscription['auth'];
-
-        // Encrypt payload
-        $encrypted = $this->encryptPayload(
-            json_encode($this->payload),
-            $p256dh,
-            $auth
-        );
-
-        // Send to push service
-        return $this->sendToEndpoint($endpoint, $encrypted);
+        // Use native dependency-free implementation
+        $nativeWebPush = new NativeWebPush($this->config);
+        
+        return $nativeWebPush
+            ->to($this->subscription)
+            ->title($this->payload['title'] ?? 'Notification')
+            ->body($this->payload['body'] ?? '')
+            ->icon($this->payload['icon'] ?? '')
+            ->send();
     }
 
     /**

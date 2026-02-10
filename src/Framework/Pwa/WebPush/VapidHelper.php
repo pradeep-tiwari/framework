@@ -34,7 +34,7 @@ class VapidHelper
         $publicKey = "\x04" . $details['ec']['x'] . $details['ec']['y'];
 
         return [
-            'public_key' => self::base64UrlEncode($publicKey),
+            'public_key' => self::base64UrlEncode($publicKey), // base64url format for browsers
             'private_key' => $privateKey,
         ];
     }

@@ -30,7 +30,8 @@ class VapidHelper
 
         // Get public key details
         $details = openssl_pkey_get_details($keyPair);
-        $publicKey = $details['ec']['x'] . $details['ec']['y'];
+        // EC public key format: 0x04 (uncompressed) + x coordinate + y coordinate
+        $publicKey = "\x04" . $details['ec']['x'] . $details['ec']['y'];
 
         return [
             'public_key' => self::base64UrlEncode($publicKey),

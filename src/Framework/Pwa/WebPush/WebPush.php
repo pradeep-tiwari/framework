@@ -332,8 +332,20 @@ class WebPush
 
         $signingInput = implode('.', $segments);
 
+        // Remove quotes if present (from .env file)
+        $privateKey = trim($privateKey, '"');
+        
         $key = openssl_pkey_get_private($privateKey);
-        openssl_sign($signingInput, $signature, $key, OPENSSL_ALGO_SHA256);
+        
+        if ($key === false) {
+            throw new \RuntimeException('Invalid VAPID private key: ' . openssl_error_string());
+        }
+        
+        $result = openssl_sign($signingInput, $signature, $key, OPENSSL_ALGO_SHA256);
+        
+        if ($result === false) {
+            throw new \RuntimeException('Failed to sign JWT: ' . openssl_error_string());
+        }
 
         $segments[] = $this->base64UrlEncode($signature);
 

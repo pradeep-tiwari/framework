@@ -92,9 +92,14 @@ class PwaSubscription extends Model
      */
     public static function allActive(): array
     {
-        return self::query()
-            ->all()
-            ->map(fn($sub) => $sub->toArray())
-            ->toArray();
+        $subscriptions = self::query()->all();
+        
+        // Convert collection to array of subscription arrays
+        $result = [];
+        foreach ($subscriptions as $sub) {
+            $result[] = $sub->toArray();
+        }
+        
+        return $result;
     }
 }

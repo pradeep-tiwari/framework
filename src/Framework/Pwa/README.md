@@ -156,10 +156,10 @@ webpush()->broadcast('System Update', [
 
 ### **Manage Subscriptions**
 ```php
-use Lightpack\Pwa\WebPush\Subscription;
+use Lightpack\Pwa\WebPush\PwaSubscription;
 
 // Create/update subscription
-$subscription = Subscription::createOrUpdate([
+$subscription = PwaSubscription::createOrUpdate([
     'endpoint' => $data['endpoint'],
     'keys' => [
         'p256dh' => $data['keys']['p256dh'],
@@ -169,10 +169,10 @@ $subscription = Subscription::createOrUpdate([
 ]);
 
 // Get user's subscriptions
-$subscriptions = Subscription::forUser($userId);
+$subscriptions = PwaSubscription::forUser($userId);
 
 // Remove subscription
-Subscription::removeByEndpoint($endpoint);
+PwaSubscription::removeByEndpoint($endpoint);
 ```
 
 ---
@@ -408,7 +408,7 @@ src/Framework/Pwa/
 ├── WebPush/
 │   ├── WebPush.php             # Push notification sender
 │   ├── VapidHelper.php         # VAPID key generation
-│   └── Subscription.php        # Subscription model
+│   └── PwaSubscription.php     # Subscription model
 └── assets/
     └── pwa.js                   # Frontend utilities
 ```

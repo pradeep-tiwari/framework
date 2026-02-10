@@ -9,7 +9,7 @@ use Lightpack\Database\Lucid\Model;
  * 
  * Represents a user's push notification subscription.
  */
-class Subscription extends Model
+class PwaSubscription extends Model
 {
     protected $table = 'pwa_subscriptions';
     protected $timestamps = true;

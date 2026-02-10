@@ -499,13 +499,19 @@ protected function sendWithCleanup($subscription, $payload)
 
 #### **4. Rate Limiting**
 
-Respect FCM rate limits:
+Respect FCM rate limits to avoid 429 errors.
+
+**FCM Quotas** ([Official Documentation](https://firebase.google.com/docs/cloud-messaging/throttling-and-quotas)):
+- **Default quota**: 600,000 messages/minute (10,000/second)
+- **Per-device (Android)**: 240 messages/minute, 5,000/hour
+- **Collapsible messages**: 20 burst, refills 1 every 3 minutes
+- **429 Response**: `RESOURCE_EXHAUSTED` when quota exceeded
 
 ```php
-// Simple rate limiter
+// Rate limiter for safe sending
 class PushRateLimiter
 {
-    protected $maxPerSecond = 100;
+    protected $maxPerSecond = 1000; // Conservative (can go up to 10k)
     protected $sent = 0;
     protected $lastReset;
     
@@ -534,6 +540,11 @@ foreach ($subscriptions as $subscription) {
     webpush()->to($subscription)->send();
 }
 ```
+
+**Note**: The default 600k/minute quota covers 99% of apps. You'll only hit limits if:
+- Sending to same device repeatedly (240/min limit)
+- Using collapsible messages excessively
+- Experiencing FCM overload situations
 
 #### **5. Monitoring & Metrics**
 

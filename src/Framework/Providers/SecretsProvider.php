@@ -3,12 +3,11 @@
 namespace Lightpack\Providers;
 
 use Lightpack\Container\Container;
-use Lightpack\Config\Config;
 use Lightpack\Database\DB;
 use Lightpack\Secrets\Secrets;
-use Lightpack\Utils\Crypto;
+use Lightpack\Providers\ProviderInterface;
 
-class SecretsProvider
+class SecretsProvider implements ProviderInterface
 {
     public function register(Container $container)
     {

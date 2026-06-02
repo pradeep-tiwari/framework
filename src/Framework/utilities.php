@@ -491,6 +491,19 @@ if (! function_exists('form_close')) {
     }
 }
 
+if (! function_exists('form')) {
+    /**
+     * Returns a new Form instance for building HTML form fields.
+     *
+     * @param array $config Optional configuration for wrapper, label, input, and error attributes.
+     * @return \Lightpack\View\Form
+     */
+    function form(array $config = []): \Lightpack\View\Form
+    {
+        return new \Lightpack\View\Form($config);
+    }
+}
+
 if (! function_exists('storage')) {
     /**
      * Returns the storage object.

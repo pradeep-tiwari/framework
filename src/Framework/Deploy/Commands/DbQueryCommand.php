@@ -45,7 +45,7 @@ class DbQueryCommand extends Command
         $query = $this->args->get('query');
 
         if (empty($query)) {
-            $query = $this->prompt->ask('Query:');
+            $query = $this->prompt->ask('sql >> ');
 
             if (empty($query)) {
                 $this->output->error('Query cannot be empty.');

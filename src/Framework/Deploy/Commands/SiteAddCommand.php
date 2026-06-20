@@ -76,17 +76,16 @@ class SiteAddCommand extends Command
 
         $configContent = <<<CADDY
 {$serverNames} {
-    root * {$appPath}/public
-    php_server
-    file_server
-    encode gzip
-
-    header {
-        ?X-Powered-By ""
-        X-Frame-Options "SAMEORIGIN"
-        X-Content-Type-Options "nosniff"
-        Referrer-Policy "strict-origin-when-cross-origin"
-    }
+	root * {$appPath}/public
+	php_server
+	file_server
+	encode gzip
+	header {
+		?X-Powered-By ""
+		X-Frame-Options "SAMEORIGIN"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
 }
 CADDY;
 
@@ -99,6 +98,8 @@ CADDY_EOF
 )
 
 echo "\$CADDY_CONF" | sudo lp-frankenphp-write "{$domain}"
+# lp-frankenphp-reload restarts (not reloads) FrankenPHP because
+# Caddy's graceful reload does not properly apply site config changes.
 sudo lp-frankenphp-reload
 
 echo "Site {$domain} added and enabled."

@@ -79,12 +79,9 @@ SSL;
         return <<<BASH
 domain="{$domain}"
 
-# Remove site config
+# Remove site config and restart FrankenPHP
 sudo lp-frankenphp-remove "\${domain}"
 {$sslCleanup}
-
-# Reload FrankenPHP
-sudo lp-frankenphp-reload
 
 echo "Site \${domain} removed."
 BASH;

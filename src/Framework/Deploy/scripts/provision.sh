@@ -28,7 +28,6 @@ DEPLOY_USER="${DEPLOY_USER:-deploy}"
 PHP_VERSION="${PHP_VERSION:-8.3}"
 TIMEZONE="${TIMEZONE:-UTC}"
 DB_TYPE="${DB_TYPE:-mysql}"
-WEB_SERVER="${WEB_SERVER:-frankenphp}"
 GIT_HOST="${GIT_HOST:-github.com}"
 
 MYSQL_DB="${MYSQL_DB:-lightpack}"
@@ -109,7 +108,9 @@ log_step "Updating system packages..."
 export DEBIAN_FRONTEND=noninteractive
 
 for i in {1..30}; do
-    if ! fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; then
+    if ! fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 \
+       && ! fuser /var/lib/apt/lists/lock >/dev/null 2>&1 \
+       && ! pgrep -x "apt-get|apt" >/dev/null 2>&1; then
         break
     fi
     log_warn "Waiting for apt lock (attempt $i/30)..."
@@ -117,7 +118,6 @@ for i in {1..30}; do
 done
 
 apt-get update -qq
-apt-get upgrade -y -qq
 apt-get autoremove -y -qq
 
 # -----------------------------------------------------------------------------
@@ -126,19 +126,12 @@ apt-get autoremove -y -qq
 log_step "Installing essential packages..."
 
 apt-get install -y -qq \
-    software-properties-common \
     curl \
-    wget \
     git \
     unzip \
-    zip \
-    htop \
-    vim \
     ufw \
     fail2ban \
-    certbot \
     acl \
-    bc \
     supervisor
 
 # -----------------------------------------------------------------------------
@@ -157,11 +150,12 @@ fi
 SUDOERS_FILE="/etc/sudoers.d/${DEPLOY_USER}"
 rm -f "$SUDOERS_FILE"
 
-cat >> "$SUDOERS_FILE" <<EOF
+cat > "$SUDOERS_FILE" <<EOF
 # Lightpack deploy user - restricted passwordless sudo
 # DO NOT ADD /bin/bash, /usr/bin/apt, or other privileged commands here
 # These are the ONLY commands allowed without password:
 
+${DEPLOY_USER} ALL=(ALL) NOPASSWD: /bin/systemctl start frankenphp
 ${DEPLOY_USER} ALL=(ALL) NOPASSWD: /bin/systemctl reload frankenphp
 ${DEPLOY_USER} ALL=(ALL) NOPASSWD: /bin/systemctl restart frankenphp
 ${DEPLOY_USER} ALL=(ALL) NOPASSWD: /bin/systemctl status frankenphp
@@ -169,10 +163,6 @@ ${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/local/sbin/lp-frankenphp-write *
 ${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/local/sbin/lp-frankenphp-remove *
 ${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/local/sbin/lp-frankenphp-reload
 ${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/local/sbin/lp-frankenphp-test
-
-# SSL certificate management (certbot standalone fallback)
-${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/bin/certbot certonly *
-${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/bin/certbot renew
 
 # Supervisor queue management
 ${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/local/sbin/lp-supervisor-write *
@@ -191,11 +181,12 @@ visudo -c >/dev/null || {
     exit 1
 }
 
-log_info "Sudo privileges configured (FrankenPHP reloads, site management, certbot)"
+log_info "Sudo privileges configured (FrankenPHP reloads, site management)"
 
 # Create FrankenPHP site management wrapper scripts
 cat > /usr/local/sbin/lp-frankenphp-write <<'WSCRIPT'
 #!/bin/bash
+set -euo pipefail
 site="${1:-}"
 if [ -z "$site" ] || [[ "$site" == */* ]] || [[ "$site" == *..* ]]; then
     echo "Usage: lp-frankenphp-write <site-name>" >&2; exit 1
@@ -205,34 +196,42 @@ WSCRIPT
 
 cat > /usr/local/sbin/lp-frankenphp-remove <<'WSCRIPT'
 #!/bin/bash
+set -euo pipefail
 site="${1:-}"
 if [ -z "$site" ] || [[ "$site" == */* ]] || [[ "$site" == *..* ]]; then
     echo "Usage: lp-frankenphp-remove <site-name>" >&2; exit 1
 fi
 rm -f "/etc/frankenphp/sites/${site}.caddy"
+/bin/systemctl restart frankenphp || { echo "ERROR: Failed to restart frankenphp" >&2; exit 1; }
 WSCRIPT
 
 cat > /usr/local/sbin/lp-frankenphp-reload <<'WSCRIPT'
 #!/bin/bash
+set -euo pipefail
 if [ ! -f /etc/frankenphp/Caddyfile ]; then
     echo "ERROR: Caddyfile not found" >&2; exit 1
 fi
 if ! /usr/local/bin/frankenphp validate --config /etc/frankenphp/Caddyfile; then
     echo "ERROR: Caddyfile validation failed" >&2; exit 1
 fi
-/bin/systemctl reload frankenphp
+# NOTE: We use restart (not reload) because Caddy's graceful reload
+# does not properly handle dynamic site config changes via glob imports.
+# Both adding and removing sites require a full restart to take effect.
+/bin/systemctl restart frankenphp || { echo "ERROR: Failed to restart frankenphp" >&2; exit 1; }
 WSCRIPT
 
 cat > /usr/local/sbin/lp-frankenphp-test <<'WSCRIPT'
 #!/bin/bash
+set -euo pipefail
 if [ ! -f /etc/frankenphp/Caddyfile ]; then
     echo "ERROR: Caddyfile not found" >&2; exit 1
 fi
-/usr/local/bin/frankenphp validate --config /etc/frankenphp/Caddyfile
+/usr/local/bin/frankenphp validate --config /etc/frankenphp/Caddyfile || { echo "ERROR: Validation failed" >&2; exit 1; }
 WSCRIPT
 
 cat > /usr/local/sbin/lp-supervisor-write <<'WSCRIPT'
 #!/bin/bash
+set -euo pipefail
 name="${1:-worker}"
 if ! [[ "$name" =~ ^[a-zA-Z0-9_-]+$ ]]; then
     echo "Invalid name: only alphanumeric, hyphens, and underscores allowed" >&2; exit 1
@@ -242,6 +241,7 @@ WSCRIPT
 
 cat > /usr/local/sbin/lp-supervisorctl <<'WSCRIPT'
 #!/bin/bash
+set -euo pipefail
 action="${1:-}"
 program="${2:-}"
 case "$action" in
@@ -256,6 +256,7 @@ WSCRIPT
 
 cat > /usr/local/sbin/lp-mysql-create <<'WSCRIPT'
 #!/bin/bash
+set -euo pipefail
 dbname="${1:-}"
 dbuser="${2:-}"
 dbpass="${3:-}"
@@ -288,7 +289,7 @@ chmod 0750 /usr/local/sbin/lp-frankenphp-write \
            /usr/local/sbin/lp-supervisorctl \
            /usr/local/sbin/lp-mysql-create
 
-log_info "FrankenPHP management scripts installed to /usr/local/sbin/"
+log_info "Deployment scripts installed to /usr/local/sbin/"
 
 # Setup SSH directory
 mkdir -p "/home/${DEPLOY_USER}/.ssh"
@@ -315,7 +316,7 @@ log_info "Default ACLs set on /var/www (group-writable for www-data and ${DEPLOY
 # Generate SSH key for GitHub deployments
 if [ ! -f "/home/${DEPLOY_USER}/.ssh/id_ed25519" ]; then
     su - "$DEPLOY_USER" -c "ssh-keygen -t ed25519 -C 'deploy@${SERVER_NAME}' -f ~/.ssh/id_ed25519 -N ''"
-    su - "$DEPLOY_USER" -c "ssh-keyscan ${GIT_HOST} >> ~/.ssh/known_hosts 2>/dev/null"
+    su - "$DEPLOY_USER" -c "if ! grep -qF '${GIT_HOST}' ~/.ssh/known_hosts 2>/dev/null; then ssh-keyscan ${GIT_HOST} >> ~/.ssh/known_hosts 2>/dev/null; fi"
     log_info "SSH key generated for GitHub access"
 fi
 
@@ -341,7 +342,9 @@ if [ ! -f /swapfile ]; then
     chmod 600 /swapfile
     mkswap /swapfile >/dev/null
     swapon /swapfile
-    echo '/swapfile none swap sw 0 0' >> /etc/fstab
+    if ! grep -qF '/swapfile' /etc/fstab; then
+        echo '/swapfile none swap sw 0 0' >> /etc/fstab
+    fi
     log_info "Swap file created (${SWAP_MB}MB)"
 else
     log_warn "Swap file already exists"
@@ -439,10 +442,21 @@ FRANKENPHP_SITES="${FRANKENPHP_DIR}/sites"
 
 mkdir -p "$FRANKENPHP_SITES"
 
+FRANKENPHP_VERSION="${FRANKENPHP_VERSION:-1.5.0}"
+
+ARCH=$(uname -m)
+if [ "$ARCH" != "x86_64" ]; then
+    log_error "Unsupported architecture: ${ARCH}. Only x86_64 is supported."
+    exit 1
+fi
+
 if [ ! -f "$FRANKENPHP_BIN" ]; then
-    log_info "Downloading FrankenPHP..."
+    log_info "Downloading FrankenPHP ${FRANKENPHP_VERSION} for ${ARCH}..."
     curl -fsSL -o "$FRANKENPHP_BIN" \
-        "https://github.com/dunglas/frankenphp/releases/latest/download/frankenphp-linux-x86_64"
+        "https://github.com/dunglas/frankenphp/releases/download/v${FRANKENPHP_VERSION}/frankenphp-linux-x86_64" || {
+        log_error "Failed to download FrankenPHP. Check network and version."
+        exit 1
+    }
     chmod +x "$FRANKENPHP_BIN"
     log_info "FrankenPHP installed to ${FRANKENPHP_BIN}"
 else
@@ -457,23 +471,11 @@ fi
 # Create main Caddyfile with site import pattern
 cat > "${FRANKENPHP_DIR}/Caddyfile" <<'EOF'
 {
-    frankenphp
-    admin off
+	frankenphp
+	admin off
 }
 
-# Import all site configs
 import /etc/frankenphp/sites/*.caddy
-EOF
-
-# Create catch-all: unmatched hostnames get 444 (connection closed)
-cat > "${FRANKENPHP_SITES}/000-catchall.caddy" <<'EOF'
-:80 {
-    # Allow Let's Encrypt ACME challenges for auto-HTTPS
-    handle /.well-known/acme-challenge/* {
-        respond "OK" 200
-    }
-    respond "Not Found" 404
-}
 EOF
 
 # Create systemd service for FrankenPHP
@@ -486,8 +488,10 @@ After=network.target
 [Service]
 Type=simple
 ExecStart=${FRANKENPHP_BIN} run --config ${FRANKENPHP_DIR}/Caddyfile
-ExecReload=/bin/kill -USR1 $MAINPID
+ExecReload=/bin/kill -USR1 \$MAINPID
 Restart=on-abnormal
+RestartSec=5
+TimeoutStopSec=30
 User=www-data
 Group=www-data
 AmbientCapabilities=CAP_NET_BIND_SERVICE
@@ -523,6 +527,22 @@ if [ "$DB_TYPE" = "mysql" ]; then
 
     apt-get install -y -qq mysql-server
 
+    # Wait for MySQL to be ready
+    MYSQL_READY=false
+    for i in {1..30}; do
+        if mysql -u root -e "SELECT 1" >/dev/null 2>&1; then
+            MYSQL_READY=true
+            break
+        fi
+        log_warn "Waiting for MySQL to start (attempt $i/30)..."
+        sleep 2
+    done
+
+    if [ "$MYSQL_READY" != true ]; then
+        log_error "MySQL failed to start within 60 seconds"
+        exit 1
+    fi
+
     mysql -u root <<EOF
 DELETE FROM mysql.user WHERE User='';
 DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');
@@ -550,7 +570,6 @@ max_connections = 100
 wait_timeout = 600
 max_allowed_packet = 64M
 innodb_buffer_pool_size = ${MYSQL_BUFFER_MB}M
-innodb_log_file_size = 64M
 innodb_file_per_table = 1
 character-set-server = utf8mb4
 collation-server = utf8mb4_unicode_ci
@@ -593,7 +612,7 @@ log_step "Configuring firewall..."
 ufw --force reset >/dev/null 2>&1 || true
 ufw default deny incoming
 ufw default allow outgoing
-ufw allow ssh
+ufw allow 22/tcp
 ufw allow http
 ufw allow https
 ufw --force enable
@@ -605,7 +624,9 @@ log_info "Firewall active: SSH, HTTP, HTTPS allowed"
 # -----------------------------------------------------------------------------
 log_step "Configuring fail2ban..."
 
-cat > /etc/fail2ban/jail.local <<EOF
+mkdir -p /etc/fail2ban/jail.d
+
+cat > /etc/fail2ban/jail.d/99-lightpack.conf <<EOF
 [DEFAULT]
 bantime = 3600
 findtime = 600
@@ -639,6 +660,7 @@ Unattended-Upgrade::Allowed-Origins {
 Unattended-Upgrade::AutoFixInterruptedDpkg "true";
 Unattended-Upgrade::MinimalSteps "true";
 Unattended-Upgrade::Remove-Unused-Dependencies "true";
+Unattended-Upgrade::Automatic-Reboot "false";
 EOF
 
 systemctl enable unattended-upgrades
@@ -649,12 +671,15 @@ systemctl start unattended-upgrades
 # -----------------------------------------------------------------------------
 log_step "Hardening SSH configuration..."
 
-sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
-sed -i 's/^PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
-sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
-sed -i 's/^#*MaxAuthTries.*/MaxAuthTries 3/' /etc/ssh/sshd_config
+mkdir -p /etc/ssh/sshd_config.d
 
-systemctl restart ssh
+cat > /etc/ssh/sshd_config.d/99-lightpack.conf <<EOF
+PermitRootLogin no
+PasswordAuthentication no
+MaxAuthTries 3
+EOF
+
+systemctl restart ssh || systemctl restart sshd
 
 log_info "SSH hardened: root disabled, password auth disabled, key-only"
 

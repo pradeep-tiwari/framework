@@ -459,7 +459,7 @@ class Response
     {
         $contentType = $this->headers['Content-Type'] ?? $this->type;
 
-        header(sprintf("HTTP/1.1 %s %s", $this->status, $this->message));
+        http_response_code($this->status);
         header(sprintf("Content-Type: %s; charset=UTF-8", $contentType));
 
         foreach ($this->headers as $name => $value) {

@@ -142,8 +142,8 @@ class Deployer
             $commands[] = "cd {$appPath} && {$hook}";
         }
 
-        // Auto-detect installed PHP version on the server at deploy time.
-        $commands[] = 'PHP_VER=$(php -r \'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;\' 2>/dev/null) && sudo systemctl reload php${PHP_VER}-fpm';
+        // Reload FrankenPHP to clear opcache and pick up new code.
+        $commands[] = 'sudo systemctl reload frankenphp';
 
         return implode(' && ', $commands);
     }

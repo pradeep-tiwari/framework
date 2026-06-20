@@ -5,7 +5,7 @@ namespace Lightpack\Deploy\Commands;
 use Lightpack\Console\Command;
 
 /**
- * Remove an Nginx virtual host and optionally its SSL certificate.
+ * Remove a FrankenPHP site and optionally its SSL certificate.
  *
  * Usage:
  *   php console server:site:remove production --domain=example.com
@@ -79,12 +79,12 @@ SSL;
         return <<<BASH
 domain="{$domain}"
 
-# Disable and remove site config
-sudo lp-nginx-disable "\${domain}.conf"
+# Remove site config
+sudo lp-frankenphp-remove "\${domain}"
 {$sslCleanup}
 
-# Reload Nginx
-sudo systemctl reload nginx
+# Reload FrankenPHP
+sudo lp-frankenphp-reload
 
 echo "Site \${domain} removed."
 BASH;

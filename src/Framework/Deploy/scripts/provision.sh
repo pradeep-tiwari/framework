@@ -7,8 +7,8 @@
 # This script is executed as root on a fresh server to prepare it for
 # Lightpack application deployment. It:
 #   - Creates a deploy user with restricted privileges
-#   - Installs PHP, Nginx, MySQL, Composer
-#   - Configures PHP-FPM and Nginx
+#   - Installs PHP (CLI), FrankenPHP, MySQL, Composer
+#   - Configures FrankenPHP with Caddy
 #   - Hardens SSH and firewall
 #   - Generates secure credentials
 #
@@ -27,9 +27,9 @@ SERVER_NAME="${SERVER_NAME:-lightpack}"
 DEPLOY_USER="${DEPLOY_USER:-deploy}"
 PHP_VERSION="${PHP_VERSION:-8.3}"
 TIMEZONE="${TIMEZONE:-UTC}"
-DB_TYPE="${DB_TYPE:-mysql}"          # mysql | none
-WEB_SERVER="${WEB_SERVER:-nginx}"    # nginx (caddy coming soon)
-GIT_HOST="${GIT_HOST:-github.com}"  # git hosting provider for ssh-keyscan
+DB_TYPE="${DB_TYPE:-mysql}"
+WEB_SERVER="${WEB_SERVER:-frankenphp}"
+GIT_HOST="${GIT_HOST:-github.com}"
 
 MYSQL_DB="${MYSQL_DB:-lightpack}"
 MYSQL_USER="${MYSQL_USER:-lightpack}"
@@ -72,7 +72,7 @@ if ! command -v lsb_release &>/dev/null; then
 fi
 
 LSB_RELEASE=$(lsb_release -s -c)
-SUPPORTED_CODENAMES="jammy noble"  # 22.04, 24.04
+SUPPORTED_CODENAMES="jammy noble"
 
 if ! echo "$SUPPORTED_CODENAMES" | grep -qw "$LSB_RELEASE"; then
     log_error "Unsupported Ubuntu version: $LSB_RELEASE"
@@ -108,7 +108,6 @@ log_step "Updating system packages..."
 
 export DEBIAN_FRONTEND=noninteractive
 
-# Wait for apt locks (common on fresh cloud VMs)
 for i in {1..30}; do
     if ! fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; then
         break
@@ -138,7 +137,6 @@ apt-get install -y -qq \
     ufw \
     fail2ban \
     certbot \
-    python3-certbot-nginx \
     acl \
     bc \
     supervisor
@@ -156,35 +154,26 @@ else
     log_info "User '$DEPLOY_USER' created"
 fi
 
-# Add to sudo group (standard Ubuntu sudo, password required by default)
 usermod -aG sudo "$DEPLOY_USER"
 
-# Create sudoers file with RESTRICTED passwordless commands only
-# These are the ONLY commands deploy can run without a password
 SUDOERS_FILE="/etc/sudoers.d/${DEPLOY_USER}"
-
 rm -f "$SUDOERS_FILE"
 
-# Service reloads (needed for zero-downtime deploys with opcache)
 cat >> "$SUDOERS_FILE" <<EOF
 # Lightpack deploy user - restricted passwordless sudo
 # DO NOT ADD /bin/bash, /usr/bin/apt, or other privileged commands here
 # These are the ONLY commands allowed without password:
 
-${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/sbin/service php${PHP_VERSION}-fpm reload
-${DEPLOY_USER} ALL=(ALL) NOPASSWD: /bin/systemctl reload php${PHP_VERSION}-fpm
-${DEPLOY_USER} ALL=(ALL) NOPASSWD: /bin/systemctl reload nginx
-${DEPLOY_USER} ALL=(ALL) NOPASSWD: /bin/systemctl status nginx
-${DEPLOY_USER} ALL=(ALL) NOPASSWD: /bin/systemctl status php${PHP_VERSION}-fpm
+${DEPLOY_USER} ALL=(ALL) NOPASSWD: /bin/systemctl reload frankenphp
+${DEPLOY_USER} ALL=(ALL) NOPASSWD: /bin/systemctl restart frankenphp
+${DEPLOY_USER} ALL=(ALL) NOPASSWD: /bin/systemctl status frankenphp
+${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/local/sbin/lp-frankenphp-write *
+${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/local/sbin/lp-frankenphp-remove *
+${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/local/sbin/lp-frankenphp-reload
+${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/local/sbin/lp-frankenphp-test
 
-# Nginx site management via wrapper scripts (Ubuntu 24.04: no path wildcards in sudoers)
-${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/local/sbin/lp-nginx-write
-${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/local/sbin/lp-nginx-enable
-${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/local/sbin/lp-nginx-disable
-
-# SSL certificate management
+# SSL certificate management (certbot standalone fallback)
 ${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/bin/certbot certonly *
-${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/bin/certbot --nginx *
 ${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/bin/certbot renew
 
 # Supervisor queue management
@@ -193,7 +182,7 @@ ${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/local/sbin/lp-supervisorctl * *
 ${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/bin/supervisorctl reread
 ${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/bin/supervisorctl update
 
-# MySQL database creation (runs as root via socket auth — no password needed)
+# MySQL database creation (runs as root via socket auth)
 ${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/local/sbin/lp-mysql-create *
 EOF
 
@@ -204,35 +193,44 @@ visudo -c >/dev/null || {
     exit 1
 }
 
-log_info "Sudo privileges configured (service reloads, nginx sites, certbot)"
+log_info "Sudo privileges configured (FrankenPHP reloads, site management, certbot)"
 
-# Create nginx site management wrapper scripts
-# (Ubuntu 24.04 sudo rejects wildcards in path arguments inside sudoers)
-cat > /usr/local/sbin/lp-nginx-write <<'WSCRIPT'
+# Create FrankenPHP site management wrapper scripts
+cat > /usr/local/sbin/lp-frankenphp-write <<'WSCRIPT'
 #!/bin/bash
 site="${1:-}"
 if [ -z "$site" ] || [[ "$site" == */* ]] || [[ "$site" == *..* ]]; then
-    echo "Usage: lp-nginx-write <site-name>" >&2; exit 1
+    echo "Usage: lp-frankenphp-write <site-name>" >&2; exit 1
 fi
-cat > "/etc/nginx/sites-available/${site}"
+cat > "/etc/frankenphp/sites/${site}.caddy"
 WSCRIPT
 
-cat > /usr/local/sbin/lp-nginx-enable <<'WSCRIPT'
+cat > /usr/local/sbin/lp-frankenphp-remove <<'WSCRIPT'
 #!/bin/bash
 site="${1:-}"
 if [ -z "$site" ] || [[ "$site" == */* ]] || [[ "$site" == *..* ]]; then
-    echo "Usage: lp-nginx-enable <site-name>" >&2; exit 1
+    echo "Usage: lp-frankenphp-remove <site-name>" >&2; exit 1
 fi
-ln -sf "/etc/nginx/sites-available/${site}" "/etc/nginx/sites-enabled/${site}"
+rm -f "/etc/frankenphp/sites/${site}.caddy"
 WSCRIPT
 
-cat > /usr/local/sbin/lp-nginx-disable <<'WSCRIPT'
+cat > /usr/local/sbin/lp-frankenphp-reload <<'WSCRIPT'
 #!/bin/bash
-site="${1:-}"
-if [ -z "$site" ] || [[ "$site" == */* ]] || [[ "$site" == *..* ]]; then
-    echo "Usage: lp-nginx-disable <site-name>" >&2; exit 1
+if [ ! -f /etc/frankenphp/Caddyfile ]; then
+    echo "ERROR: Caddyfile not found" >&2; exit 1
 fi
-rm -f "/etc/nginx/sites-enabled/${site}" "/etc/nginx/sites-available/${site}"
+if ! /usr/local/bin/frankenphp validate --config /etc/frankenphp/Caddyfile 2>/dev/null; then
+    echo "ERROR: Caddyfile validation failed" >&2; exit 1
+fi
+/bin/systemctl reload frankenphp
+WSCRIPT
+
+cat > /usr/local/sbin/lp-frankenphp-test <<'WSCRIPT'
+#!/bin/bash
+if [ ! -f /etc/frankenphp/Caddyfile ]; then
+    echo "ERROR: Caddyfile not found" >&2; exit 1
+fi
+/usr/local/bin/frankenphp validate --config /etc/frankenphp/Caddyfile
 WSCRIPT
 
 cat > /usr/local/sbin/lp-supervisor-write <<'WSCRIPT'
@@ -260,8 +258,6 @@ WSCRIPT
 
 cat > /usr/local/sbin/lp-mysql-create <<'WSCRIPT'
 #!/bin/bash
-# Create a MySQL database and user. Runs as root via sudo (socket auth — no password needed).
-# Usage: lp-mysql-create <dbname> <dbuser> <dbpass>
 dbname="${1:-}"
 dbuser="${2:-}"
 dbpass="${3:-}"
@@ -271,11 +267,11 @@ if [ -z "$dbname" ] || [ -z "$dbuser" ] || [ -z "$dbpass" ]; then
 fi
 
 if ! [[ "$dbname" =~ ^[a-zA-Z0-9_]+$ ]]; then
-    echo "Invalid database name: only alphanumeric and underscores allowed" >&2; exit 1
+    echo "Invalid database name" >&2; exit 1
 fi
 
 if ! [[ "$dbuser" =~ ^[a-zA-Z0-9_]+$ ]]; then
-    echo "Invalid username: only alphanumeric and underscores allowed" >&2; exit 1
+    echo "Invalid username" >&2; exit 1
 fi
 
 mysql <<ENDSQL
@@ -286,20 +282,20 @@ FLUSH PRIVILEGES;
 ENDSQL
 WSCRIPT
 
-chmod 0750 /usr/local/sbin/lp-nginx-write \
-           /usr/local/sbin/lp-nginx-enable \
-           /usr/local/sbin/lp-nginx-disable \
+chmod 0750 /usr/local/sbin/lp-frankenphp-write \
+           /usr/local/sbin/lp-frankenphp-remove \
+           /usr/local/sbin/lp-frankenphp-reload \
+           /usr/local/sbin/lp-frankenphp-test \
            /usr/local/sbin/lp-supervisor-write \
            /usr/local/sbin/lp-supervisorctl \
            /usr/local/sbin/lp-mysql-create
 
-log_info "Nginx management scripts installed to /usr/local/sbin/"
+log_info "FrankenPHP management scripts installed to /usr/local/sbin/"
 
 # Setup SSH directory
 mkdir -p "/home/${DEPLOY_USER}/.ssh"
 chmod 700 "/home/${DEPLOY_USER}/.ssh"
 
-# Copy root's authorized_keys to deploy user (if exists)
 if [ -f /root/.ssh/authorized_keys ]; then
     cp /root/.ssh/authorized_keys "/home/${DEPLOY_USER}/.ssh/authorized_keys"
     chmod 600 "/home/${DEPLOY_USER}/.ssh/authorized_keys"
@@ -310,13 +306,9 @@ chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "/home/${DEPLOY_USER}/.ssh"
 # Add deploy user to www-data group for shared file access
 usermod -aG www-data "$DEPLOY_USER"
 
-# Ensure deploy user creates files as 664 (group-writable) so www-data can read
-# and www-data-created files can be written by the queue worker (runs as deploy)
 grep -qF 'umask 002' "/home/${DEPLOY_USER}/.profile" || echo 'umask 002' >> "/home/${DEPLOY_USER}/.profile"
 grep -qF 'umask 002' "/home/${DEPLOY_USER}/.bashrc"  || echo 'umask 002' >> "/home/${DEPLOY_USER}/.bashrc"
 
-# Set default ACLs on /var/www so every new file inherits group-write permission
-# regardless of which process (www-data or deploy/queue worker) creates it
 mkdir -p /var/www
 setfacl -R  -m g:www-data:rwX,g:"${DEPLOY_USER}":rwX /var/www 2>/dev/null || true
 setfacl -dR -m g:www-data:rwX,g:"${DEPLOY_USER}":rwX /var/www 2>/dev/null || true
@@ -343,7 +335,6 @@ timedatectl set-timezone "$TIMEZONE" || log_warn "Could not set timezone"
 log_step "Configuring swap..."
 
 if [ ! -f /swapfile ]; then
-    # Calculate swap: min(2GB, 2x RAM)
     RAM_MB=$(free -m | awk '/^Mem:/ {print $2}')
     SWAP_MB=$((RAM_MB * 2))
     [ "$SWAP_MB" -gt 2048 ] && SWAP_MB=2048
@@ -359,11 +350,10 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-# 7. Install PHP
+# 7. Install PHP (CLI only — FrankenPHP has its own PHP runtime)
 # -----------------------------------------------------------------------------
-log_step "Installing PHP ${PHP_VERSION}..."
+log_step "Installing PHP ${PHP_VERSION} CLI..."
 
-# Resolve PPA codename from Ubuntu major version, not the distro codename string.
 UBUNTU_MAJOR=$(lsb_release -sr | cut -d. -f1)
 if   [ "$UBUNTU_MAJOR" -ge 24 ]; then PHP_PPA_CODENAME="noble"
 elif [ "$UBUNTU_MAJOR" -ge 22 ]; then PHP_PPA_CODENAME="jammy"
@@ -372,21 +362,17 @@ fi
 
 log_info "Using PPA codename: ${PHP_PPA_CODENAME} (detected Ubuntu ${UBUNTU_MAJOR}.x)"
 
-# Import Ondrej PPA GPG key (modern signed-by approach)
-# Skip if already imported — idempotent for re-runs
 if [ ! -f /usr/share/keyrings/ondrej-php.gpg ]; then
     curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x14AA40EC0831756756D7F66C4F4EA0AAE5267A6C" \
         | gpg --batch --yes --dearmor -o /usr/share/keyrings/ondrej-php.gpg
 fi
 
-# Add repository with explicit codename
 echo "deb [arch=amd64 signed-by=/usr/share/keyrings/ondrej-php.gpg] https://ppa.launchpadcontent.net/ondrej/php/ubuntu ${PHP_PPA_CODENAME} main" \
     > /etc/apt/sources.list.d/ondrej-php.list
 
 apt-get update -qq
 
 PHP_PACKAGES=(
-    "php${PHP_VERSION}-fpm"
     "php${PHP_VERSION}-cli"
     "php${PHP_VERSION}-common"
     "php${PHP_VERSION}-mysql"
@@ -405,26 +391,18 @@ PHP_PACKAGES=(
 
 apt-get install -y -qq "${PHP_PACKAGES[@]}"
 
-# Verify PHP installed
 current_php=$(php -v 2>/dev/null | head -n 1 | grep -oP 'PHP \K[0-9]+\.[0-9]+')
 if [ -z "$current_php" ]; then
     log_error "PHP installation failed"
     exit 1
 fi
-log_info "PHP ${current_php} installed"
+log_info "PHP ${current_php} CLI installed"
 
-# -----------------------------------------------------------------------------
-# 8. Configure PHP-FPM
-# -----------------------------------------------------------------------------
-log_step "Optimizing PHP-FPM configuration..."
+# PHP optimizations for CLI (used by console, queue workers, migrations)
+PHP_CLI_INI="/etc/php/${PHP_VERSION}/cli/conf.d/99-lightpack.ini"
+mkdir -p "$(dirname "$PHP_CLI_INI")"
 
-PHP_FPM_CONF="/etc/php/${PHP_VERSION}/fpm/pool.d/www.conf"
-PHP_INI_DIR="/etc/php/${PHP_VERSION}/fpm/conf.d"
-
-mkdir -p "$PHP_INI_DIR"
-
-# PHP optimizations
-cat > "${PHP_INI_DIR}/99-lightpack.ini" <<EOF
+cat > "$PHP_CLI_INI" <<EOF
 ; Lightpack Production Optimizations
 memory_limit = 256M
 max_execution_time = 60
@@ -432,8 +410,9 @@ max_input_time = 60
 post_max_size = 64M
 upload_max_filesize = 64M
 
-; OPcache
+; OPcache (useful for long-running CLI processes like queue workers)
 opcache.enable = 1
+opcache.enable_cli = 1
 opcache.memory_consumption = 256
 opcache.interned_strings_buffer = 16
 opcache.max_accelerated_files = 20000
@@ -451,139 +430,90 @@ realpath_cache_size = 4096K
 realpath_cache_ttl = 600
 EOF
 
-# Calculate FPM pool size based on available RAM (60% of RAM / 128MB per worker)
-TOTAL_RAM_MB=$(free -m | awk '/^Mem:/ {print $2}')
-FPM_MAX_CHILDREN=$(( (TOTAL_RAM_MB * 60 / 100) / 128 ))
-[ "$FPM_MAX_CHILDREN" -lt 5 ] && FPM_MAX_CHILDREN=5
-[ "$FPM_MAX_CHILDREN" -gt 50 ] && FPM_MAX_CHILDREN=50
-FPM_START=$(( FPM_MAX_CHILDREN / 4 ))
-[ "$FPM_START" -lt 2 ] && FPM_START=2
-FPM_MIN_SPARE=$(( FPM_MAX_CHILDREN / 5 ))
-[ "$FPM_MIN_SPARE" -lt 2 ] && FPM_MIN_SPARE=2
-FPM_MAX_SPARE=$(( FPM_MAX_CHILDREN / 2 ))
-[ "$FPM_MAX_SPARE" -lt 4 ] && FPM_MAX_SPARE=4
-
-# FPM pool config
-cat > "$PHP_FPM_CONF" <<EOF
-[www]
-user = www-data
-group = www-data
-listen = /run/php/php${PHP_VERSION}-fpm.sock
-listen.owner = www-data
-listen.group = www-data
-listen.mode = 0660
-
-pm = dynamic
-pm.max_children = ${FPM_MAX_CHILDREN}
-pm.start_servers = ${FPM_START}
-pm.min_spare_servers = ${FPM_MIN_SPARE}
-pm.max_spare_servers = ${FPM_MAX_SPARE}
-pm.max_requests = 500
-pm.process_idle_timeout = 10s
-
-php_admin_value[error_log] = /var/log/php${PHP_VERSION}-fpm.log
-php_admin_flag[log_errors] = on
-catch_workers_output = yes
-EOF
-
-systemctl restart "php${PHP_VERSION}-fpm"
-systemctl enable "php${PHP_VERSION}-fpm"
-
 # -----------------------------------------------------------------------------
-# 9. Install Nginx
+# 8. Install FrankenPHP
 # -----------------------------------------------------------------------------
-log_step "Installing and configuring Nginx..."
+log_step "Installing FrankenPHP..."
 
-apt-get install -y -qq nginx
+FRANKENPHP_BIN="/usr/local/bin/frankenphp"
+FRANKENPHP_DIR="/etc/frankenphp"
+FRANKENPHP_SITES="${FRANKENPHP_DIR}/sites"
 
-# Backup and replace nginx.conf
-cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.original 2>/dev/null || true
+mkdir -p "$FRANKENPHP_SITES"
 
-cat > /etc/nginx/nginx.conf <<'EOF'
-user www-data;
-worker_processes auto;
-worker_rlimit_nofile 65535;
-pid /run/nginx.pid;
+if [ ! -f "$FRANKENPHP_BIN" ]; then
+    log_info "Downloading FrankenPHP..."
+    curl -fsSL -o "$FRANKENPHP_BIN" \
+        "https://github.com/dunglas/frankenphp/releases/latest/download/frankenphp-linux-x86_64"
+    chmod +x "$FRANKENPHP_BIN"
+    log_info "FrankenPHP installed to ${FRANKENPHP_BIN}"
+else
+    log_warn "FrankenPHP already exists — skipping download"
+fi
 
-include /etc/nginx/modules-enabled/*.conf;
+if ! "$FRANKENPHP_BIN" version >/dev/null 2>&1; then
+    log_error "FrankenPHP binary is not working"
+    exit 1
+fi
 
-events {
-    worker_connections 4096;
-    use epoll;
-    multi_accept on;
+# Create main Caddyfile with site import pattern
+cat > "${FRANKENPHP_DIR}/Caddyfile" <<'EOF'
+{
+    frankenphp
+    admin off
 }
 
-http {
-    sendfile on;
-    tcp_nopush on;
-    tcp_nodelay on;
-    keepalive_timeout 65;
-    server_tokens off;
-    client_max_body_size 64M;
+# Import all site configs
+import /etc/frankenphp/sites/*.caddy
+EOF
 
-    include /etc/nginx/mime.types;
-    default_type application/octet-stream;
-
-    # SSL
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_prefer_server_ciphers on;
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_timeout 10m;
-
-    # Logging
-    access_log /var/log/nginx/access.log;
-    error_log /var/log/nginx/error.log warn;
-
-    # Gzip
-    gzip on;
-    gzip_vary on;
-    gzip_proxied any;
-    gzip_comp_level 6;
-    gzip_types text/plain text/css text/xml text/javascript application/json application/javascript application/xml+rss application/rss+xml font/truetype font/opentype image/svg+xml;
-
-    # Rate limiting
-    limit_req_zone $binary_remote_addr zone=api:10m rate=100r/m;
-    limit_req_zone $binary_remote_addr zone=login:10m rate=10r/m;
-
-    # Virtual hosts
-    include /etc/nginx/conf.d/*.conf;
-    include /etc/nginx/sites-enabled/*;
+# Create catch-all: unmatched hostnames get 444 (connection closed)
+cat > "${FRANKENPHP_SITES}/000-catchall.caddy" <<'EOF'
+:80 {
+    respond "Not Found" 444
 }
 EOF
 
-# Remove default site
-rm -f /etc/nginx/sites-enabled/default
-rm -f /etc/nginx/sites-available/default
+# Create systemd service for FrankenPHP
+cat > /etc/systemd/system/frankenphp.service <<EOF
+[Unit]
+Description=FrankenPHP Web Server
+Documentation=https://frankenphp.dev
+After=network.target
 
-# Add catch-all: unmatched hostnames get connection closed (444) instead of
-# falling through to the first real vhost.
-cat > /etc/nginx/sites-available/000-catchall.conf <<'EOF'
-server {
-    listen 80 default_server;
-    listen [::]:80 default_server;
-    server_name _;
-    return 444;
-}
+[Service]
+Type=simple
+ExecStart=${FRANKENPHP_BIN} run --config ${FRANKENPHP_DIR}/Caddyfile
+ExecReload=${FRANKENPHP_BIN} reload --config ${FRANKENPHP_DIR}/Caddyfile
+Restart=on-abnormal
+User=www-data
+Group=www-data
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
 EOF
-ln -sf /etc/nginx/sites-available/000-catchall.conf /etc/nginx/sites-enabled/000-catchall.conf
 
 # Create deployment directory
 mkdir -p /var/www
 chown -R "${DEPLOY_USER}:www-data" /var/www
 chmod 755 /var/www
 
-systemctl restart nginx
-systemctl enable nginx
+systemctl daemon-reload
+systemctl start frankenphp
+systemctl enable frankenphp
+
+log_info "FrankenPHP configured and started"
 
 # -----------------------------------------------------------------------------
-# 10. Install MySQL (if requested)
+# 9. Install MySQL (if requested)
 # -----------------------------------------------------------------------------
 if [ "$DB_TYPE" = "mysql" ]; then
     log_step "Installing MySQL..."
 
     apt-get install -y -qq mysql-server
 
-    # Secure MySQL using socket auth (root never gets a password — use sudo mysql)
     mysql -u root <<EOF
 DELETE FROM mysql.user WHERE User='';
 DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');
@@ -592,7 +522,6 @@ DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';
 FLUSH PRIVILEGES;
 EOF
 
-    # Create app database and user via socket auth
     mysql -u root <<EOF
 CREATE DATABASE IF NOT EXISTS ${MYSQL_DB} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER IF NOT EXISTS '${MYSQL_USER}'@'localhost' IDENTIFIED BY '${MYSQL_PASSWORD}';
@@ -601,12 +530,11 @@ FLUSH PRIVILEGES;
 EOF
     log_info "MySQL configured and secured (root access via socket auth only)"
 
-    # Calculate MySQL InnoDB buffer pool: 25% of total RAM
+    TOTAL_RAM_MB=$(free -m | awk '/^Mem:/ {print $2}')
     MYSQL_BUFFER_MB=$(( TOTAL_RAM_MB / 4 ))
     [ "$MYSQL_BUFFER_MB" -lt 128 ] && MYSQL_BUFFER_MB=128
     [ "$MYSQL_BUFFER_MB" -gt 2048 ] && MYSQL_BUFFER_MB=2048
 
-    # MySQL optimizations for typical VPS
     cat > /etc/mysql/mysql.conf.d/99-lightpack.cnf <<EOF
 [mysqld]
 max_connections = 100
@@ -626,7 +554,7 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-# 11. Install Composer
+# 10. Install Composer
 # -----------------------------------------------------------------------------
 log_step "Installing Composer..."
 
@@ -649,7 +577,7 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-# 12. Configure firewall
+# 11. Configure firewall
 # -----------------------------------------------------------------------------
 log_step "Configuring firewall..."
 
@@ -664,7 +592,7 @@ ufw --force enable
 log_info "Firewall active: SSH, HTTP, HTTPS allowed"
 
 # -----------------------------------------------------------------------------
-# 13. Configure fail2ban
+# 12. Configure fail2ban
 # -----------------------------------------------------------------------------
 log_step "Configuring fail2ban..."
 
@@ -677,22 +605,18 @@ maxretry = 5
 [sshd]
 enabled = true
 port = ssh
-
-[nginx-http-auth]
-enabled = true
-port = http,https
 EOF
 
 systemctl restart fail2ban
 systemctl enable fail2ban
 
-# Enable and start supervisor (queue worker process manager)
+# Enable and start supervisor
 systemctl enable supervisor
 systemctl start supervisor
 log_info "Supervisor enabled and started"
 
 # -----------------------------------------------------------------------------
-# 14. Automatic security updates
+# 13. Automatic security updates
 # -----------------------------------------------------------------------------
 log_step "Enabling automatic security updates..."
 
@@ -712,18 +636,13 @@ systemctl enable unattended-upgrades
 systemctl start unattended-upgrades
 
 # -----------------------------------------------------------------------------
-# 15. SSH hardening
+# 14. SSH hardening
 # -----------------------------------------------------------------------------
 log_step "Hardening SSH configuration..."
 
-# Disable root login
 sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
 sed -i 's/^PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
-
-# Disable password authentication (key-only)
 sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
-
-# Reduce MaxAuthTries
 sed -i 's/^#*MaxAuthTries.*/MaxAuthTries 3/' /etc/ssh/sshd_config
 
 systemctl restart ssh
@@ -731,11 +650,10 @@ systemctl restart ssh
 log_info "SSH hardened: root disabled, password auth disabled, key-only"
 
 # -----------------------------------------------------------------------------
-# 16. System optimizations
+# 15. System optimizations
 # -----------------------------------------------------------------------------
 log_step "Applying system optimizations..."
 
-# File limits
 cat > /etc/security/limits.d/99-lightpack.conf <<EOF
 * soft nofile 65535
 * hard nofile 65535
@@ -743,7 +661,6 @@ www-data soft nofile 65535
 www-data hard nofile 65535
 EOF
 
-# Kernel network tuning
 cat > /etc/sysctl.d/99-lightpack.conf <<EOF
 net.core.somaxconn = 65535
 net.ipv4.tcp_max_syn_backlog = 8192
@@ -756,14 +673,12 @@ EOF
 
 sysctl -p /etc/sysctl.d/99-lightpack.conf >/dev/null
 
-# No credentials file is written to disk — displayed once in terminal below.
-
 # -----------------------------------------------------------------------------
-# 18. Final checks
+# 16. Final checks
 # -----------------------------------------------------------------------------
 log_step "Running final checks..."
 
-services=("nginx" "php${PHP_VERSION}-fpm" "fail2ban" "supervisor")
+services=("frankenphp" "fail2ban" "supervisor")
 [ "$DB_TYPE" = "mysql" ] && services+=("mysql")
 
 for service in "${services[@]}"; do
@@ -789,6 +704,7 @@ echo ""
 echo "  Host:        ${SERVER_IP}"
 echo "  Deploy user: ${DEPLOY_USER}"
 echo "  PHP:         ${current_php}"
+echo "  Web Server:  FrankenPHP"
 echo ""
 echo "  DEPLOY USER PASSWORD (save now — shown once):"
 echo "    ${DEPLOY_PASSWORD}"
@@ -806,5 +722,4 @@ echo ""
 echo "  Security: root SSH disabled · UFW active · Fail2Ban active"
 echo "================================================================================"
 
-# Self-cleanup: remove this script (it contains credentials as env vars at the top)
 rm -f "$0"

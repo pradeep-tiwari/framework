@@ -5,7 +5,10 @@ namespace Lightpack\Deploy\Commands;
 use Lightpack\Console\Command;
 
 /**
- * Update PHP and Nginx runtime configuration on a remote server.
+ * Update PHP runtime configuration on a remote server.
+ *
+ * FrankenPHP reads PHP configuration from the system PHP ini files.
+ * Changes apply to both the web server and CLI processes.
  *
  * Usage:
  *   php console server:config production --upload=100M
@@ -80,7 +83,7 @@ class ServerConfigCommand extends Command
         $this->output->newline();
 
         if ($result['success']) {
-            $this->output->success('Configuration updated and services reloaded.');
+            $this->output->success('Configuration updated and FrankenPHP reloaded.');
             return self::SUCCESS;
         }
 
@@ -90,15 +93,12 @@ class ServerConfigCommand extends Command
 
     private function buildConfigScript(?string $upload, ?string $memory, ?string $timeout): string
     {
-        $nginxConf  = '/etc/nginx/nginx.conf';
-
         $sedCommands = [];
 
         if ($upload !== null) {
             $uploadUpper = strtoupper($upload);
             $sedCommands[] = "sed -i 's/^upload_max_filesize = .*/upload_max_filesize = {$uploadUpper}/' \${PHP_INI_FILE}";
             $sedCommands[] = "sed -i 's/^post_max_size = .*/post_max_size = {$uploadUpper}/' \${PHP_INI_FILE}";
-            $sedCommands[] = "sed -i 's/client_max_body_size .*/client_max_body_size {$uploadUpper};/' {$nginxConf}";
         }
 
         if ($memory !== null) {
@@ -122,20 +122,12 @@ if [ -z "\$PHP_VER" ]; then
     exit 1
 fi
 
-PHP_INI_FILE="/etc/php/\${PHP_VER}/fpm/conf.d/99-lightpack.ini"
+PHP_INI_FILE="/etc/php/\${PHP_VER}/cli/conf.d/99-lightpack.ini"
 
 {$sedBlock}
 
-echo "Reloading PHP-FPM..."
-sudo systemctl reload php\${PHP_VER}-fpm
-
-if sudo nginx -t 2>/dev/null; then
-    echo "Reloading Nginx..."
-    sudo systemctl reload nginx
-else
-    echo "Nginx config test failed. Reverting nginx.conf may be needed."
-    exit 1
-fi
+echo "Reloading FrankenPHP..."
+sudo systemctl reload frankenphp
 
 echo "Done."
 BASH;

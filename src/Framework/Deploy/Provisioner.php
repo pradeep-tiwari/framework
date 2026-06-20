@@ -128,7 +128,7 @@ class Provisioner
             'PHP_VERSION'  => $params['php_version'],
             'TIMEZONE'     => $params['timezone'],
             'DB_TYPE'      => 'mysql',
-            'WEB_SERVER'   => 'nginx',
+            'WEB_SERVER'   => 'frankenphp',
             'MYSQL_DB'     => $params['db_name'],
             'MYSQL_USER'   => $params['db_user'],
             'GIT_HOST'     => $gitHost,

@@ -60,7 +60,7 @@ Copy the key. In your GitHub repo: **Settings > Deploy keys > Add deploy key**. 
 php console app:deploy production
 ```
 
-Copies your `.env.production` to the server, pulls code, installs dependencies, runs migrations, and reloads PHP-FPM.
+Copies your `.env.production` to the server, pulls code, installs dependencies, runs migrations, and reloads FrankenPHP.
 
 ### 6. Add Domain
 
@@ -70,7 +70,11 @@ Point your DNS A record to the server IP, then:
 php console server:site:add production --domain=yourdomain.com
 ```
 
-### 7. Enable HTTPS
+### 7. SSL (Automatic)
+
+FrankenPHP handles SSL certificates automatically via Caddy's built-in auto-HTTPS. Once DNS points to your server, HTTPS will be active on the first request.
+
+For manual certificate management:
 
 ```bash
 php console server:site:ssl production --domain=yourdomain.com
@@ -243,10 +247,8 @@ The deploy user is intentionally restricted. For system-level changes, log in as
 ### OPcache not refreshing
 
 ```bash
-ssh deploy@your-server-ip "sudo systemctl reload php8.3-fpm"
+ssh deploy@your-server-ip "sudo systemctl reload frankenphp"
 ```
-
-Replace `8.3` with your PHP version.
 
 ---
 
@@ -337,9 +339,9 @@ php console server:queue:setup shop --name=shop-worker
 
 | Command | Description |
 |---|---|
-| `php console server:site:add <env> --domain=` | Add Nginx virtual host |
-| `php console server:site:remove <env> --domain=` | Remove Nginx virtual host |
-| `php console server:site:ssl <env> --domain=` | Install SSL certificate |
+| `php console server:site:add <env> --domain=` | Add FrankenPHP site |
+| `php console server:site:remove <env> --domain=` | Remove FrankenPHP site |
+| `php console server:site:ssl <env> --domain=` | Check SSL status |
 
 ### Environment
 
@@ -353,7 +355,7 @@ php console server:queue:setup shop --name=shop-worker
 |---|---|
 | `php console server:run <env> --cmd="..."` | Run any command on the server |
 | `php console server:key:show <env>` | Show deploy user's SSH public key |
-| `php console server:config <env> [--upload] [--memory] [--timeout]` | Update PHP/Nginx settings |
+| `php console server:config <env> [--upload] [--memory] [--timeout]` | Update PHP/FrankenPHP settings |
 
 ---
 

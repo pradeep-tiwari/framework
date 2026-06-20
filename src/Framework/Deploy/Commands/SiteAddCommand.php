@@ -5,7 +5,7 @@ namespace Lightpack\Deploy\Commands;
 use Lightpack\Console\Command;
 
 /**
- * Add an Nginx virtual host for a domain.
+ * Add a FrankenPHP site for a domain.
  *
  * Usage:
  *   php console server:site:add production --domain=example.com
@@ -46,7 +46,7 @@ class SiteAddCommand extends Command
         $includeWww = $this->args->has('www');
         $appPath    = $envConfig['path'];
 
-        $this->output->info("Adding Nginx site for {$domain} ...");
+        $this->output->info("Adding FrankenPHP site for {$domain} ...");
         $this->output->newline();
 
         $remoteScript = $this->buildSiteScript($domain, $appPath, $includeWww);
@@ -60,7 +60,7 @@ class SiteAddCommand extends Command
             $this->output->success("Site {$domain} configured.");
 
             if (!filter_var($domain, FILTER_VALIDATE_IP)) {
-                $this->output->line("Next: php console server:site:ssl {$env} --domain={$domain}");
+                $this->output->line("SSL is handled automatically by FrankenPHP.");
             }
 
             return self::SUCCESS;
@@ -72,71 +72,35 @@ class SiteAddCommand extends Command
 
     private function buildSiteScript(string $domain, string $appPath, bool $includeWww): string
     {
-        $serverNames = $includeWww ? "{$domain} www.{$domain}" : $domain;
+        $serverNames = $includeWww ? "{$domain}, www.{$domain}" : $domain;
 
-        $configContent = <<<NGINX
-server {
-    listen 80;
-    listen [::]:80;
-    server_name {$serverNames};
-    root {$appPath}/public;
-    index index.php;
+        $configContent = <<<CADDY
+{$serverNames} {
+    root * {$appPath}/public
+    php_server
+    file_server
+    encode gzip
 
-    charset utf-8;
-
-    location / {
-        try_files \$uri \$uri/ /index.php?\$query_string;
+    header {
+        ?X-Powered-By ""
+        X-Frame-Options "SAMEORIGIN"
+        X-Content-Type-Options "nosniff"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
     }
-
-    location = /favicon.ico { access_log off; log_not_found off; }
-    location = /robots.txt  { access_log off; log_not_found off; }
-
-    error_page 404 /index.php;
-
-    location ~ \.php$ {
-        fastcgi_pass unix:PHP_FPM_SOCKET;
-        fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name;
-        include fastcgi_params;
-        fastcgi_hide_header X-Powered-By;
-    }
-
-    location ~ /\.(?!well-known).* {
-        deny all;
-    }
-
-    # Security headers
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-
-    # Gzip
-    gzip on;
-    gzip_vary on;
-    gzip_types text/plain text/css text/xml text/javascript application/json application/javascript application/xml+rss;
 }
-NGINX;
+CADDY;
 
         return <<<BASH
 set -e
 
-# Detect the active PHP-FPM socket (avoids cli/fpm version mismatch)
-PHP_FPM_SOCK=\$(ls /run/php/php*-fpm.sock 2>/dev/null | sort -V | tail -1)
-if [ -z "\$PHP_FPM_SOCK" ]; then
-    echo "ERROR: No PHP-FPM socket found in /run/php/" >&2
-    exit 1
-fi
-
-# Patch the socket placeholder with the full detected socket path
-NGINX_CONF=\$(cat << 'NGINX_EOF'
+CADDY_CONF=\$(cat << 'CADDY_EOF'
 {$configContent}
-NGINX_EOF
+CADDY_EOF
 )
-NGINX_CONF="\${NGINX_CONF/PHP_FPM_SOCKET/\$PHP_FPM_SOCK}"
 
-echo "\$NGINX_CONF" | sudo lp-nginx-write "{$domain}.conf"
-sudo lp-nginx-enable "{$domain}.conf"
-sudo systemctl reload nginx
+echo "\$CADDY_CONF" | sudo lp-frankenphp-write "{$domain}"
+sudo lp-frankenphp-reload
 
 echo "Site {$domain} added and enabled."
 BASH;

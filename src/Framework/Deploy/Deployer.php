@@ -161,6 +161,7 @@ class Deployer
             "echo ''",
             "echo 'Rolled back. Current commit:'",
             'git log --oneline -1',
+            'sudo systemctl reload frankenphp',
         ];
 
         return implode(' && ', $commands);

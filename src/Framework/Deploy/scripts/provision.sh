@@ -154,8 +154,6 @@ else
     log_info "User '$DEPLOY_USER' created"
 fi
 
-usermod -aG sudo "$DEPLOY_USER"
-
 SUDOERS_FILE="/etc/sudoers.d/${DEPLOY_USER}"
 rm -f "$SUDOERS_FILE"
 
@@ -219,7 +217,7 @@ cat > /usr/local/sbin/lp-frankenphp-reload <<'WSCRIPT'
 if [ ! -f /etc/frankenphp/Caddyfile ]; then
     echo "ERROR: Caddyfile not found" >&2; exit 1
 fi
-if ! /usr/local/bin/frankenphp validate --config /etc/frankenphp/Caddyfile 2>/dev/null; then
+if ! /usr/local/bin/frankenphp validate --config /etc/frankenphp/Caddyfile; then
     echo "ERROR: Caddyfile validation failed" >&2; exit 1
 fi
 /bin/systemctl reload frankenphp
@@ -470,7 +468,11 @@ EOF
 # Create catch-all: unmatched hostnames get 444 (connection closed)
 cat > "${FRANKENPHP_SITES}/000-catchall.caddy" <<'EOF'
 :80 {
-    respond "Not Found" 444
+    # Allow Let's Encrypt ACME challenges for auto-HTTPS
+    handle /.well-known/acme-challenge/* {
+        respond "OK" 200
+    }
+    respond "Not Found" 404
 }
 EOF
 
@@ -484,21 +486,28 @@ After=network.target
 [Service]
 Type=simple
 ExecStart=${FRANKENPHP_BIN} run --config ${FRANKENPHP_DIR}/Caddyfile
-ExecReload=${FRANKENPHP_BIN} reload --config ${FRANKENPHP_DIR}/Caddyfile
+ExecReload=/bin/kill -USR1 $MAINPID
 Restart=on-abnormal
 User=www-data
 Group=www-data
 AmbientCapabilities=CAP_NET_BIND_SERVICE
 LimitNOFILE=65535
+Environment="HOME=/var/lib/caddy"
+Environment="XDG_DATA_HOME=/var/lib/caddy/.local/share"
+Environment="XDG_CONFIG_HOME=/var/lib/caddy/.config"
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
+# Create Caddy data directory (certificates, config storage)
+mkdir -p /var/lib/caddy
+chown -R www-data:www-data /var/lib/caddy
+
 # Create deployment directory
 mkdir -p /var/www
 chown -R "${DEPLOY_USER}:www-data" /var/www
-chmod 755 /var/www
+chmod 775 /var/www
 
 systemctl daemon-reload
 systemctl start frankenphp

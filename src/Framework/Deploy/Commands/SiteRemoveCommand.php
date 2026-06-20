@@ -71,8 +71,8 @@ class SiteRemoveCommand extends Command
         if (!$keepSsl) {
             $sslCleanup = <<<SSL
 
-# Remove SSL certificate if it exists (ignore errors)
-sudo certbot delete --cert-name "{$domain}" --non-interactive 2>/dev/null || true
+# Caddy manages certificates automatically in /var/lib/caddy
+# No manual certificate cleanup needed
 SSL;
         }
 

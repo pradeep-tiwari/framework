@@ -45,12 +45,12 @@ class DbQueryCommand extends Command
         $query = $this->args->get('query');
 
         if (empty($query)) {
-            $this->output->error('Query is required. Use --query="SELECT ..."');
-            $this->output->newline();
-            $this->output->line('Examples:');
-            $this->output->line('  php console db:query production --query="SELECT * FROM users LIMIT 5"');
-            $this->output->line('  php console db:query --query="SHOW TABLES"');
-            return self::FAILURE;
+            $query = $this->prompt->ask('Query:');
+
+            if (empty($query)) {
+                $this->output->error('Query cannot be empty.');
+                return self::FAILURE;
+            }
         }
 
         if (!$this->isReadOnly($query)) {

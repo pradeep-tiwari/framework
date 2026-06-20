@@ -44,6 +44,7 @@ use Lightpack\Deploy\Commands\ScheduleRemoveCommand;
 use Lightpack\Deploy\Commands\ScheduleSetupCommand;
 use Lightpack\Deploy\Commands\DbBackupCommand;
 use Lightpack\Deploy\Commands\DbCreateCommand;
+use Lightpack\Deploy\Commands\DbQueryCommand;
 use Lightpack\Deploy\Commands\DbRestoreCommand;
 use Lightpack\Deploy\Commands\EnvPullCommand;
 use Lightpack\Deploy\Commands\ScheduleStatusCommand;
@@ -99,6 +100,7 @@ class Console
         'db:backup' => DbBackupCommand::class,
         'db:restore' => DbRestoreCommand::class,
         'db:create' => DbCreateCommand::class,
+        'db:query' => DbQueryCommand::class,
         'server:env:pull' => EnvPullCommand::class,
         'server:key:show' => ServerKeyShowCommand::class,
         'server:run' => ServerRunCommand::class,

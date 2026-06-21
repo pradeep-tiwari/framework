@@ -80,6 +80,14 @@ if ! echo "$SUPPORTED_CODENAMES" | grep -qw "$LSB_RELEASE"; then
     exit 1
 fi
 
+# Validate PHP version
+PHP_SUPPORTED_VERSIONS="8.2 8.3 8.4"
+if ! echo "$PHP_SUPPORTED_VERSIONS" | grep -qw "$PHP_VERSION"; then
+    log_error "Unsupported PHP version: $PHP_VERSION"
+    log_error "Only 8.2, 8.3, and 8.4 are supported. Aborting."
+    exit 1
+fi
+
 # -----------------------------------------------------------------------------
 # 1. Generate passwords (only on first run)
 # -----------------------------------------------------------------------------
@@ -183,18 +191,16 @@ ${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/local/sbin/lp-nginx-enable
 ${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/local/sbin/lp-nginx-disable
 
 # SSL certificate management
-${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/bin/certbot certonly *
-${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/bin/certbot --nginx *
-${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/bin/certbot renew
+${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/bin/certbot
 
 # Supervisor queue management
-${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/local/sbin/lp-supervisor-write *
-${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/local/sbin/lp-supervisorctl * *
+${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/local/sbin/lp-supervisor-write
+${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/local/sbin/lp-supervisorctl
 ${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/bin/supervisorctl reread
 ${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/bin/supervisorctl update
 
 # MySQL database creation (runs as root via socket auth — no password needed)
-${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/local/sbin/lp-mysql-create *
+${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/local/sbin/lp-mysql-create
 EOF
 
 chmod 0440 "$SUDOERS_FILE"
@@ -388,7 +394,12 @@ fi
 echo "deb [arch=amd64 signed-by=/usr/share/keyrings/ondrej-php.gpg] https://ppa.launchpadcontent.net/ondrej/php/ubuntu ${PHP_PPA_CODENAME} main" \
     > /etc/apt/sources.list.d/ondrej-php.list
 
-apt-get update -qq
+if ! apt-get update -qq; then
+    log_error "Ondrej PHP PPA not available for ${PHP_PPA_CODENAME}."
+    log_error "PHP ${PHP_VERSION} requires the PPA, but it has not been published for this Ubuntu release yet."
+    rm -f /etc/apt/sources.list.d/ondrej-php.list
+    exit 1
+fi
 
 PHP_PACKAGES=(
     "php${PHP_VERSION}-fpm"

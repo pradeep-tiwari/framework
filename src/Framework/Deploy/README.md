@@ -8,10 +8,14 @@ Deploy and manage Lightpack applications on a remote Ubuntu server. Provision on
 
 ## What You Need
 
-- A fresh Ubuntu 22.04 or 24.04 server (any VPS provider)
+- A fresh Ubuntu 22.04, 24.04, or 26.04 LTS server (any VPS provider)
 - Root or sudo SSH access for the initial provision
 - An SSH key pair on your local machine (`~/.ssh/id_rsa` or `~/.ssh/id_ed25519`)
 - Your Lightpack application code in a Git repository
+
+> **Which Ubuntu version?**
+>
+> Lightpack only supports LTS releases. Skip any interim releases (24.10, 25.04, etc.) when selecting a server from your VPS provider.
 
 ---
 
@@ -44,15 +48,13 @@ DB_PSWD=your-db-password
 php console server:provision production
 ```
 
-Type `yes` to confirm. Takes 5-15 minutes. When done, root SSH is disabled. Only the `deploy` user can access the server.
+Type `y` to confirm. Usually takes 5 minutes to provision the server. When done, root SSH is disabled. Only the `deploy` user can access the server.
 
 ### 4. Add Deploy Key to GitHub
 
-```bash
-php console server:key:show production
-```
+The provisioning output shows the deploy user's SSH public key at the end. Copy it.
 
-Copy the key. In your GitHub repo: **Settings > Deploy keys > Add deploy key**. Do **not** allow write access.
+In your GitHub repo: **Settings > Deploy keys > Add deploy key**. Do **not** allow write access.
 
 ### 5. Deploy
 
@@ -243,10 +245,10 @@ The deploy user is intentionally restricted. For system-level changes, log in as
 ### OPcache not refreshing
 
 ```bash
-ssh deploy@your-server-ip "sudo systemctl reload php8.3-fpm"
+ssh deploy@your-server-ip "sudo systemctl reload php<version>-fpm"
 ```
 
-Replace `8.3` with your PHP version.
+Replace `<version>` with your installed PHP version (e.g., `8.3` or `8.5`).
 
 ---
 
@@ -309,6 +311,7 @@ php console server:queue:setup shop --name=shop-worker
 | `php console jobs:run` | Run worker locally |
 | `php console jobs:retry` | Retry failed jobs |
 | `php console server:queue:setup <env> [options]` | Install worker (once) |
+| `php console server:queue:list <env>` | List all workers |
 | `php console server:queue:start <env> [--name]` | Start worker |
 | `php console server:queue:stop <env> [--name]` | Stop worker |
 | `php console server:queue:restart <env> [--name]` | Restart worker |
@@ -352,8 +355,6 @@ php console server:queue:setup shop --name=shop-worker
 | Command | Description |
 |---|---|
 | `php console server:run <env> --cmd="..."` | Run any command on the server |
-| `php console server:key:show <env>` | Show deploy user's SSH public key |
-| `php console server:config <env> [--upload] [--memory] [--timeout]` | Update PHP/Nginx settings |
 
 ---
 

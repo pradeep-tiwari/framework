@@ -2,7 +2,7 @@
 
 ################################################################################
 # Lightpack Server Provisioning Script
-# Target: Ubuntu 22.04 LTS / 24.04 LTS / 26.04 LTS
+# Target: Ubuntu 24.04 LTS / 26.04 LTS
 #
 # This script is executed as root on a fresh server to prepare it for
 # Lightpack application deployment. It:
@@ -72,11 +72,11 @@ if ! command -v lsb_release &>/dev/null; then
 fi
 
 LSB_RELEASE=$(lsb_release -s -c)
-SUPPORTED_CODENAMES="jammy noble resolute"  # 22.04, 24.04, 26.04
+SUPPORTED_CODENAMES="noble resolute"  # 24.04, 26.04
 
 if ! echo "$SUPPORTED_CODENAMES" | grep -qw "$LSB_RELEASE"; then
     log_error "Unsupported Ubuntu version: $LSB_RELEASE"
-    log_error "Only jammy (22.04), noble (24.04), and resolute (26.04) are supported. Aborting."
+    log_error "Only noble (24.04) and resolute (26.04) are supported. Aborting."
     exit 1
 fi
 
@@ -372,7 +372,6 @@ log_step "Installing PHP ${PHP_VERSION}..."
 UBUNTU_MAJOR=$(lsb_release -sr | cut -d. -f1)
 if   [ "$UBUNTU_MAJOR" -ge 26 ]; then PHP_PPA_CODENAME="resolute"
 elif [ "$UBUNTU_MAJOR" -ge 24 ]; then PHP_PPA_CODENAME="noble"
-elif [ "$UBUNTU_MAJOR" -ge 22 ]; then PHP_PPA_CODENAME="jammy"
 else                                   PHP_PPA_CODENAME=$(lsb_release -sc)
 fi
 

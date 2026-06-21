@@ -8,7 +8,7 @@ Deploy and manage Lightpack applications on a remote Ubuntu server. Provision on
 
 ## What You Need
 
-- A fresh Ubuntu 22.04, 24.04, or 26.04 LTS server (any VPS provider)
+- A fresh Ubuntu 24.04 or 26.04 LTS server (any VPS provider)
 - Root or sudo SSH access for the initial provision
 - An SSH key pair on your local machine (`~/.ssh/id_rsa` or `~/.ssh/id_ed25519`)
 - Your Lightpack application code in a Git repository

@@ -4,7 +4,7 @@ namespace Lightpack\Pwa;
 
 /**
  * ManifestGenerator - Generates web app manifest.json
- * 
+ *
  * Creates a valid Web App Manifest for Progressive Web Apps
  * with proper validation and defaults.
  */
@@ -46,29 +46,29 @@ class ManifestGenerator
         ];
 
         // Add description if provided
-        if (!empty($config['description'])) {
+        if (! empty($config['description'])) {
             $manifest['description'] = $config['description'];
         }
 
         // Add icons
-        if (!empty($config['icons'])) {
+        if (! empty($config['icons'])) {
             $manifest['icons'] = $this->formatIcons($config['icons']);
         } else {
             $manifest['icons'] = $this->discoverIcons();
         }
 
         // Add categories if provided
-        if (!empty($config['categories'])) {
+        if (! empty($config['categories'])) {
             $manifest['categories'] = $config['categories'];
         }
 
         // Add screenshots if provided
-        if (!empty($config['screenshots'])) {
+        if (! empty($config['screenshots'])) {
             $manifest['screenshots'] = $config['screenshots'];
         }
 
         // Add shortcuts if provided
-        if (!empty($config['shortcuts'])) {
+        if (! empty($config['shortcuts'])) {
             $manifest['shortcuts'] = $config['shortcuts'];
         }
 
@@ -126,7 +126,7 @@ class ManifestGenerator
         $icons = [];
         $iconsDir = $this->publicPath . '/icons';
 
-        if (!is_dir($iconsDir)) {
+        if (! is_dir($iconsDir)) {
             return $icons;
         }
 
@@ -141,6 +141,7 @@ class ManifestGenerator
         usort($icons, function ($a, $b) {
             $sizeA = (int) explode('x', $a['sizes'])[0];
             $sizeB = (int) explode('x', $b['sizes'])[0];
+
             return $sizeA - $sizeB;
         });
 
@@ -162,22 +163,22 @@ class ManifestGenerator
 
         // Validate display mode
         $validDisplayModes = ['fullscreen', 'standalone', 'minimal-ui', 'browser'];
-        if (!in_array($manifest['display'], $validDisplayModes)) {
+        if (! in_array($manifest['display'], $validDisplayModes)) {
             throw new \InvalidArgumentException("Invalid display mode: {$manifest['display']}");
         }
 
         // Validate orientation
         $validOrientations = ['any', 'natural', 'landscape', 'portrait', 'portrait-primary', 'portrait-secondary', 'landscape-primary', 'landscape-secondary'];
-        if (!in_array($manifest['orientation'], $validOrientations)) {
+        if (! in_array($manifest['orientation'], $validOrientations)) {
             throw new \InvalidArgumentException("Invalid orientation: {$manifest['orientation']}");
         }
 
         // Validate colors
-        if (!$this->isValidColor($manifest['theme_color'])) {
+        if (! $this->isValidColor($manifest['theme_color'])) {
             throw new \InvalidArgumentException("Invalid theme_color: {$manifest['theme_color']}");
         }
 
-        if (!$this->isValidColor($manifest['background_color'])) {
+        if (! $this->isValidColor($manifest['background_color'])) {
             throw new \InvalidArgumentException("Invalid background_color: {$manifest['background_color']}");
         }
     }

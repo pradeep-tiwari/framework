@@ -4,7 +4,7 @@ namespace Lightpack\Pwa\WebPush;
 
 /**
  * VapidHelper - Generate VAPID keys for Web Push
- * 
+ *
  * Generates VAPID (Voluntary Application Server Identification) keys
  * required for Web Push authentication.
  */
@@ -32,7 +32,7 @@ class VapidHelper
 
         return [
             // base64url of 65-byte uncompressed P-256 public key
-            'public_key'  => self::base64UrlEncode($publicKey),
+            'public_key' => self::base64UrlEncode($publicKey),
             // base64url of 32-byte raw EC private scalar — single-line, safe to store in .env
             'private_key' => self::base64UrlEncode($details['ec']['d']),
         ];

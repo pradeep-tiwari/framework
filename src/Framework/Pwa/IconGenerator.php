@@ -4,7 +4,7 @@ namespace Lightpack\Pwa;
 
 /**
  * IconGenerator - Generates PWA icons from source image
- * 
+ *
  * Creates multiple icon sizes required for PWA manifest
  * using GD library for image manipulation.
  */
@@ -49,7 +49,7 @@ class IconGenerator
      */
     protected function validateSource(string $sourcePath): void
     {
-        if (!file_exists($sourcePath)) {
+        if (! file_exists($sourcePath)) {
             throw new \InvalidArgumentException("Source image not found: {$sourcePath}");
         }
 
@@ -59,7 +59,7 @@ class IconGenerator
         }
 
         // Check if GD library is available
-        if (!extension_loaded('gd')) {
+        if (! extension_loaded('gd')) {
             throw new \RuntimeException("GD library is required for icon generation");
         }
     }
@@ -69,8 +69,8 @@ class IconGenerator
      */
     protected function ensureIconsDirectory(): void
     {
-        if (!is_dir($this->iconsDir)) {
-            if (!mkdir($this->iconsDir, 0755, true)) {
+        if (! is_dir($this->iconsDir)) {
+            if (! mkdir($this->iconsDir, 0755, true)) {
                 throw new \RuntimeException("Failed to create icons directory: {$this->iconsDir}");
             }
         }
@@ -108,15 +108,15 @@ class IconGenerator
 
         // Create new image with transparency
         $icon = imagecreatetruecolor($size, $size);
-        
+
         // Enable alpha blending
         imagealphablending($icon, false);
         imagesavealpha($icon, true);
-        
+
         // Fill with transparent background
         $transparent = imagecolorallocatealpha($icon, 0, 0, 0, 127);
         imagefill($icon, 0, 0, $transparent);
-        
+
         // Enable alpha blending for resampling
         imagealphablending($icon, true);
 
@@ -124,16 +124,21 @@ class IconGenerator
         imagecopyresampled(
             $icon,
             $sourceImage,
-            0, 0, 0, 0,
-            $size, $size,
-            $sourceWidth, $sourceHeight
+            0,
+            0,
+            0,
+            0,
+            $size,
+            $size,
+            $sourceWidth,
+            $sourceHeight
         );
 
         // Save icon
         $filename = "icon-{$size}x{$size}.png";
         $path = $this->iconsDir . '/' . $filename;
 
-        if (!imagepng($icon, $path, 9)) {
+        if (! imagepng($icon, $path, 9)) {
             throw new \RuntimeException("Failed to save icon: {$path}");
         }
 
@@ -156,15 +161,15 @@ class IconGenerator
 
         // Create canvas with safe zone (80% of size)
         $icon = imagecreatetruecolor($size, $size);
-        
+
         // Enable alpha blending
         imagealphablending($icon, false);
         imagesavealpha($icon, true);
-        
+
         // Fill with background color (or transparent)
         $background = imagecolorallocatealpha($icon, 255, 255, 255, 0);
         imagefill($icon, 0, 0, $background);
-        
+
         imagealphablending($icon, true);
 
         // Calculate safe zone (80% of canvas)
@@ -175,16 +180,21 @@ class IconGenerator
         imagecopyresampled(
             $icon,
             $sourceImage,
-            $offset, $offset, 0, 0,
-            $safeZoneSize, $safeZoneSize,
-            $sourceWidth, $sourceHeight
+            $offset,
+            $offset,
+            0,
+            0,
+            $safeZoneSize,
+            $safeZoneSize,
+            $sourceWidth,
+            $sourceHeight
         );
 
         // Save maskable icon
         $filename = "icon-{$size}x{$size}-maskable.png";
         $path = $this->iconsDir . '/' . $filename;
 
-        if (!imagepng($icon, $path, 9)) {
+        if (! imagepng($icon, $path, 9)) {
             throw new \RuntimeException("Failed to save maskable icon: {$path}");
         }
 
@@ -217,14 +227,19 @@ class IconGenerator
         imagecopyresampled(
             $favicon,
             $sourceImage,
-            0, 0, 0, 0,
-            32, 32,
-            imagesx($sourceImage), imagesy($sourceImage)
+            0,
+            0,
+            0,
+            0,
+            32,
+            32,
+            imagesx($sourceImage),
+            imagesy($sourceImage)
         );
 
         $path = $this->publicPath . '/favicon.png';
 
-        if (!imagepng($favicon, $path, 9)) {
+        if (! imagepng($favicon, $path, 9)) {
             throw new \RuntimeException("Failed to save favicon: {$path}");
         }
 

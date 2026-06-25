@@ -2,13 +2,9 @@
 
 namespace Lightpack\Pwa;
 
-use Lightpack\Pwa\ManifestGenerator;
-use Lightpack\Pwa\ServiceWorkerGenerator;
-use Lightpack\Pwa\IconGenerator;
-
 /**
  * PWA - Progressive Web App support for Lightpack
- * 
+ *
  * Provides a simple API for making Lightpack applications installable
  * as Progressive Web Apps with offline support, push notifications,
  * and native-like experience.
@@ -27,7 +23,7 @@ class Pwa
         $this->config = array_merge($this->getDefaultConfig(), $config ?? []);
         $this->publicPath = $this->config['public_path'] ?? DIR_ROOT . '/public';
         $this->baseUrl = $this->config['base_url'] ?? (get_env('APP_URL') ?? '');
-        
+
         $this->manifestGenerator = new ManifestGenerator($this->publicPath, $this->baseUrl);
         $this->serviceWorkerGenerator = new ServiceWorkerGenerator($this->publicPath);
         $this->iconGenerator = new IconGenerator($this->publicPath);
@@ -82,6 +78,7 @@ class Pwa
     public function generateIcons(string $sourcePath, ?array $sizes = null): array
     {
         $sizes = $sizes ?? [72, 96, 128, 144, 152, 192, 384, 512];
+
         return $this->iconGenerator->generate($sourcePath, $sizes);
     }
 

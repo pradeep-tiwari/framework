@@ -4,7 +4,7 @@ namespace Lightpack\Pwa;
 
 /**
  * ServiceWorkerGenerator - Generates service worker JavaScript
- * 
+ *
  * Creates a customized service worker with caching strategies,
  * offline support, and background sync capabilities.
  */
@@ -91,7 +91,7 @@ self.addEventListener('fetch', (event) => {
 JS;
 
         // Add runtime caching strategies
-        if (!empty($runtimeCache)) {
+        if (! empty($runtimeCache)) {
             $js .= $this->generateRuntimeCaching($runtimeCache);
         } else {
             // Default: network-first with offline fallback
@@ -242,6 +242,7 @@ JS;
     {
         $pattern = str_replace('/', '\/', $pattern);
         $pattern = str_replace('*', '.*', $pattern);
+
         return '/' . $pattern . '/';
     }
 

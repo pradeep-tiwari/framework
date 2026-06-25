@@ -4,7 +4,7 @@ namespace Lightpack\Pwa\WebPush;
 
 /**
  * WebPush - Send push notifications to PWA subscribers
- * 
+ *
  * Implements Web Push Protocol with VAPID authentication
  * for sending push notifications to PWA users.
  */
@@ -26,6 +26,7 @@ class WebPush
     public function to(array $subscription): self
     {
         $this->subscription = $subscription;
+
         return $this;
     }
 
@@ -35,6 +36,7 @@ class WebPush
     public function title(string $title): self
     {
         $this->payload['title'] = $title;
+
         return $this;
     }
 
@@ -44,6 +46,7 @@ class WebPush
     public function body(string $body): self
     {
         $this->payload['body'] = $body;
+
         return $this;
     }
 
@@ -53,6 +56,7 @@ class WebPush
     public function icon(string $icon): self
     {
         $this->payload['icon'] = $icon;
+
         return $this;
     }
 
@@ -62,6 +66,7 @@ class WebPush
     public function badge(string $badge): self
     {
         $this->payload['badge'] = $badge;
+
         return $this;
     }
 
@@ -71,6 +76,7 @@ class WebPush
     public function data(array $data): self
     {
         $this->payload['data'] = $data;
+
         return $this;
     }
 
@@ -80,6 +86,7 @@ class WebPush
     public function requireInteraction(bool $require = true): self
     {
         $this->payload['requireInteraction'] = $require;
+
         return $this;
     }
 
@@ -89,6 +96,7 @@ class WebPush
     public function vibrate(array $pattern): self
     {
         $this->payload['vibrate'] = $pattern;
+
         return $this;
     }
 
@@ -98,6 +106,7 @@ class WebPush
     public function actions(array $actions): self
     {
         $this->payload['actions'] = $actions;
+
         return $this;
     }
 
@@ -107,6 +116,7 @@ class WebPush
     public function tag(string $tag): self
     {
         $this->payload['tag'] = $tag;
+
         return $this;
     }
 
@@ -115,7 +125,7 @@ class WebPush
      */
     public function send(): bool
     {
-        if (!$this->subscription) {
+        if (! $this->subscription) {
             throw new \RuntimeException('No subscription set. Use to() method first.');
         }
 
@@ -170,6 +180,7 @@ class WebPush
     protected function loadConfig(): array
     {
         $config = app('config');
+
         return [
             'vapid_subject' => $config->get('pwa.vapid_subject'),
             'vapid_public_key' => $config->get('pwa.vapid_public_key'),

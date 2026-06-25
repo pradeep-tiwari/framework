@@ -3,13 +3,12 @@
 namespace Lightpack\Pwa;
 
 use Lightpack\Container\Container;
-use Lightpack\Support\ProviderInterface;
-use Lightpack\Pwa\Pwa;
 use Lightpack\Pwa\WebPush\WebPush;
+use Lightpack\Support\ProviderInterface;
 
 /**
  * PwaProvider - Register PWA services
- * 
+ *
  * Registers PWA and WebPush services with the container.
  */
 class PwaProvider implements ProviderInterface
@@ -22,6 +21,7 @@ class PwaProvider implements ProviderInterface
         // Register Pwa service
         $container->register('pwa', function ($container) {
             $config = $container->get('config');
+
             return new Pwa($config->get('pwa'));
         });
 
@@ -30,6 +30,7 @@ class PwaProvider implements ProviderInterface
         // Register WebPush service
         $container->register('webpush', function ($container) {
             $config = $container->get('config');
+
             return new WebPush($config->get('pwa'));
         });
 

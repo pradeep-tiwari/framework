@@ -6,7 +6,7 @@ use Lightpack\Database\Lucid\Model;
 
 /**
  * Subscription - Model for PWA push subscriptions
- * 
+ *
  * Represents a user's push notification subscription.
  */
 class PwaSubscription extends Model
@@ -28,10 +28,11 @@ class PwaSubscription extends Model
             $existing->auth = $data['keys']['auth'];
             $existing->user_id = $data['user_id'] ?? null;
             $existing->save();
+
             return $existing;
         }
 
-        $subscription = new self();
+        $subscription = new self;
         $subscription->endpoint = $data['endpoint'];
         $subscription->p256dh = $data['keys']['p256dh'];
         $subscription->auth = $data['keys']['auth'];
@@ -88,13 +89,13 @@ class PwaSubscription extends Model
     public static function allActive(): array
     {
         $subscriptions = self::query()->all();
-        
+
         // Convert collection to array of subscription arrays
         $result = [];
         foreach ($subscriptions as $sub) {
             $result[] = $sub->toArray();
         }
-        
+
         return $result;
     }
 }

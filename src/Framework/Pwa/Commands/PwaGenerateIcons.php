@@ -13,7 +13,7 @@ class PwaGenerateIcons extends Command
 
         $this->output->newline();
 
-        if (!$source) {
+        if (! $source) {
             $this->output->error('Please provide a source image path.');
             $this->output->newline();
             $this->output->line('Usage:');
@@ -24,7 +24,7 @@ class PwaGenerateIcons extends Command
             return self::FAILURE;
         }
 
-        if (!file_exists($source)) {
+        if (! file_exists($source)) {
             $this->output->error("Image not found: {$source}");
             $this->output->newline();
 

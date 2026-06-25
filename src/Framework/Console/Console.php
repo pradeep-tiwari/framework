@@ -16,9 +16,6 @@ use Lightpack\Console\Commands\CreateProvider;
 use Lightpack\Console\Commands\CreateRequest;
 use Lightpack\Console\Commands\CreateSeeder;
 use Lightpack\Console\Commands\CreateTool;
-use Lightpack\Pwa\Commands\PwaInit;
-use Lightpack\Pwa\Commands\PwaGenerateVapid;
-use Lightpack\Pwa\Commands\PwaGenerateIcons;
 use Lightpack\Console\Commands\CreateTransformer;
 use Lightpack\Console\Commands\GenerateAppKey;
 use Lightpack\Console\Commands\LinkStorage;
@@ -56,6 +53,9 @@ use Lightpack\Deploy\Commands\ServerRunCommand;
 use Lightpack\Deploy\Commands\SiteAddCommand;
 use Lightpack\Deploy\Commands\SiteRemoveCommand;
 use Lightpack\Deploy\Commands\SslCommand;
+use Lightpack\Pwa\Commands\PwaGenerateIcons;
+use Lightpack\Pwa\Commands\PwaGenerateVapid;
+use Lightpack\Pwa\Commands\PwaInit;
 
 class Console
 {

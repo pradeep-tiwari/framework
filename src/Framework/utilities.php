@@ -717,3 +717,27 @@ if (! function_exists('http')) {
         return new \Lightpack\Http\Http;
     }
 }
+
+if (! function_exists('pwa')) {
+    /**
+     * Return configured instance of PWA service.
+     *
+     * @return \Lightpack\Pwa\Pwa
+     */
+    function pwa(): \Lightpack\Pwa\Pwa
+    {
+        return app('pwa');
+    }
+}
+
+if (! function_exists('webpush')) {
+    /**
+     * Return configured instance of WebPush service.
+     *
+     * @return \Lightpack\Pwa\WebPush\WebPush
+     */
+    function webpush(): \Lightpack\Pwa\WebPush\WebPush
+    {
+        return app('webpush');
+    }
+}

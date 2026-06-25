@@ -16,6 +16,9 @@ use Lightpack\Console\Commands\CreateProvider;
 use Lightpack\Console\Commands\CreateRequest;
 use Lightpack\Console\Commands\CreateSeeder;
 use Lightpack\Console\Commands\CreateTool;
+use Lightpack\Pwa\Commands\PwaInit;
+use Lightpack\Pwa\Commands\PwaGenerateVapid;
+use Lightpack\Pwa\Commands\PwaGenerateIcons;
 use Lightpack\Console\Commands\CreateTransformer;
 use Lightpack\Console\Commands\GenerateAppKey;
 use Lightpack\Console\Commands\LinkStorage;
@@ -108,6 +111,9 @@ class Console
         'watch' => WatchCommand::class,
         'jobs:retry' => RetryFailedJobs::class,
         'create:tool' => CreateTool::class,
+        'pwa:init' => PwaInit::class,
+        'pwa:generate-vapid' => PwaGenerateVapid::class,
+        'pwa:generate-icons' => PwaGenerateIcons::class,
     ];
 
     public static function register(string $command, Command $handler)

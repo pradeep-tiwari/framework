@@ -78,6 +78,9 @@
         <testsuite name="Pdf">
             <directory>./tests/Pdf</directory>
         </testsuite>
+        <testsuite name="Pwa">
+            <directory>./tests/Pwa</directory>
+        </testsuite>
         <testsuite name="Rbac">
             <directory>./tests/Rbac</directory>
         </testsuite>

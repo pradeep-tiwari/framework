@@ -32,7 +32,7 @@ class ServiceWorkerGenerator
     protected function buildServiceWorker(array $config): string
     {
         $cacheName = $config['cache_name'];
-        $precache = json_encode($config['precache']);
+        $precache = json_encode($config['precache'], JSON_UNESCAPED_SLASHES);
         $offlinePage = $config['offline_page'];
         $runtimeCache = $config['runtime_cache'];
 

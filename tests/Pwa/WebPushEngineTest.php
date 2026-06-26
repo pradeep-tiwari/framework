@@ -2,15 +2,15 @@
 
 namespace Lightpack\Tests\Pwa;
 
-use Lightpack\Pwa\WebPush\NativeWebPush;
+use Lightpack\Pwa\WebPush\WebPushEngine;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 
-class NativeWebPushTest extends TestCase
+class WebPushEngineTest extends TestCase
 {
-    private function makeWebPush(array $config = []): NativeWebPush
+    private function makeEngine(array $config = []): WebPushEngine
     {
-        return new NativeWebPush(array_merge([
+        return new WebPushEngine(array_merge([
             'vapid_subject' => 'mailto:test@example.com',
             'vapid_public_key' => 'BFakeKey',
             'vapid_private_key' => 'FakeKey',
@@ -32,8 +32,8 @@ class NativeWebPushTest extends TestCase
 
     public function testBase64UrlEncodeProducesUrlSafeString(): void
     {
-        $webPush = $this->makeWebPush();
-        $encoded = $this->callMethod($webPush, 'base64UrlEncode', ["\xFF\xFE\x00\x01"]);
+        $engine = $this->makeEngine();
+        $encoded = $this->callMethod($engine, 'base64UrlEncode', ["\xFF\xFE\x00\x01"]);
 
         $this->assertStringNotContainsString('+', $encoded);
         $this->assertStringNotContainsString('/', $encoded);
@@ -42,11 +42,11 @@ class NativeWebPushTest extends TestCase
 
     public function testBase64UrlRoundTrip(): void
     {
-        $webPush = $this->makeWebPush();
+        $engine = $this->makeEngine();
         $original = random_bytes(64);
 
-        $encoded = $this->callMethod($webPush, 'base64UrlEncode', [$original]);
-        $decoded = $this->callMethod($webPush, 'base64UrlDecode', [$encoded]);
+        $encoded = $this->callMethod($engine, 'base64UrlEncode', [$original]);
+        $decoded = $this->callMethod($engine, 'base64UrlDecode', [$encoded]);
 
         $this->assertEquals($original, $decoded);
     }
@@ -57,7 +57,7 @@ class NativeWebPushTest extends TestCase
 
     public function testRawKeyToPemProducesValidPem(): void
     {
-        $webPush = $this->makeWebPush();
+        $engine = $this->makeEngine();
 
         // Generate a real 32-byte P-256 private scalar
         $keyPair = openssl_pkey_new([
@@ -67,7 +67,7 @@ class NativeWebPushTest extends TestCase
         $details = openssl_pkey_get_details($keyPair);
         $rawKey = str_pad($details['ec']['d'], 32, "\x00", STR_PAD_LEFT);
 
-        $pem = $this->callMethod($webPush, 'rawKeyToPem', [$rawKey]);
+        $pem = $this->callMethod($engine, 'rawKeyToPem', [$rawKey]);
 
         $this->assertStringStartsWith('-----BEGIN EC PRIVATE KEY-----', $pem);
         $this->assertStringEndsWith("-----END EC PRIVATE KEY-----\n", $pem);
@@ -88,8 +88,8 @@ class NativeWebPushTest extends TestCase
         ]);
         openssl_pkey_export($keyPair, $pem);
 
-        $webPush = $this->makeWebPush(['vapid_private_key' => $pem]);
-        $key = $this->callMethod($webPush, 'loadPrivateKey');
+        $engine = $this->makeEngine(['vapid_private_key' => $pem]);
+        $key = $this->callMethod($engine, 'loadPrivateKey');
 
         $this->assertNotFalse($key);
         $details = openssl_pkey_get_details($key);
@@ -108,8 +108,8 @@ class NativeWebPushTest extends TestCase
         file_put_contents($path, $pem);
 
         try {
-            $webPush = $this->makeWebPush(['vapid_private_key' => $path]);
-            $key = $this->callMethod($webPush, 'loadPrivateKey');
+            $engine = $this->makeEngine(['vapid_private_key' => $path]);
+            $key = $this->callMethod($engine, 'loadPrivateKey');
 
             $this->assertNotFalse($key);
         } finally {
@@ -127,8 +127,8 @@ class NativeWebPushTest extends TestCase
         $details = openssl_pkey_get_details($keyPair);
         $b64url = rtrim(strtr(base64_encode($details['ec']['d']), '+/', '-_'), '=');
 
-        $webPush = $this->makeWebPush(['vapid_private_key' => $b64url]);
-        $key = $this->callMethod($webPush, 'loadPrivateKey');
+        $engine = $this->makeEngine(['vapid_private_key' => $b64url]);
+        $key = $this->callMethod($engine, 'loadPrivateKey');
 
         $this->assertNotFalse($key);
         $keyDetails = openssl_pkey_get_details($key);
@@ -141,8 +141,8 @@ class NativeWebPushTest extends TestCase
 
         // 50 base64url chars decodes to ~37 bytes (> 32-byte limit), triggering
         // the explicit "invalid VAPID private key" RuntimeException check
-        $webPush = $this->makeWebPush(['vapid_private_key' => str_repeat('A', 50)]);
-        $this->callMethod($webPush, 'loadPrivateKey');
+        $engine = $this->makeEngine(['vapid_private_key' => str_repeat('A', 50)]);
+        $this->callMethod($engine, 'loadPrivateKey');
     }
 
     // -----------------------------------------------------------------------
@@ -151,7 +151,7 @@ class NativeWebPushTest extends TestCase
 
     public function testDerToRawProduces64Bytes(): void
     {
-        $webPush = $this->makeWebPush();
+        $engine = $this->makeEngine();
 
         // Generate a real DER signature
         $keyPair = openssl_pkey_new([
@@ -161,7 +161,7 @@ class NativeWebPushTest extends TestCase
         $data = hash('sha256', 'test', true);
         openssl_sign($data, $derSig, $keyPair, OPENSSL_ALGO_SHA256);
 
-        $raw = $this->callMethod($webPush, 'derToRaw', [$derSig]);
+        $raw = $this->callMethod($engine, 'derToRaw', [$derSig]);
 
         $this->assertEquals(64, strlen($raw), 'derToRaw must return exactly 64 bytes (r||s)');
     }
@@ -172,15 +172,15 @@ class NativeWebPushTest extends TestCase
 
     public function testSetPayloadStoresPayload(): void
     {
-        $webPush = $this->makeWebPush();
+        $engine = $this->makeEngine();
         $payload = ['title' => 'Hello', 'body' => 'World'];
 
-        $webPush->setPayload($payload);
+        $engine->setPayload($payload);
 
-        $ref = new ReflectionClass($webPush);
+        $ref = new ReflectionClass($engine);
         $prop = $ref->getProperty('payload');
         $prop->setAccessible(true);
 
-        $this->assertEquals($payload, $prop->getValue($webPush));
+        $this->assertEquals($payload, $prop->getValue($engine));
     }
 }

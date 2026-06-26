@@ -20,7 +20,7 @@ class PwaController
             return response()->json(['error' => 'Invalid subscription data'], 400);
         }
 
-        $data['user_id'] = (app()->has('auth') && auth()->id()) ? auth()->id() : null;
+        $data['user_id'] = auth()->id();
 
         try {
             $subscription = PwaSubscription::createOrUpdate($data);

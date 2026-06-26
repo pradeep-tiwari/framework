@@ -3,11 +3,15 @@
 namespace Lightpack\Pwa\WebPush;
 
 /**
- * Native Web Push implementation using only PHP built-in functions
- * Implements RFC 8291 (Message Encryption for Web Push)
- * No external dependencies required
+ * Low-level Web Push Protocol engine (RFC 8291).
+ *
+ * Handles message encryption (AES-128-GCM), VAPID JWT signing,
+ * and HTTP delivery to browser push services.
+ *
+ * Application code should use {@see WebPush} instead — this class
+ * is only for direct protocol control or testing.
  */
-class NativeWebPush
+class WebPushEngine
 {
     protected array $config;
     protected ?array $subscription = null;
@@ -39,97 +43,7 @@ class NativeWebPush
     }
 
     /**
-     * Set notification title
-     */
-    public function title(string $title): self
-    {
-        $this->payload['title'] = $title;
-
-        return $this;
-    }
-
-    /**
-     * Set notification body
-     */
-    public function body(string $body): self
-    {
-        $this->payload['body'] = $body;
-
-        return $this;
-    }
-
-    /**
-     * Set notification icon
-     */
-    public function icon(string $icon): self
-    {
-        $this->payload['icon'] = $icon;
-
-        return $this;
-    }
-
-    /**
-     * Set notification badge
-     */
-    public function badge(string $badge): self
-    {
-        $this->payload['badge'] = $badge;
-
-        return $this;
-    }
-
-    /**
-     * Set notification data
-     */
-    public function data(array $data): self
-    {
-        $this->payload['data'] = $data;
-
-        return $this;
-    }
-
-    /**
-     * Set require interaction flag
-     */
-    public function requireInteraction(bool $require = true): self
-    {
-        $this->payload['requireInteraction'] = $require;
-
-        return $this;
-    }
-
-    /**
-     * Set vibration pattern
-     */
-    public function vibrate(array $pattern): self
-    {
-        $this->payload['vibrate'] = $pattern;
-
-        return $this;
-    }
-
-    /**
-     * Set notification actions
-     */
-    public function actions(array $actions): self
-    {
-        $this->payload['actions'] = $actions;
-
-        return $this;
-    }
-
-    /**
-     * Set notification tag
-     */
-    public function tag(string $tag): self
-    {
-        $this->payload['tag'] = $tag;
-
-        return $this;
-    }
-
-    /**
-     * Send push notification
+     * Send the encrypted push notification to the subscription endpoint.
      */
     public function send(): bool
     {

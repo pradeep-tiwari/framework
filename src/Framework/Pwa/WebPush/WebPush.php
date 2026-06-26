@@ -3,10 +3,17 @@
 namespace Lightpack\Pwa\WebPush;
 
 /**
- * WebPush - Send push notifications to PWA subscribers
+ * Developer-facing API for sending Web Push notifications.
  *
- * Implements Web Push Protocol with VAPID authentication
- * for sending push notifications to PWA users.
+ * Provides a fluent builder for composing notification payloads
+ * and delegates the actual encryption (RFC 8291) and HTTP delivery
+ * to {@see WebPushEngine}.
+ *
+ * Single subscription:
+ *   (new WebPush)->title('Hello')->body('...')->to($sub)->send();
+ *
+ * Broadcast to all subscribers:
+ *   (new WebPush)->broadcast('Sale!', ['body' => '20% off']);
  */
 class WebPush
 {
@@ -129,9 +136,9 @@ class WebPush
             throw new \RuntimeException('No subscription set. Use to() method first.');
         }
 
-        $nativeWebPush = new NativeWebPush($this->config);
+        $engine = new WebPushEngine($this->config);
 
-        $result = $nativeWebPush
+        $result = $engine
             ->to($this->subscription)
             ->setPayload($this->payload)
             ->send();

@@ -468,7 +468,7 @@ class SendBatchNotificationJob
 Handle failures and remove invalid subscriptions:
 
 ```php
-// In NativeWebPush::sendRequest() or custom wrapper
+// In WebPushEngine::sendRequest() or custom wrapper
 protected function sendWithCleanup($subscription, $payload)
 {
     $result = $this->send($subscription, $payload);
@@ -633,7 +633,7 @@ CREATE INDEX idx_pwa_subscriptions_created_at ON pwa_subscriptions(created_at);
                            │
                            ▼
                     ┌──────────────┐
-                    │ NativeWebPush│
+                    │ WebPushEngine│
                     └──────┬───────┘
                            │
                            ▼
@@ -698,7 +698,7 @@ src/Framework/Pwa/
 │   └── PwaView.php               # create:migration --support=pwa
 ├── WebPush/
 │   ├── WebPush.php               # High-level push sender
-│   ├── NativeWebPush.php         # RFC 8291 encryption + HTTP
+│   ├── WebPushEngine.php         # RFC 8291 encryption + HTTP
 │   ├── VapidHelper.php           # VAPID key generation
 │   └── PwaSubscription.php       # Subscription model
 └── assets/

@@ -37,7 +37,10 @@ PWA_VAPID_PUBLIC_KEY=<your-public-key>
 PWA_VAPID_PRIVATE_KEY=<your-private-key>
 ```
 
-Create `config/pwa.php` (see [Configuration](#️-configuration) below).
+Create `config/pwa.php`:
+```bash
+php console create:config --support=pwa
+```
 
 ### **3. Create Database Migration**
 ```bash
@@ -260,12 +263,16 @@ pwa.onOffline = () => {
 
 ## ⚙️ **Configuration**
 
-Create `config/pwa.php` — the file returns a flat array (keys are accessed via `config()->get('pwa.key')`):
+Generate `config/pwa.php` via the console:
+```bash
+php console create:config --support=pwa
+```
+
+The generated file (keys are accessed via `config()->get('pwa.key')`):
 
 ```php
 <?php
 
-// config/pwa.php
 return [
     'pwa' => [
     // Manifest settings

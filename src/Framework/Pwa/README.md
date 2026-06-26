@@ -267,6 +267,7 @@ Create `config/pwa.php` — the file returns a flat array (keys are accessed via
 
 // config/pwa.php
 return [
+    'pwa' => [
     // Manifest settings
     'name'             => get_env('APP_NAME', 'My App'),
     'short_name'       => get_env('APP_NAME', 'App'),
@@ -289,6 +290,7 @@ return [
     'vapid_subject'     => get_env('PWA_VAPID_SUBJECT'),
     'vapid_public_key'  => get_env('PWA_VAPID_PUBLIC_KEY'),
     'vapid_private_key' => get_env('PWA_VAPID_PRIVATE_KEY'),
+    ],
 ];
 ```
 

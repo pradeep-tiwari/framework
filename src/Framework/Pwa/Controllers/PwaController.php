@@ -23,7 +23,24 @@ class PwaController
         $data['user_id'] = auth()->id();
 
         try {
-            $subscription = PwaSubscription::createOrUpdate($data);
+            $existing = PwaSubscription::query()
+                ->where('endpoint', $data['endpoint'])
+                ->one();
+
+            if ($existing) {
+                $existing->p256dh = $data['keys']['p256dh'];
+                $existing->auth = $data['keys']['auth'];
+                $existing->user_id = $data['user_id'];
+                $existing->save();
+                $subscription = $existing;
+            } else {
+                $subscription = new PwaSubscription;
+                $subscription->endpoint = $data['endpoint'];
+                $subscription->p256dh = $data['keys']['p256dh'];
+                $subscription->auth = $data['keys']['auth'];
+                $subscription->user_id = $data['user_id'];
+                $subscription->save();
+            }
 
             return response()->json([
                 'success' => true,
@@ -45,7 +62,7 @@ class PwaController
             return response()->json(['error' => 'Endpoint required'], 400);
         }
 
-        PwaSubscription::removeByEndpoint($endpoint);
+        PwaSubscription::query()->where('endpoint', $endpoint)->delete();
 
         return response()->json(['success' => true]);
     }

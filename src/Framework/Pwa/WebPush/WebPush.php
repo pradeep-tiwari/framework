@@ -164,7 +164,7 @@ class WebPush
             }
         }
 
-        $subscriptions = PwaSubscription::allActive();
+        $subscriptions = PwaSubscription::query()->all()->toArray();
         $payload = $this->payload;
         $sent = 0;
 
@@ -175,7 +175,7 @@ class WebPush
                 $sent++;
             } catch (\RuntimeException $e) {
                 if ($e->getCode() === 410 || $e->getCode() === 404) {
-                    PwaSubscription::removeByEndpoint($subscription['endpoint']);
+                    PwaSubscription::query()->where('endpoint', $subscription['endpoint'])->delete();
                 }
             }
         }

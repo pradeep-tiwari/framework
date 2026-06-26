@@ -160,21 +160,27 @@ webpush()->broadcast('System Update', [
 ```php
 use Lightpack\Pwa\WebPush\PwaSubscription;
 
-// Create/update subscription
-$subscription = PwaSubscription::createOrUpdate([
-    'endpoint' => $data['endpoint'],
-    'keys' => [
-        'p256dh' => $data['keys']['p256dh'],
-        'auth' => $data['keys']['auth'],
-    ],
-    'user_id' => auth()->id(),
-]);
+// Create or update subscription (endpoint is the natural key)
+$existing = PwaSubscription::query()->where('endpoint', $data['endpoint'])->one();
+if ($existing) {
+    $existing->p256dh = $data['keys']['p256dh'];
+    $existing->auth = $data['keys']['auth'];
+    $existing->user_id = auth()->id();
+    $existing->save();
+} else {
+    $subscription = new PwaSubscription;
+    $subscription->endpoint = $data['endpoint'];
+    $subscription->p256dh = $data['keys']['p256dh'];
+    $subscription->auth = $data['keys']['auth'];
+    $subscription->user_id = auth()->id();
+    $subscription->save();
+}
 
 // Get user's subscriptions
-$subscriptions = PwaSubscription::forUser($userId);
+$subscriptions = PwaSubscription::query()->where('user_id', $userId)->all()->toArray();
 
 // Remove subscription
-PwaSubscription::removeByEndpoint($endpoint);
+PwaSubscription::query()->where('endpoint', $endpoint)->delete();
 ```
 
 ---
@@ -415,7 +421,7 @@ class SendPushNotificationJob
 {
     public function handle()
     {
-        $subscriptions = PwaSubscription::forUser($this->userId);
+        $subscriptions = PwaSubscription::query()->where('user_id', $this->userId)->all()->toArray();
         $subscription = $subscriptions[0] ?? null;
         if (!$subscription) return;
         
@@ -434,7 +440,7 @@ Send to multiple users efficiently:
 
 ```php
 // Send to all subscribers in batches
-$subscriptions = PwaSubscription::allActive();
+$subscriptions = PwaSubscription::query()->all()->toArray();
 
 foreach (array_chunk($subscriptions, 100) as $batch) {
     Queue::push(new SendBatchNotificationJob($batch, $payload));

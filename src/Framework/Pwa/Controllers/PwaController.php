@@ -6,12 +6,6 @@ use Lightpack\Pwa\WebPush\PwaSubscription;
 
 /**
  * PwaController - Handles PWA subscription management endpoints
- *
- * Register these routes in your application:
- *
- *   $route->post('/pwa/subscribe', [PwaController::class, 'subscribe']);
- *   $route->post('/pwa/unsubscribe', [PwaController::class, 'unsubscribe']);
- *   $route->get('/pwa/subscription', [PwaController::class, 'status']);
  */
 class PwaController
 {

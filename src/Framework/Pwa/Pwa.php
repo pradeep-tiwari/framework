@@ -126,6 +126,9 @@ class Pwa
             $html .= '<link rel="apple-touch-icon" href="/icons/icon-192x192.png">' . "\n";
         }
 
+        // Mobile web app capable (cross-platform)
+        $html .= '<meta name="mobile-web-app-capable" content="yes">' . "\n";
+
         // Apple mobile web app capable
         $html .= '<meta name="apple-mobile-web-app-capable" content="yes">' . "\n";
         $html .= '<meta name="apple-mobile-web-app-status-bar-style" content="default">' . "\n";

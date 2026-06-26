@@ -158,10 +158,12 @@ class WebPush
         }
 
         $subscriptions = PwaSubscription::allActive();
+        $payload = $this->payload;
         $sent = 0;
 
         foreach ($subscriptions as $subscription) {
             try {
+                $this->payload = $payload;
                 $this->to($subscription)->send();
                 $sent++;
             } catch (\RuntimeException $e) {

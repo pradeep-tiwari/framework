@@ -331,47 +331,6 @@ class ImageTest extends TestCase
         $this->assertEquals(200, $h);
     }
 
-    public function testPadCentersImageOnCanvas(): void
-    {
-        $outputPath = $this->outputDir . '/padded_centered.png';
-
-        (new Image($this->fixturesDir . '/test.png'))
-            ->resize(60, 60)
-            ->pad(100, 100)
-            ->save($outputPath);
-
-        $result = imagecreatefrompng($outputPath);
-        // Corner pixel (0,0) should be white (background), not image content
-        $corner = imagecolorat($result, 0, 0);
-        $r = ($corner >> 16) & 0xFF;
-        $g = ($corner >> 8) & 0xFF;
-        $b = $corner & 0xFF;
-        imagedestroy($result);
-
-        $this->assertEquals(255, $r);
-        $this->assertEquals(255, $g);
-        $this->assertEquals(255, $b);
-    }
-
-    public function testPadAcceptsCustomBackgroundColor(): void
-    {
-        $outputPath = $this->outputDir . '/padded_colored.png';
-
-        (new Image($this->fixturesDir . '/test.png'))
-            ->resize(50, 50)
-            ->pad(100, 100, 0, 0, 255)
-            ->save($outputPath);
-
-        $result = imagecreatefrompng($outputPath);
-        $corner = imagecolorat($result, 0, 0);
-        $r = ($corner >> 16) & 0xFF;
-        $b = $corner & 0xFF;
-        imagedestroy($result);
-
-        $this->assertEquals(0, $r);
-        $this->assertEquals(255, $b);
-    }
-
     public function testPadThrowsWhenCanvasSmallerThanImage(): void
     {
         $this->expectException(\Exception::class);

@@ -2,6 +2,8 @@
 
 namespace Lightpack\Pwa;
 
+use Lightpack\Utils\Image;
+
 /**
  * IconGenerator - Generates PWA icons from source image
  *
@@ -24,44 +26,57 @@ class IconGenerator
      */
     public function generate(string $sourcePath, array $sizes): array
     {
-        $this->validateSource($sourcePath);
         $this->ensureIconsDirectory();
 
-        $sourceImage = $this->loadImage($sourcePath);
+        $source = new Image($sourcePath);
         $icons = [];
 
         foreach ($sizes as $size) {
-            $iconPath = $this->generateIcon($sourceImage, $size);
+            $path = $this->iconsDir . "/icon-{$size}x{$size}.png";
+            (clone $source)->resize($size, $size)->save($path);
             $icons[] = [
-                'src' => '/icons/' . basename($iconPath),
+                'src' => '/icons/' . basename($path),
                 'sizes' => "{$size}x{$size}",
                 'type' => 'image/png',
             ];
         }
 
-        imagedestroy($sourceImage);
-
         return $icons;
     }
 
     /**
-     * Validate source image
+     * Generate a maskable icon for Android home screens.
+     *
+     * Android devices can clip app icons into different shapes (circle, rounded
+     * square, etc.) depending on the launcher. A maskable icon places your image
+     * in the inner 80% of the canvas so it always looks good regardless of the
+     * shape applied — no awkward white circles or cut-off edges.
      */
-    protected function validateSource(string $sourcePath): void
+    public function generateMaskable(string $sourcePath, int $size = 512): string
     {
-        if (! file_exists($sourcePath)) {
-            throw new \InvalidArgumentException("Source image not found: {$sourcePath}");
-        }
+        $this->ensureIconsDirectory();
 
-        $imageInfo = @getimagesize($sourcePath);
-        if ($imageInfo === false) {
-            throw new \InvalidArgumentException("Invalid image file: {$sourcePath}");
-        }
+        $safeZoneSize = (int) ($size * 0.8);
+        $path = $this->iconsDir . "/icon-{$size}x{$size}-maskable.png";
 
-        // Check if GD library is available
-        if (! extension_loaded('gd')) {
-            throw new \RuntimeException("GD library is required for icon generation");
-        }
+        (new Image($sourcePath))
+            ->resize($safeZoneSize, $safeZoneSize)
+            ->pad($size, $size)
+            ->save($path);
+
+        return $path;
+    }
+
+    /**
+     * Generate favicon.png
+     */
+    public function generateFavicon(string $sourcePath): string
+    {
+        $path = $this->publicPath . '/favicon.png';
+
+        (new Image($sourcePath))->resize(32, 32)->save($path);
+
+        return $path;
     }
 
     /**
@@ -74,178 +89,5 @@ class IconGenerator
                 throw new \RuntimeException("Failed to create icons directory: {$this->iconsDir}");
             }
         }
-    }
-
-    /**
-     * Load image from file
-     */
-    protected function loadImage(string $path)
-    {
-        $imageInfo = getimagesize($path);
-        $mimeType = $imageInfo['mime'];
-
-        switch ($mimeType) {
-            case 'image/jpeg':
-                return imagecreatefromjpeg($path);
-            case 'image/png':
-                return imagecreatefrompng($path);
-            case 'image/gif':
-                return imagecreatefromgif($path);
-            case 'image/webp':
-                return imagecreatefromwebp($path);
-            default:
-                throw new \InvalidArgumentException("Unsupported image type: {$mimeType}");
-        }
-    }
-
-    /**
-     * Generate single icon at specified size
-     */
-    protected function generateIcon($sourceImage, int $size): string
-    {
-        $sourceWidth = imagesx($sourceImage);
-        $sourceHeight = imagesy($sourceImage);
-
-        // Create new image with transparency
-        $icon = imagecreatetruecolor($size, $size);
-
-        // Enable alpha blending
-        imagealphablending($icon, false);
-        imagesavealpha($icon, true);
-
-        // Fill with transparent background
-        $transparent = imagecolorallocatealpha($icon, 0, 0, 0, 127);
-        imagefill($icon, 0, 0, $transparent);
-
-        // Enable alpha blending for resampling
-        imagealphablending($icon, true);
-
-        // Resize image
-        imagecopyresampled(
-            $icon,
-            $sourceImage,
-            0,
-            0,
-            0,
-            0,
-            $size,
-            $size,
-            $sourceWidth,
-            $sourceHeight
-        );
-
-        // Save icon
-        $filename = "icon-{$size}x{$size}.png";
-        $path = $this->iconsDir . '/' . $filename;
-
-        if (! imagepng($icon, $path, 9)) {
-            throw new \RuntimeException("Failed to save icon: {$path}");
-        }
-
-        imagedestroy($icon);
-
-        return $path;
-    }
-
-    /**
-     * Generate maskable icon (with safe zone)
-     */
-    public function generateMaskable(string $sourcePath, int $size = 512): string
-    {
-        $this->validateSource($sourcePath);
-        $this->ensureIconsDirectory();
-
-        $sourceImage = $this->loadImage($sourcePath);
-        $sourceWidth = imagesx($sourceImage);
-        $sourceHeight = imagesy($sourceImage);
-
-        // Create canvas with safe zone (80% of size)
-        $icon = imagecreatetruecolor($size, $size);
-
-        // Enable alpha blending
-        imagealphablending($icon, false);
-        imagesavealpha($icon, true);
-
-        // Fill with background color (or transparent)
-        $background = imagecolorallocatealpha($icon, 255, 255, 255, 0);
-        imagefill($icon, 0, 0, $background);
-
-        imagealphablending($icon, true);
-
-        // Calculate safe zone (80% of canvas)
-        $safeZoneSize = (int) ($size * 0.8);
-        $offset = (int) (($size - $safeZoneSize) / 2);
-
-        // Resize and place image in safe zone
-        imagecopyresampled(
-            $icon,
-            $sourceImage,
-            $offset,
-            $offset,
-            0,
-            0,
-            $safeZoneSize,
-            $safeZoneSize,
-            $sourceWidth,
-            $sourceHeight
-        );
-
-        // Save maskable icon
-        $filename = "icon-{$size}x{$size}-maskable.png";
-        $path = $this->iconsDir . '/' . $filename;
-
-        if (! imagepng($icon, $path, 9)) {
-            throw new \RuntimeException("Failed to save maskable icon: {$path}");
-        }
-
-        imagedestroy($icon);
-        imagedestroy($sourceImage);
-
-        return $path;
-    }
-
-    /**
-     * Generate favicon.png
-     */
-    public function generateFavicon(string $sourcePath): string
-    {
-        $this->validateSource($sourcePath);
-
-        $sourceImage = $this->loadImage($sourcePath);
-
-        // Create 32x32 icon for favicon
-        $favicon = imagecreatetruecolor(32, 32);
-
-        imagealphablending($favicon, false);
-        imagesavealpha($favicon, true);
-
-        $transparent = imagecolorallocatealpha($favicon, 0, 0, 0, 127);
-        imagefill($favicon, 0, 0, $transparent);
-
-        imagealphablending($favicon, true);
-
-        imagecopyresampled(
-            $favicon,
-            $sourceImage,
-            0,
-            0,
-            0,
-            0,
-            32,
-            32,
-            imagesx($sourceImage),
-            imagesy($sourceImage)
-        );
-
-        $path = $this->publicPath . '/favicon.png';
-
-        if (! imagepng($favicon, $path, 9)) {
-            throw new \RuntimeException("Failed to save favicon: {$path}");
-        }
-
-        imagedestroy($favicon);
-        imagedestroy($sourceImage);
-
-        return $path;
     }
 }

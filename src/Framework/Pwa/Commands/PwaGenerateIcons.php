@@ -35,7 +35,7 @@ class PwaGenerateIcons extends Command
             $publicPath = defined('DIR_ROOT') ? DIR_ROOT . '/public' : './public';
             $generator = new IconGenerator($publicPath);
 
-            $sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+            $sizes = [152, 180, 192, 512];
             $icons = $generator->generate($source, $sizes);
 
             $this->output->success('✓ Icons generated:');

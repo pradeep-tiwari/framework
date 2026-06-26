@@ -544,6 +544,58 @@ class Image
     }
 
     /**
+     * Place the current image centered on a larger canvas (add padding).
+     *
+     * Useful when you need the image to sit inside a fixed-size frame without
+     * stretching — for example, placing a product photo on a square white
+     * background, or shrinking an app icon into the safe zone of a larger canvas
+     * (as Android maskable icons require).
+     *
+     * Example — center a 400×400 image on a 600×600 white canvas:
+     *   (new Image('photo.jpg'))->resize(400, 400)->pad(600, 600)->save('padded.png');
+     *
+     * Example — transparent background (alpha = 127):
+     *   (new Image('icon.png'))->resize(400, 400)->pad(512, 512, 0, 0, 0, 127)->save('icon-padded.png');
+     *
+     * @param int $canvasWidth  Target canvas width in pixels (must be >= image width)
+     * @param int $canvasHeight Target canvas height in pixels (must be >= image height)
+     * @param int $r            Background red   (0-255, default 255 = white)
+     * @param int $g            Background green (0-255, default 255 = white)
+     * @param int $b            Background blue  (0-255, default 255 = white)
+     * @param int $alpha        Background alpha (0 = fully opaque, 127 = fully transparent)
+     */
+    public function pad(int $canvasWidth, int $canvasHeight, int $r = 255, int $g = 255, int $b = 255, int $alpha = 0): self
+    {
+        if ($canvasWidth < $this->width || $canvasHeight < $this->height) {
+            throw new \Exception("Pad canvas ({$canvasWidth}x{$canvasHeight}) must be >= image size ({$this->width}x{$this->height}).");
+        }
+
+        $canvas = imagecreatetruecolor($canvasWidth, $canvasHeight);
+        if ($canvas === false) {
+            throw new \Exception('Failed to create canvas for pad.');
+        }
+
+        imagealphablending($canvas, false);
+        imagesavealpha($canvas, true);
+
+        $bg = imagecolorallocatealpha($canvas, $r, $g, $b, $alpha);
+        imagefill($canvas, 0, 0, $bg);
+
+        imagealphablending($canvas, true);
+
+        $offsetX = (int) (($canvasWidth - $this->width) / 2);
+        $offsetY = (int) (($canvasHeight - $this->height) / 2);
+
+        if (! imagecopy($canvas, $this->loadedImage, $offsetX, $offsetY, 0, 0, $this->width, $this->height)) {
+            throw new \Exception('Failed to copy image onto pad canvas.');
+        }
+
+        $this->replaceCurrentImage($canvas, $canvasWidth, $canvasHeight);
+
+        return $this;
+    }
+
+    /**
      * Posterize (reduce color tones) - simulated via mean removal.
      */
     public function posterize(int $levels = 4): self

@@ -178,6 +178,7 @@ class CreateMigration extends Command
             'settings' => \Lightpack\Console\Views\Migrations\SettingsView::class,
             'webhooks' => \Lightpack\Console\Views\Migrations\WebhooksView::class,
             'taxonomies' => \Lightpack\Console\Views\Migrations\TaxonomiesView::class,
+            'shorturls' => \Lightpack\ShortUrl\Migrations\ShortUrlsMigration::class,
         ];
     }
 }

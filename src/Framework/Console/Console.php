@@ -54,6 +54,7 @@ use Lightpack\Deploy\Commands\ServerRunCommand;
 use Lightpack\Deploy\Commands\SiteAddCommand;
 use Lightpack\Deploy\Commands\SiteRemoveCommand;
 use Lightpack\Deploy\Commands\SslCommand;
+use Lightpack\ShortUrl\Console\ShortUrlPruneCommand;
 
 class Console
 {
@@ -109,6 +110,7 @@ class Console
         'app:serve' => ServeCommand::class,
         'watch' => WatchCommand::class,
         'jobs:retry' => RetryFailedJobs::class,
+        'shorturl:prune' => ShortUrlPruneCommand::class,
         'create:tool' => CreateTool::class,
     ];
 

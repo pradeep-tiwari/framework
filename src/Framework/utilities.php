@@ -717,3 +717,13 @@ if (! function_exists('http')) {
         return new \Lightpack\Http\Http;
     }
 }
+
+if (! function_exists('short_url')) {
+    /**
+     * Return an instance of the short URL model.
+     */
+    function short_url(): \Lightpack\ShortUrl\ShortUrl
+    {
+        return new \Lightpack\ShortUrl\ShortUrl;
+    }
+}

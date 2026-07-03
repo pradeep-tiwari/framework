@@ -20,6 +20,7 @@ return new class extends Migration
             $table->id();
             $table->varchar('code', 32)->unique();
             $table->text('url');
+            $table->boolean('is_active', true);
             $table->column('hits')->type('bigint')->attribute('unsigned')->default(0);
             $table->datetime('last_clicked_at')->nullable();
             $table->datetime('expires_at')->nullable();

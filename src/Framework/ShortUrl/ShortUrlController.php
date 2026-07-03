@@ -17,7 +17,7 @@ class ShortUrlController
     {
         $shortUrl = ShortUrl::query()->where('code', $code)->one();
 
-        if (! $shortUrl || $shortUrl->isExpired()) {
+        if (! $shortUrl || ! $shortUrl->isActive()) {
             return $this->response->setStatus(404)->setBody('Not found');
         }
 

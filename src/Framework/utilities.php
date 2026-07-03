@@ -720,10 +720,39 @@ if (! function_exists('http')) {
 
 if (! function_exists('short_url')) {
     /**
-     * Return an instance of the short URL model.
+     * Create or retrieve a ShortUrl model instance.
+     *
+     * When a URL is provided, a unique code is generated, the record is saved,
+     * and a fully hydrated model is returned. Pass attributes to override
+     * defaults such as 'code' or 'expires_at'.
+     *
+     *   $short = short_url('https://example.com');
+     *   echo $short->shortUrl(); // https://yourapp.com/s/xK9mP
+     *
+     *   $short = short_url('https://example.com', ['code' => 'summer-sale']);
+     *
+     * Without a URL, a bare model instance is returned for manual building.
+     *
+     *   $short = short_url();
+     *   $short->url = 'https://example.com';
+     *   $short->save();
      */
-    function short_url(): \Lightpack\ShortUrl\ShortUrl
+    function short_url(?string $url = null, array $attributes = []): \Lightpack\ShortUrl\ShortUrl
     {
-        return new \Lightpack\ShortUrl\ShortUrl;
+        $model = new \Lightpack\ShortUrl\ShortUrl;
+
+        if ($url === null) {
+            return $model;
+        }
+
+        $model->url = $url;
+
+        foreach ($attributes as $key => $value) {
+            $model->{$key} = $value;
+        }
+
+        $model->save();
+
+        return $model;
     }
 }

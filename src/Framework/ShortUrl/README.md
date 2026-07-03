@@ -8,15 +8,15 @@ $short = short_url('https://example.com/products/123?utm_source=email');
 echo $short->shortUrl(); // https://yourapp.com/s/xK9mP
 ```
 
-No API keys, no third-party services, no external dashboards.
+No API keys, no third-party services, no analytics dashboards.
 
 ## When to use it
 
-- Share clean links in marketing emails, SMS, or social posts.
-- Hide internal tracking parameters from end users.
-- Count how many times a link is clicked and when it was last used.
-- Temporarily disable a link without deleting it.
-- Auto-expire campaign links after a date.
+- Shorten long links for SMS, emails, or social posts where space matters.
+- Use a readable, branded code instead of a random string.
+- Create a temporary link that stops working after a date.
+- Disable a link without deleting it.
+- Hide long query strings from end users.
 
 ## Setup
 
@@ -33,7 +33,7 @@ $route->get('/s/:code', \Lightpack\ShortUrl\ShortUrlController::class, 'redirect
 
 ## Creating links
 
-The helper is the fastest way to create a short link. Pass a URL and you get a saved, ready-to-use model back:
+Pass a URL to get a saved, ready-to-use short link:
 
 ```php
 $short = short_url('https://example.com/products/123');
@@ -42,7 +42,7 @@ echo $short->shortUrl();  // https://yourapp.com/s/xK9mP
 echo $short->code;        // xK9mP
 ```
 
-If you need more control, call the helper without arguments to get an empty model:
+Or call the helper without a URL to build the model manually:
 
 ```php
 $short = short_url();
@@ -52,7 +52,7 @@ $short->save();
 
 ### Custom short codes
 
-Use a custom code when the link must be readable, memorable, or branded:
+Use a custom code for readable, memorable, or branded links:
 
 ```php
 $short = short_url('https://example.com/sale', ['code' => 'sale']);
@@ -76,7 +76,7 @@ $short = short_url('https://example.com/campaign', [
 $short->expiresIn('+7 days')->save();
 ```
 
-After expiry, the short URL returns a 404.
+After expiry, the short URL returns 404.
 
 ### Disabling a link
 
@@ -97,21 +97,15 @@ Invalid URLs are rejected immediately:
 short_url('not-a-url'); // throws InvalidArgumentException
 ```
 
-## Redirects and click tracking
+## Redirects
 
-The included controller handles redirects and records every click. Each redirect:
-
-- Increments the `hits` counter.
-- Updates `last_clicked_at` to the current time.
-- Returns 404 if the link is disabled or expired.
-
-You can also record clicks manually:
+The included controller does one thing: look up the code and redirect. If the link is disabled or expired, it returns 404.
 
 ```php
-$short->recordClick();
+$route->get('/s/:code', \Lightpack\ShortUrl\ShortUrlController::class, 'redirect');
 ```
 
-`hits` tells you total clicks. `last_clicked_at` tells you the most recent activity.
+There is no click tracking. The redirect is a single `SELECT` and an HTTP redirect.
 
 ## Cleaning up expired links
 
@@ -131,7 +125,6 @@ php console shorturl:prune --days=30 --force
 | `$short->shortUrl()` | Full shareable URL, e.g. `https://yourapp.com/s/abc123`. |
 | `$short->isActive()` | True if the link is enabled and not expired. |
 | `$short->isExpired()` | True if the link has passed its expiry date. |
-| `$short->recordClick()` | Increment the click counter and update `last_clicked_at`. |
 | `$short->expiresIn(string $modifier)` | Fluent helper to set a relative expiry before saving. |
 
 ## Database schema
@@ -142,8 +135,6 @@ short_urls
     code             varchar(32) unique
     url              text
     is_active        tinyint default 1
-    hits             bigint unsigned default 0
-    last_clicked_at  datetime nullable
     expires_at       datetime nullable
     created_at       datetime
     updated_at       datetime

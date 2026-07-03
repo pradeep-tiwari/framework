@@ -13,10 +13,8 @@ class ShortUrl extends Model
     protected $timestamps = true;
 
     protected $casts = [
-        'hits' => 'int',
         'is_active' => 'bool',
         'expires_at' => 'datetime',
-        'last_clicked_at' => 'datetime',
     ];
 
     /**
@@ -65,22 +63,6 @@ class ShortUrl extends Model
     public function isActive(): bool
     {
         return (bool) $this->is_active && ! $this->isExpired();
-    }
-
-    /**
-     * Atomically increments hits and updates last_clicked_at,
-     * avoiding lost updates under concurrent traffic.
-     */
-    public function recordClick(): void
-    {
-        $id = $this->attributes->get($this->primaryKey);
-        $now = date('Y-m-d H:i:s');
-
-        self::query()->where($this->primaryKey, $id)->increment('hits');
-        self::query()->where($this->primaryKey, $id)->update(['last_clicked_at' => $now]);
-
-        $this->hits = $this->hits + 1;
-        $this->last_clicked_at = $now;
     }
 
     public function shortUrl(): string

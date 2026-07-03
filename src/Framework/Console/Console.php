@@ -54,7 +54,7 @@ use Lightpack\Deploy\Commands\ServerRunCommand;
 use Lightpack\Deploy\Commands\SiteAddCommand;
 use Lightpack\Deploy\Commands\SiteRemoveCommand;
 use Lightpack\Deploy\Commands\SslCommand;
-use Lightpack\ShortUrl\Console\ShortUrlPruneCommand;
+use Lightpack\ShortUrl\Commands\ShortUrlPruneCommand;
 
 class Console
 {

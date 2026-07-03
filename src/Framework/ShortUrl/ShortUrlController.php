@@ -21,8 +21,6 @@ class ShortUrlController
             return $this->response->setStatus(404)->setBody('Not found');
         }
 
-        $shortUrl->recordClick();
-
         return redirect()->to($shortUrl->url);
     }
 }

@@ -54,8 +54,6 @@ final class ShortUrlTest extends TestCase
             $table->varchar('code', 32)->unique();
             $table->text('url');
             $table->boolean('is_active', true);
-            $table->column('hits')->type('bigint')->attribute('unsigned')->default(0);
-            $table->datetime('last_clicked_at')->nullable();
             $table->datetime('expires_at')->nullable();
             $table->timestamps();
 
@@ -119,35 +117,6 @@ final class ShortUrlTest extends TestCase
         $shortUrl->save();
 
         $this->assertFalse($shortUrl->isExpired());
-    }
-
-    public function testRecordClickIncrementsHits()
-    {
-        $shortUrl = new ShortUrl;
-        $shortUrl->code = 'track1';
-        $shortUrl->url = 'https://example.com';
-        $shortUrl->save();
-
-        $this->assertEquals(0, $shortUrl->hits);
-
-        $shortUrl->recordClick();
-
-        $this->assertEquals(1, $shortUrl->hits);
-        $this->assertNotNull($shortUrl->last_clicked_at);
-    }
-
-    public function testMultipleClicksIncrementHits()
-    {
-        $shortUrl = new ShortUrl;
-        $shortUrl->code = 'multi1';
-        $shortUrl->url = 'https://example.com';
-        $shortUrl->save();
-
-        $shortUrl->recordClick();
-        $shortUrl->recordClick();
-        $shortUrl->recordClick();
-
-        $this->assertEquals(3, $shortUrl->hits);
     }
 
     public function testShortUrlMethodReturnsFullUrl()
@@ -261,19 +230,4 @@ final class ShortUrlTest extends TestCase
         $this->assertEqualsWithDelta(strtotime('+7 days'), $shortUrl->expires_at->getTimestamp(), 5);
     }
 
-    public function testRecordClickPersistsAtomicallyToDatabase()
-    {
-        $shortUrl = new ShortUrl;
-        $shortUrl->code = 'atomic1';
-        $shortUrl->url = 'https://example.com';
-        $shortUrl->save();
-
-        $shortUrl->recordClick();
-        $shortUrl->recordClick();
-
-        $fresh = ShortUrl::query()->where('code', 'atomic1')->one();
-
-        $this->assertEquals(2, $fresh->hits);
-        $this->assertNotNull($fresh->last_clicked_at);
-    }
 }

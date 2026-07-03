@@ -1,6 +1,6 @@
 <?php
 
-namespace Lightpack\ShortUrl\Console;
+namespace Lightpack\ShortUrl\Commands;
 
 use Lightpack\Console\Command;
 use Lightpack\ShortUrl\ShortUrl;

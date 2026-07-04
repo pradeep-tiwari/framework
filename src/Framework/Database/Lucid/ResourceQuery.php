@@ -197,7 +197,7 @@ class ResourceQuery
     /**
      * Execute the query and return a single Model or null.
      */
-    public function first(): ?Model
+    public function one(): ?Model
     {
         $this->build();
 

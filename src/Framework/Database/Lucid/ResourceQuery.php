@@ -171,6 +171,20 @@ class ResourceQuery
     }
 
     /**
+     * Execute the query and return a paginated, transformed array.
+     * 
+     * Convenience method that combines paginate() and transformOptions().
+     *
+     * @param int|null $perPage Override per-page count
+     */
+    public function paginateAndTransform(?int $perPage = null): array
+    {
+        $pagination = $this->paginate($perPage);
+
+        return $pagination->transform($this->transformOptions());
+    }
+
+    /**
      * Execute the query and return a Collection.
      */
     public function all(): Collection

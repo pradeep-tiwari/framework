@@ -520,6 +520,62 @@ class ResourceQueryBuilderTest extends TestCase
         $this->assertSame($b1, $b2);
     }
 
+    // all / one ────────────────────────────────────────────────────────────────
+
+    public function testAllReturnsCollection()
+    {
+        $this->db->query("INSERT INTO users (name, active) VALUES ('Alice', 1), ('Bob', 1)");
+
+        $collection = ResourceQuery::for(RqUser::class)->all();
+
+        $this->assertInstanceOf(\Lightpack\Database\Lucid\Collection::class, $collection);
+        $this->assertCount(2, $collection);
+    }
+
+    public function testOneReturnsSingleModel()
+    {
+        $this->db->query("INSERT INTO users (name, active) VALUES ('Alice', 1)");
+
+        $model = ResourceQuery::for(RqUser::class)->one();
+
+        $this->assertInstanceOf(RqUser::class, $model);
+        $this->assertEquals('Alice', $model->name);
+    }
+
+    public function testOneReturnsNullWhenEmpty()
+    {
+        $model = ResourceQuery::for(RqUser::class)->one();
+
+        $this->assertNull($model);
+    }
+
+    public function testAllWithAppliedFilter()
+    {
+        $this->db->query("INSERT INTO users (name, active) VALUES ('Alice', 1), ('Bob', 1), ('Charlie', 1)");
+
+        $_GET['filter'] = ['search' => 'li'];
+
+        $collection = ResourceQuery::for(RqUser::class)
+            ->allowFilters(['search'])
+            ->all();
+
+        $this->assertCount(2, $collection);
+    }
+
+    public function testOneWithAppliedFilter()
+    {
+        $this->db->query("INSERT INTO users (name, active) VALUES ('Alice', 1), ('Bob', 1)");
+
+        $_GET['filter'] = ['search' => 'ob'];
+
+        $model = ResourceQuery::for(RqUser::class)
+            ->allowFilters(['search'])
+            ->one();
+
+        $this->assertInstanceOf(RqUser::class, $model);
+        $this->assertEquals('Bob', $model->name);
+    }
+
     // counts ───────────────────────────────────────────────────────────────────
 
     public function testAllowedCountIsWiredIntoBuilder()

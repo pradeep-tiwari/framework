@@ -1,0 +1,437 @@
+<?php
+
+namespace Lightpack\Database\Lucid;
+
+/**
+ * ResourceQuery — REST API query parameter abstraction for Lightpack.
+ *
+ * Reads standardized query string parameters from the HTTP request and
+ * translates them into the appropriate Builder/Transformer operations.
+ *
+ * Supported query parameters:
+ *
+ *   Filters:  ?filter[status]=active&filter[role][]=admin&filter[role][]=editor
+ *   Sort:     ?sort=-created_at,name   (- prefix = DESC, bare = ASC)
+ *   Includes: ?include=profile,posts,posts.comments
+ *   Fields:   ?fields=name,email       (root model)
+ *             ?fields[profile]=bio,avatar  (relation)
+ *   Page:     ?page=2&per_page=20
+ *
+ * Security: ALL parameters are opt-in via allow*() methods. Unrecognized
+ * or unallowed parameters are silently ignored.
+ *
+ * Example:
+ *
+ *   $query = ResourceQuery::for(User::class)
+ *       ->allowFilters(['status', 'role', 'search'])
+ *       ->allowSorts(['name', 'email', 'created_at'])
+ *       ->allowIncludes(['profile', 'posts', 'posts.comments'])
+ *       ->allowFields(['name', 'email', 'created_at'])
+ *       ->defaultSort('-created_at');
+ *
+ *   $pagination = $query->paginate();
+ *
+ *   return response()->json($pagination->transform($query->transformOptions()));
+ */
+class ResourceQuery
+{
+    private string $modelClass;
+    private ?Builder $builder = null;
+    private array $allowedFilters = [];
+    private array $allowedSorts = [];
+    private array $allowedIncludes = [];
+    private array $allowedFields = [];
+    private ?string $defaultSort = null;
+    private array $defaultIncludes = [];
+    private int $maxPerPage = 100;
+
+
+    private function __construct(string $modelClass)
+    {
+        $this->modelClass = $modelClass;
+    }
+
+    /**
+     * Create a ResourceQuery for the given model class.
+     *
+     * @param string $modelClass Fully-qualified model class name
+     */
+    public static function for(string $modelClass): self
+    {
+        return new self($modelClass);
+    }
+
+    /**
+     * Whitelist filter keys that map to scope methods on the model.
+     *
+     * ?filter[status]=active  →  $model->scopeStatus($builder, 'active')
+     * ?filter[role][]=a&filter[role][]=b  →  $model->scopeRole($builder, ['a','b'])
+     */
+    public function allowFilters(array $filters): self
+    {
+        $this->allowedFilters = $filters;
+
+        return $this;
+    }
+
+    /**
+     * Whitelist column names that clients may sort by.
+     *
+     * ?sort=-created_at,name  →  orderBy('created_at', 'DESC'), orderBy('name', 'ASC')
+     */
+    public function allowSorts(array $sorts): self
+    {
+        $this->allowedSorts = $sorts;
+
+        return $this;
+    }
+
+    /**
+     * Whitelist relation names (dot-notation for nested) that clients may include.
+     *
+     * ?include=profile,posts.comments  →  with('profile', 'posts.comments')
+     */
+    public function allowIncludes(array $includes): self
+    {
+        $this->allowedIncludes = $includes;
+
+        return $this;
+    }
+
+    /**
+     * Whitelist root-model field names that clients may select in the response.
+     *
+     * ?fields=name,email  →  transformer fields(['self' => ['name', 'email']])
+     */
+    public function allowFields(array $fields): self
+    {
+        $this->allowedFields = $fields;
+
+        return $this;
+    }
+
+    /**
+     * Default sort to apply when the client provides no ?sort parameter.
+     *
+     * Use - prefix for descending: defaultSort('-created_at')
+     */
+    public function defaultSort(string $sort): self
+    {
+        $this->defaultSort = $sort;
+
+        return $this;
+    }
+
+    /**
+     * Relations to always eager load regardless of ?include parameter.
+     */
+    public function defaultIncludes(array $includes): self
+    {
+        $this->defaultIncludes = $includes;
+
+        return $this;
+    }
+
+    /**
+     * Hard cap on ?per_page to prevent abuse. Default: 100.
+     */
+    public function maxPerPage(int $max): self
+    {
+        $this->maxPerPage = $max;
+
+        return $this;
+    }
+
+    /**
+     * Execute the query and return a paginated Pagination object.
+     *
+     * @param int|null $perPage Override per-page count (otherwise reads ?per_page from request)
+     */
+    public function paginate(?int $perPage = null): Pagination
+    {
+        $this->build();
+        $perPage = $this->resolvePerPage($perPage);
+
+        return $this->builder->paginate($perPage);
+    }
+
+    /**
+     * Execute the query and return a Collection.
+     */
+    public function all(): Collection
+    {
+        $this->build();
+
+        return $this->builder->all();
+    }
+
+    /**
+     * Execute the query and return a single Model or null.
+     */
+    public function first(): ?Model
+    {
+        $this->build();
+
+        return $this->builder->one();
+    }
+
+    /**
+     * Return the fully-configured Builder for further manual modification.
+     */
+    public function getBuilder(): Builder
+    {
+        $this->build();
+
+        return $this->builder;
+    }
+
+    /**
+     * Return the options array to pass directly to Pagination::transform() or
+     * Collection::transform() / Model::transform().
+     *
+     * Contains 'fields' and 'includes' resolved from the request query params.
+     *
+     * Usage:
+     *   $pagination->transform($query->transformOptions())
+     */
+    public function transformOptions(): array
+    {
+        $options = [];
+
+        $includes = $this->parsedIncludes();
+        if (! empty($includes)) {
+            $options['includes'] = $includes;
+        }
+
+        $fields = $this->parsedFields();
+        if (! empty($fields)) {
+            $options['fields'] = $fields;
+        }
+
+        return $options;
+    }
+
+    /**
+     * Build the query by applying all parsed request parameters.
+     * Idempotent — safe to call multiple times.
+     */
+    private function build(): void
+    {
+        if ($this->builder !== null) {
+            return;
+        }
+
+        $modelClass = $this->modelClass;
+        $this->builder = $modelClass::query();
+
+        $this->applyFilters();
+        $this->applySorts();
+        $this->applyIncludes();
+    }
+
+    /**
+     * Read ?filter[key]=value from request and call the matching scope method.
+     */
+    private function applyFilters(): void
+    {
+        $filters = request()->query('filter', []);
+
+        if (! is_array($filters) || empty($filters)) {
+            return;
+        }
+
+        $model = $this->builder->getModel();
+        $modelClass = get_class($model);
+
+        foreach ($filters as $key => $value) {
+            if (! in_array($key, $this->allowedFilters)) {
+                continue;
+            }
+
+            $method = 'scope' . str()->camelize($key);
+
+            if (method_exists($model, $method)) {
+                $builder = $this->builder;
+                \Closure::bind(
+                    function () use ($method, $builder, $value) {
+                        $this->{$method}($builder, $value);
+                    },
+                    $model,
+                    $modelClass
+                )();
+            }
+        }
+    }
+
+    /**
+     * Read ?sort=col,-other from request and apply orderBy clauses.
+     *
+     * Prefix a column with - for descending order. Multiple columns are
+     * separated by commas: ?sort=-created_at,name
+     */
+    private function applySorts(): void
+    {
+        $sort = request()->query('sort');
+
+        if (empty($sort)) {
+            $sort = $this->defaultSort;
+        }
+
+        if (empty($sort)) {
+            return;
+        }
+
+        $segments = explode(',', $sort);
+
+        foreach ($segments as $segment) {
+            $segment = trim($segment);
+
+            if (str_starts_with($segment, '-')) {
+                $column = substr($segment, 1);
+                $direction = 'DESC';
+            } else {
+                $column = $segment;
+                $direction = 'ASC';
+            }
+
+            if (in_array($column, $this->allowedSorts)) {
+                $this->builder->orderBy($column, $direction);
+            }
+        }
+    }
+
+    /**
+     * Read ?include=a,b,a.b from request and call Builder::with().
+     * Delegates to parsedIncludes() for the actual parsing.
+     */
+    private function applyIncludes(): void
+    {
+        $includes = $this->parsedIncludes();
+
+        if (! empty($includes)) {
+            $this->builder->with($includes);
+        }
+    }
+
+    /**
+     * Parse ?include=a,b,a.b from request.
+     *
+     * Merges with defaultIncludes. Only allowedIncludes pass through.
+     * Safe to call without a DB connection — does not touch the Builder.
+     */
+    private function parsedIncludes(): array
+    {
+        $includes = $this->defaultIncludes;
+        $requested = request()->query('include', '');
+
+        if (! empty($requested) && is_string($requested)) {
+            foreach (explode(',', $requested) as $item) {
+                $item = trim($item);
+                if (in_array($item, $this->allowedIncludes)) {
+                    $includes[] = $item;
+                }
+            }
+        }
+
+        return array_values(array_unique($includes));
+    }
+
+    /**
+     * Parse ?fields=a,b and ?fields[relation]=c,d for transformer output.
+     *
+     * Root model fields:   ?fields=name,email
+     *   → ['self' => ['name', 'email']]
+     *
+     * Bracketed fields:    ?fields[users]=name,email&fields[profile]=bio
+     *   → ['self' => ['name', 'email'], 'profile' => ['bio']]
+     *   (brackets matching the model's table name are mapped to 'self')
+     *
+     * Only fields in allowedFields are accepted for the root model.
+     * Relation fields are accepted for any allowed include.
+     * Safe to call without a DB connection — does not touch the Builder.
+     */
+    private function parsedFields(): array
+    {
+        $raw = request()->query('fields', null);
+
+        if (empty($raw)) {
+            return [];
+        }
+
+        $parsed = [];
+        $modelClass = $this->modelClass;
+        $tableName = (new $modelClass)->getTableName();
+
+        if (is_string($raw)) {
+            // ?fields=name,email  — applies to root model
+            $valid = $this->filterAllowedFields(explode(',', $raw));
+
+            if (! empty($valid)) {
+                $parsed['self'] = $valid;
+            }
+        } elseif (is_array($raw)) {
+            foreach ($raw as $key => $value) {
+                $fieldList = array_map('trim', explode(',', $value));
+
+                if ($key === 'self' || $key === $tableName) {
+                    // Root model fields
+                    $valid = $this->filterAllowedFields($fieldList);
+
+                    if (! empty($valid)) {
+                        $parsed['self'] = $valid;
+                    }
+                } elseif ($this->isAllowedRelation($key)) {
+                    // Relation fields — accept any non-empty field names
+                    $valid = array_values(array_filter($fieldList));
+
+                    if (! empty($valid)) {
+                        $parsed[$key] = $valid;
+                    }
+                }
+            }
+        }
+
+        return $parsed;
+    }
+
+    /**
+     * Intersect requested field names with the allowed fields whitelist.
+     */
+    private function filterAllowedFields(array $fields): array
+    {
+        return array_values(
+            array_intersect(
+                array_map('trim', $fields),
+                $this->allowedFields
+            )
+        );
+    }
+
+    /**
+     * Check if a key is an allowed include relation (including parent segments
+     * of nested relations, e.g. 'posts' is valid when 'posts.comments' is allowed).
+     */
+    private function isAllowedRelation(string $key): bool
+    {
+        foreach ($this->allowedIncludes as $include) {
+            if ($include === $key || str_starts_with($include, $key . '.')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Resolve the per-page value from the request or the provided argument,
+     * capped at maxPerPage.
+     */
+    private function resolvePerPage(?int $perPage): int
+    {
+        if ($perPage === null) {
+            $perPage = (int) (request()->query('per_page') ?? request()->query('limit', 15));
+        }
+
+        return min(max(1, $perPage), $this->maxPerPage);
+    }
+}

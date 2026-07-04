@@ -263,14 +263,14 @@ $posts = ResourceQuery::for(Post::class)
 
 Useful for small, bounded result sets (e.g., lookup lists) where pagination is unnecessary.
 
-### `first(): ?Model`
+### `one(): ?Model`
 
-Executes and returns the first matching model or `null`.
+Executes and returns a single matching model or `null`.
 
 ```php
 $post = ResourceQuery::for(Post::class)
     ->allowFilters(['slug'])
-    ->first();
+    ->one();
 ```
 
 ### `getBuilder(): Builder`
@@ -293,7 +293,7 @@ $pagination = $builder
 
 ## Shaping the Response: `transformOptions()`
 
-**Transformers are entirely optional.** `ResourceQuery` builds and executes the ORM query regardless of whether you have `Transformer` classes defined. `paginate()`, `all()`, `first()`, and `getBuilder()` have no transformer dependency at all.
+**Transformers are entirely optional.** `ResourceQuery` builds and executes the ORM query regardless of whether you have `Transformer` classes defined. `paginate()`, `all()`, `one()`, and `getBuilder()` have no transformer dependency at all.
 
 If you are not using transformers, just serialise the result directly and ignore `transformOptions()`:
 
@@ -437,8 +437,9 @@ ResourceQuery::for(ModelClass::class)
 
     // Execution
     ->paginate(?int $perPage)           // returns Pagination
+    ->paginateAndTransform(?int $perPage) // returns array (transformed pagination data)
     ->all()                             // returns Collection
-    ->first()                           // returns Model|null
+    ->one()                           // returns Model|null
     ->getBuilder()                      // returns Builder for further chaining
 
     // Response shaping

@@ -540,7 +540,7 @@ class RelationLoader
 
                 foreach ($items as $item) {
                     if ($item instanceof Collection) {
-                        $normalizedItems += $item->getItems();
+                        $normalizedItems = array_merge($normalizedItems, $item->getItems());
                     } else {
                         $normalizedItems[] = $item;
                     }

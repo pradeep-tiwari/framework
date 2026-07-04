@@ -41,7 +41,7 @@ class ResourceQueryOptionsTest extends TestCase
     {
         parent::setUp();
         $_GET = [];
-        Container::getInstance()->register('request', fn() => new Request);
+        Container::getInstance()->register('request', fn () => new Request);
     }
 
     protected function tearDown(): void
@@ -101,7 +101,7 @@ class ResourceQueryOptionsTest extends TestCase
             ->allowIncludes(['roles'])
             ->defaultIncludes(['roles'])
             ->transformOptions();
-        $this->assertEquals(1, count(array_filter($options['includes'], fn($i) => $i === 'roles')));
+        $this->assertEquals(1, count(array_filter($options['includes'], fn ($i) => $i === 'roles')));
     }
 
     // fields ───────────────────────────────────────────────────────────────────
@@ -170,7 +170,7 @@ class ResourceQueryOptionsTest extends TestCase
     public function testTransformOptionsCombinesFieldsAndIncludes()
     {
         $_GET['include'] = 'roles';
-        $_GET['fields']  = 'name,email';
+        $_GET['fields'] = 'name,email';
         $options = ResourceQuery::for(RqUser::class)
             ->allowIncludes(['roles'])
             ->allowFields(['name', 'email'])
@@ -185,7 +185,7 @@ class ResourceQueryOptionsTest extends TestCase
     {
         $_GET['per_page'] = '9999';
         $rq = ResourceQuery::for(RqUser::class)->maxPerPage(50);
-        $m  = (new \ReflectionClass($rq))->getMethod('resolvePerPage');
+        $m = (new \ReflectionClass($rq))->getMethod('resolvePerPage');
         $m->setAccessible(true);
         $this->assertEquals(50, $m->invoke($rq, null));
     }
@@ -193,7 +193,7 @@ class ResourceQueryOptionsTest extends TestCase
     public function testExplicitPerPageHonouredUpToMax()
     {
         $rq = ResourceQuery::for(RqUser::class)->maxPerPage(100);
-        $m  = (new \ReflectionClass($rq))->getMethod('resolvePerPage');
+        $m = (new \ReflectionClass($rq))->getMethod('resolvePerPage');
         $m->setAccessible(true);
         $this->assertEquals(20, $m->invoke($rq, 20));
     }
@@ -202,7 +202,7 @@ class ResourceQueryOptionsTest extends TestCase
     {
         $_GET['per_page'] = '0';
         $rq = ResourceQuery::for(RqUser::class)->maxPerPage(100);
-        $m  = (new \ReflectionClass($rq))->getMethod('resolvePerPage');
+        $m = (new \ReflectionClass($rq))->getMethod('resolvePerPage');
         $m->setAccessible(true);
         $this->assertEquals(1, $m->invoke($rq, null));
     }
@@ -211,7 +211,7 @@ class ResourceQueryOptionsTest extends TestCase
     {
         $_GET['per_page'] = '-5';
         $rq = ResourceQuery::for(RqUser::class)->maxPerPage(100);
-        $m  = (new \ReflectionClass($rq))->getMethod('resolvePerPage');
+        $m = (new \ReflectionClass($rq))->getMethod('resolvePerPage');
         $m->setAccessible(true);
         $this->assertEquals(1, $m->invoke($rq, null));
     }
@@ -220,7 +220,7 @@ class ResourceQueryOptionsTest extends TestCase
     {
         $_GET['limit'] = '25';
         $rq = ResourceQuery::for(RqUser::class)->maxPerPage(100);
-        $m  = (new \ReflectionClass($rq))->getMethod('resolvePerPage');
+        $m = (new \ReflectionClass($rq))->getMethod('resolvePerPage');
         $m->setAccessible(true);
         $this->assertEquals(25, $m->invoke($rq, null));
     }
@@ -260,7 +260,7 @@ class ResourceQueryOptionsTest extends TestCase
     {
         $_GET['count'] = 'roles';
         $rq = ResourceQuery::for(RqUser::class)->allowCounts(['roles']);
-        $m  = (new \ReflectionClass($rq))->getMethod('parsedCounts');
+        $m = (new \ReflectionClass($rq))->getMethod('parsedCounts');
         $m->setAccessible(true);
         $this->assertEquals(['roles'], $m->invoke($rq));
     }
@@ -269,7 +269,7 @@ class ResourceQueryOptionsTest extends TestCase
     {
         $_GET['count'] = 'secret_relation';
         $rq = ResourceQuery::for(RqUser::class)->allowCounts(['roles']);
-        $m  = (new \ReflectionClass($rq))->getMethod('parsedCounts');
+        $m = (new \ReflectionClass($rq))->getMethod('parsedCounts');
         $m->setAccessible(true);
         $this->assertEmpty($m->invoke($rq));
     }
@@ -278,7 +278,7 @@ class ResourceQueryOptionsTest extends TestCase
     {
         $_GET['count'] = 'roles,secret,posts';
         $rq = ResourceQuery::for(RqUser::class)->allowCounts(['roles', 'posts']);
-        $m  = (new \ReflectionClass($rq))->getMethod('parsedCounts');
+        $m = (new \ReflectionClass($rq))->getMethod('parsedCounts');
         $m->setAccessible(true);
         $result = $m->invoke($rq);
         $this->assertContains('roles', $result);
@@ -290,7 +290,7 @@ class ResourceQueryOptionsTest extends TestCase
     {
         $_GET['count'] = ['roles', 'posts'];
         $rq = ResourceQuery::for(RqUser::class)->allowCounts(['roles']);
-        $m  = (new \ReflectionClass($rq))->getMethod('parsedCounts');
+        $m = (new \ReflectionClass($rq))->getMethod('parsedCounts');
         $m->setAccessible(true);
         $this->assertEmpty($m->invoke($rq));
     }
@@ -298,11 +298,11 @@ class ResourceQueryOptionsTest extends TestCase
     public function testTransformOptionsIsIdempotent()
     {
         $_GET['include'] = 'roles';
-        $_GET['fields']  = 'name,email';
+        $_GET['fields'] = 'name,email';
         $rq = ResourceQuery::for(RqUser::class)
             ->allowIncludes(['roles'])
             ->allowFields(['name', 'email']);
-        $first  = $rq->transformOptions();
+        $first = $rq->transformOptions();
         $second = $rq->transformOptions();
         $this->assertEquals($first, $second);
     }
@@ -320,22 +320,27 @@ class ResourceQueryBuilderTest extends TestCase
 
         $_GET = [];
 
-        $config   = require __DIR__ . '/../tmp/mysql.config.php';
+        $config = require __DIR__ . '/../tmp/mysql.config.php';
         $this->db = new \Lightpack\Database\Adapters\Mysql($config);
-        $sql      = file_get_contents(__DIR__ . '/../tmp/db.sql');
-        $stmt     = $this->db->query($sql);
+        $sql = file_get_contents(__DIR__ . '/../tmp/db.sql');
+        $stmt = $this->db->query($sql);
         $stmt->closeCursor();
 
         $container = Container::getInstance();
 
-        $container->register('db', fn() => $this->db);
+        $container->register('db', fn () => $this->db);
 
-        $container->register('request', fn() => new Request);
+        $container->register('request', fn () => new Request);
 
         $container->register('logger', function () {
             return new class {
-                public function error($m, $c = []) {}
-                public function critical($m, $c = []) {}
+                public function error($m, $c = [])
+                {
+                }
+
+                public function critical($m, $c = [])
+                {
+                }
             };
         });
 
@@ -462,7 +467,7 @@ class ResourceQueryBuilderTest extends TestCase
     public function testFilterAndSortCombined()
     {
         $_GET['filter'] = ['status' => 'active'];
-        $_GET['sort']   = '-created_at';
+        $_GET['sort'] = '-created_at';
         $query = ResourceQuery::for(RqUser::class)
             ->allowFilters(['status'])
             ->allowSorts(['created_at'])

@@ -46,7 +46,6 @@ class ResourceQuery
     private array $allowedCounts = [];
     private int $maxPerPage = 100;
 
-
     private function __construct(string $modelClass)
     {
         $this->modelClass = $modelClass;

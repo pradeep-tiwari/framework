@@ -30,7 +30,7 @@ class WebhookController
         ) {
             return $this->response
                 ->setStatus(404)
-                ->json(['error' => 'Unknown or unconfigured provider']);
+                ->json(['success' => false, 'message' => 'Unknown or unconfigured provider']);
         }
 
         $eventId = $this->request->input($config[$provider]['id']);

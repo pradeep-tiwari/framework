@@ -15,7 +15,8 @@ class VerifyEmailFilter implements FilterInterface
         if (! $user || ! $user->email_verified_at) {
             if ($request->expectsJson()) {
                 return response()->setStatus(403)->json([
-                    'error' => 'Your email address is not verified.',
+                    'success' => false,
+                    'message' => 'Your email address is not verified.',
                 ]);
             }
 

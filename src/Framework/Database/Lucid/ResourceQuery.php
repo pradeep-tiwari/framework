@@ -172,7 +172,7 @@ class ResourceQuery
 
     /**
      * Execute the query and return a paginated, transformed array.
-     * 
+     *
      * Convenience method that combines paginate() and transformOptions().
      *
      * @param int|null $perPage Override per-page count

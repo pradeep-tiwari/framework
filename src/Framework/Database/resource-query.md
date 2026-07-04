@@ -441,7 +441,6 @@ ResourceQuery::for(ModelClass::class)
     ->all()                             // returns Collection
     ->one()                           // returns Model|null
     ->getBuilder()                      // returns Builder for further chaining
-
-    // Response shaping
-    ->transformOptions()                // returns ['fields'=>..., 'includes'=>...]
 ```
+
+---

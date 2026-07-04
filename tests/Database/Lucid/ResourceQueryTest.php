@@ -254,6 +254,47 @@ class ResourceQueryOptionsTest extends TestCase
         $this->assertContains('profile', $options['includes']);
     }
 
+    // counts ───────────────────────────────────────────────────────────────────
+
+    public function testAllowedCountIsRecognised()
+    {
+        $_GET['count'] = 'roles';
+        $rq = ResourceQuery::for(RqUser::class)->allowCounts(['roles']);
+        $m  = (new \ReflectionClass($rq))->getMethod('parsedCounts');
+        $m->setAccessible(true);
+        $this->assertEquals(['roles'], $m->invoke($rq));
+    }
+
+    public function testDisallowedCountIsIgnored()
+    {
+        $_GET['count'] = 'secret_relation';
+        $rq = ResourceQuery::for(RqUser::class)->allowCounts(['roles']);
+        $m  = (new \ReflectionClass($rq))->getMethod('parsedCounts');
+        $m->setAccessible(true);
+        $this->assertEmpty($m->invoke($rq));
+    }
+
+    public function testMixedCountsFilterCorrectly()
+    {
+        $_GET['count'] = 'roles,secret,posts';
+        $rq = ResourceQuery::for(RqUser::class)->allowCounts(['roles', 'posts']);
+        $m  = (new \ReflectionClass($rq))->getMethod('parsedCounts');
+        $m->setAccessible(true);
+        $result = $m->invoke($rq);
+        $this->assertContains('roles', $result);
+        $this->assertContains('posts', $result);
+        $this->assertNotContains('secret', $result);
+    }
+
+    public function testNonStringCountParamIsIgnored()
+    {
+        $_GET['count'] = ['roles', 'posts'];
+        $rq = ResourceQuery::for(RqUser::class)->allowCounts(['roles']);
+        $m  = (new \ReflectionClass($rq))->getMethod('parsedCounts');
+        $m->setAccessible(true);
+        $this->assertEmpty($m->invoke($rq));
+    }
+
     public function testTransformOptionsIsIdempotent()
     {
         $_GET['include'] = 'roles';
@@ -472,5 +513,69 @@ class ResourceQueryBuilderTest extends TestCase
         $b1 = $rq->getBuilder();
         $b2 = $rq->getBuilder();
         $this->assertSame($b1, $b2);
+    }
+
+    // counts ───────────────────────────────────────────────────────────────────
+
+    public function testAllowedCountIsWiredIntoBuilder()
+    {
+        $_GET['count'] = 'roles';
+        $builder = ResourceQuery::for(RqUser::class)->allowCounts(['roles'])->getBuilder();
+
+        $loader = (new \ReflectionClass($builder))->getProperty('relationLoader');
+        $loader->setAccessible(true);
+        $rl = $loader->getValue($builder);
+
+        $prop = (new \ReflectionClass($rl))->getProperty('countIncludes');
+        $prop->setAccessible(true);
+
+        $this->assertContains('roles', $prop->getValue($rl));
+    }
+
+    public function testDisallowedCountIsNotWiredIntoBuilder()
+    {
+        $_GET['count'] = 'secret';
+        $builder = ResourceQuery::for(RqUser::class)->allowCounts(['roles'])->getBuilder();
+
+        $loader = (new \ReflectionClass($builder))->getProperty('relationLoader');
+        $loader->setAccessible(true);
+        $rl = $loader->getValue($builder);
+
+        $prop = (new \ReflectionClass($rl))->getProperty('countIncludes');
+        $prop->setAccessible(true);
+
+        $this->assertEmpty($prop->getValue($rl));
+    }
+
+    public function testMultipleCountsWiredCorrectly()
+    {
+        $_GET['count'] = 'roles,posts,secret';
+        $builder = ResourceQuery::for(RqUser::class)->allowCounts(['roles', 'posts'])->getBuilder();
+
+        $loader = (new \ReflectionClass($builder))->getProperty('relationLoader');
+        $loader->setAccessible(true);
+        $rl = $loader->getValue($builder);
+
+        $prop = (new \ReflectionClass($rl))->getProperty('countIncludes');
+        $prop->setAccessible(true);
+        $counts = $prop->getValue($rl);
+
+        $this->assertContains('roles', $counts);
+        $this->assertContains('posts', $counts);
+        $this->assertNotContains('secret', $counts);
+    }
+
+    public function testNoCountParamProducesNoCountIncludes()
+    {
+        $builder = ResourceQuery::for(RqUser::class)->allowCounts(['roles'])->getBuilder();
+
+        $loader = (new \ReflectionClass($builder))->getProperty('relationLoader');
+        $loader->setAccessible(true);
+        $rl = $loader->getValue($builder);
+
+        $prop = (new \ReflectionClass($rl))->getProperty('countIncludes');
+        $prop->setAccessible(true);
+
+        $this->assertEmpty($prop->getValue($rl));
     }
 }

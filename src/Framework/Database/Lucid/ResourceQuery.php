@@ -43,6 +43,7 @@ class ResourceQuery
     private array $allowedFields = [];
     private ?string $defaultSort = null;
     private array $defaultIncludes = [];
+    private array $allowedCounts = [];
     private int $maxPerPage = 100;
 
 
@@ -128,6 +129,21 @@ class ResourceQuery
     public function defaultIncludes(array $includes): self
     {
         $this->defaultIncludes = $includes;
+
+        return $this;
+    }
+
+    /**
+     * Whitelist relation names whose row counts the client may request.
+     *
+     * ?count=comments,likes  →  withCount(['comments', 'likes'])
+     *
+     * Adds a `relation_count` attribute to each model in the result.
+     * Only relations in the allowlist are counted.
+     */
+    public function allowCounts(array $relations): self
+    {
+        $this->allowedCounts = $relations;
 
         return $this;
     }
@@ -227,6 +243,7 @@ class ResourceQuery
         $this->applyFilters();
         $this->applySorts();
         $this->applyIncludes();
+        $this->applyCounts();
     }
 
     /**
@@ -298,6 +315,46 @@ class ResourceQuery
                 $this->builder->orderBy($column, $direction);
             }
         }
+    }
+
+    /**
+     * Read ?count=a,b from request and call Builder::withCount().
+     * Delegates to parsedCounts() for the actual parsing.
+     */
+    private function applyCounts(): void
+    {
+        $counts = $this->parsedCounts();
+
+        if (! empty($counts)) {
+            $this->builder->withCount($counts);
+        }
+    }
+
+    /**
+     * Parse ?count=comments,likes from request.
+     *
+     * Only allowedCounts pass through.
+     * Safe to call without a DB connection — does not touch the Builder.
+     */
+    private function parsedCounts(): array
+    {
+        $requested = request()->query('count', '');
+
+        if (empty($requested) || ! is_string($requested)) {
+            return [];
+        }
+
+        $counts = [];
+
+        foreach (explode(',', $requested) as $item) {
+            $item = trim($item);
+
+            if ($item !== '' && in_array($item, $this->allowedCounts)) {
+                $counts[] = $item;
+            }
+        }
+
+        return $counts;
     }
 
     /**

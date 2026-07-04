@@ -172,6 +172,34 @@ Any relation not in the allowlist is silently dropped. This is important: a clie
 
 Request includes are merged with the defaults and deduplicated.
 
+### `allowCounts(array $relations)`
+
+Declares which relation row counts the client may request. Counts are loaded via efficient separate queries after the main result set is fetched — no joins, no subqueries in the main SQL.
+
+```php
+ResourceQuery::for(Article::class)
+    ->allowCounts(['comments', 'likes', 'shares']);
+```
+
+```
+?count=comments,likes   →   withCount(['comments', 'likes'])
+```
+
+Each counted relation adds a `relation_count` attribute to every model in the result:
+
+```json
+{
+    "id": 1,
+    "title": "Getting Started",
+    "comments_count": 42,
+    "likes_count": 108
+}
+```
+
+The client cannot request counts for relations not in `allowedCounts`. Unrecognised names are silently dropped.
+
+Note: counting and loading are independent. A client can request `?count=comments` (to know how many comments exist) without also requesting `?include=comments` (which would load all the comment rows). Use both together only when you need both the count and the actual data.
+
 ### `allowFields(array $fields)`
 
 Declares which root-model fields the client may request in the response. This does not affect the SQL query; it controls which fields the transformer outputs.
@@ -265,7 +293,18 @@ $pagination = $builder
 
 ## Shaping the Response: `transformOptions()`
 
-`ResourceQuery` builds the ORM query, but the response shape is controlled by your `Transformer` classes. The `transformOptions()` method returns the `fields` and `includes` arrays parsed from the request, ready to pass directly into `Pagination::transform()`, `Collection::transform()`, or `Model::transform()`.
+**Transformers are entirely optional.** `ResourceQuery` builds and executes the ORM query regardless of whether you have `Transformer` classes defined. `paginate()`, `all()`, `first()`, and `getBuilder()` have no transformer dependency at all.
+
+If you are not using transformers, just serialise the result directly and ignore `transformOptions()`:
+
+```php
+$rq         = ResourceQuery::for(Article::class)->allowFilters(['status']);
+$pagination = $rq->paginate();
+
+return response()->json($pagination->toArray());   // no transformer involved
+```
+
+`transformOptions()` is only relevant when you have a `Transformer` class defined on your model and you want the client to control which fields or relations appear in the output. The method returns the `fields` and `includes` arrays parsed from the current request, ready to pass into `Pagination::transform()`, `Collection::transform()`, or `Model::transform()`.
 
 ```php
 $rq         = ResourceQuery::for(Post::class)
@@ -371,7 +410,8 @@ Sample response for `?filter[status]=published&include=author&fields=title,publi
 | `?filter[key]=value` | Calls `scopeKey($builder, $value)` on the model |
 | `?sort=-col,other` | `Builder::orderBy('col', 'DESC')`, `Builder::orderBy('other', 'ASC')` |
 | `?include=a,b.c` | `Builder::with(['a', 'b.c'])` |
-| `?fields=name,email` | `Transformer::fields(['self' => ['name', 'email']])` |
+| `?count=a,b` | `Builder::withCount(['a', 'b'])` → adds `a_count`, `b_count` to each model |
+| `?fields=name,email` | `Transformer::fields(['self' => ['name', 'email']])` (optional) |
 | `?page=N&per_page=N` | `Builder::paginate($perPage)` which reads `?page` internally |
 
 The scope method convention (`scope` prefix + camelCase key) is the same convention used by `Model::filters()`. If you already have scope methods defined on your models, they work with `ResourceQuery` with zero changes.
@@ -387,7 +427,8 @@ ResourceQuery::for(ModelClass::class)
     ->allowFilters(['key', ...])        // maps to scopeKey() methods
     ->allowSorts(['column', ...])       // validates sort column names
     ->allowIncludes(['relation', ...])  // validates ?include values
-    ->allowFields(['field', ...])       // validates root model ?fields
+    ->allowCounts(['relation', ...])    // validates ?count values
+    ->allowFields(['field', ...])       // validates root model ?fields (optional)
 
     // Server-side defaults
     ->defaultSort('-created_at')        // applied when ?sort is absent

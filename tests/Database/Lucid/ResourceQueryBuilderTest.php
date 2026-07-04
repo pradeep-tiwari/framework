@@ -1,6 +1,6 @@
 <?php
 
-require_once __DIR__ . '/Fixtures/RqUser.php';
+require_once __DIR__ . '/Fixtures/ResourceQueryUser.php';
 
 use Lightpack\Container\Container;
 use Lightpack\Database\Lucid\ResourceQuery;
@@ -57,7 +57,7 @@ class ResourceQueryBuilderTest extends TestCase
     public function testAllowedFilterIsApplied()
     {
         $_GET['filter'] = ['status' => 'active'];
-        $query = ResourceQuery::for(RqUser::class)->allowFilters(['status'])->getBuilder();
+        $query = ResourceQuery::for(ResourceQueryUser::class)->allowFilters(['status'])->getBuilder();
         $this->assertStringContainsString('WHERE `status` = ?', $query->toSql());
         $this->assertContains('active', $query->bindings);
     }
@@ -65,14 +65,14 @@ class ResourceQueryBuilderTest extends TestCase
     public function testDisallowedFilterIsIgnored()
     {
         $_GET['filter'] = ['secret' => 'hack'];
-        $query = ResourceQuery::for(RqUser::class)->allowFilters(['status'])->getBuilder();
+        $query = ResourceQuery::for(ResourceQueryUser::class)->allowFilters(['status'])->getBuilder();
         $this->assertStringNotContainsString('WHERE', $query->toSql());
     }
 
     public function testMultipleFiltersAreApplied()
     {
         $_GET['filter'] = ['status' => 'active', 'role' => 'admin'];
-        $query = ResourceQuery::for(RqUser::class)->allowFilters(['status', 'role'])->getBuilder();
+        $query = ResourceQuery::for(ResourceQueryUser::class)->allowFilters(['status', 'role'])->getBuilder();
         $sql = $query->toSql();
         $this->assertStringContainsString('`status` = ?', $sql);
         $this->assertStringContainsString('`role` = ?', $sql);
@@ -82,21 +82,21 @@ class ResourceQueryBuilderTest extends TestCase
     public function testArrayValueFilter()
     {
         $_GET['filter'] = ['role' => ['admin', 'editor']];
-        $query = ResourceQuery::for(RqUser::class)->allowFilters(['role'])->getBuilder();
+        $query = ResourceQuery::for(ResourceQueryUser::class)->allowFilters(['role'])->getBuilder();
         $this->assertStringContainsString('`role` IN (?, ?)', $query->toSql());
         $this->assertEquals(['admin', 'editor'], $query->bindings);
     }
 
     public function testNoFilterProducesNoWhereClause()
     {
-        $query = ResourceQuery::for(RqUser::class)->allowFilters(['status'])->getBuilder();
+        $query = ResourceQuery::for(ResourceQueryUser::class)->allowFilters(['status'])->getBuilder();
         $this->assertEquals('SELECT * FROM `users`', $query->toSql());
     }
 
     public function testFilterWithNoMatchingScopeIsIgnored()
     {
         $_GET['filter'] = ['noscopeforthis' => 'value'];
-        $query = ResourceQuery::for(RqUser::class)->allowFilters(['noscopeforthis'])->getBuilder();
+        $query = ResourceQuery::for(ResourceQueryUser::class)->allowFilters(['noscopeforthis'])->getBuilder();
         $this->assertEquals('SELECT * FROM `users`', $query->toSql());
     }
 
@@ -105,21 +105,21 @@ class ResourceQueryBuilderTest extends TestCase
     public function testAscendingSortIsApplied()
     {
         $_GET['sort'] = 'name';
-        $query = ResourceQuery::for(RqUser::class)->allowSorts(['name'])->getBuilder();
+        $query = ResourceQuery::for(ResourceQueryUser::class)->allowSorts(['name'])->getBuilder();
         $this->assertStringContainsString('ORDER BY `name` ASC', $query->toSql());
     }
 
     public function testDescendingSortIsApplied()
     {
         $_GET['sort'] = '-created_at';
-        $query = ResourceQuery::for(RqUser::class)->allowSorts(['created_at'])->getBuilder();
+        $query = ResourceQuery::for(ResourceQueryUser::class)->allowSorts(['created_at'])->getBuilder();
         $this->assertStringContainsString('ORDER BY `created_at` DESC', $query->toSql());
     }
 
     public function testMultipleSortsAreApplied()
     {
         $_GET['sort'] = '-created_at,name';
-        $query = ResourceQuery::for(RqUser::class)->allowSorts(['created_at', 'name'])->getBuilder();
+        $query = ResourceQuery::for(ResourceQueryUser::class)->allowSorts(['created_at', 'name'])->getBuilder();
         $sql = $query->toSql();
         $this->assertStringContainsString('ORDER BY `created_at` DESC', $sql);
         $this->assertStringContainsString('`name` ASC', $sql);
@@ -128,13 +128,13 @@ class ResourceQueryBuilderTest extends TestCase
     public function testDisallowedSortIsIgnored()
     {
         $_GET['sort'] = 'password';
-        $query = ResourceQuery::for(RqUser::class)->allowSorts(['name'])->getBuilder();
+        $query = ResourceQuery::for(ResourceQueryUser::class)->allowSorts(['name'])->getBuilder();
         $this->assertStringNotContainsString('ORDER BY', $query->toSql());
     }
 
     public function testDefaultSortAppliedWhenNoRequestSort()
     {
-        $query = ResourceQuery::for(RqUser::class)
+        $query = ResourceQuery::for(ResourceQueryUser::class)
             ->allowSorts(['created_at'])
             ->defaultSort('-created_at')
             ->getBuilder();
@@ -144,7 +144,7 @@ class ResourceQueryBuilderTest extends TestCase
     public function testRequestSortOverridesDefaultSort()
     {
         $_GET['sort'] = 'name';
-        $query = ResourceQuery::for(RqUser::class)
+        $query = ResourceQuery::for(ResourceQueryUser::class)
             ->allowSorts(['name', 'created_at'])
             ->defaultSort('-created_at')
             ->getBuilder();
@@ -155,7 +155,7 @@ class ResourceQueryBuilderTest extends TestCase
 
     public function testNoSortAndNoDefaultProducesNoOrderBy()
     {
-        $query = ResourceQuery::for(RqUser::class)->allowSorts(['name'])->getBuilder();
+        $query = ResourceQuery::for(ResourceQueryUser::class)->allowSorts(['name'])->getBuilder();
         $this->assertStringNotContainsString('ORDER BY', $query->toSql());
     }
 
@@ -165,7 +165,7 @@ class ResourceQueryBuilderTest extends TestCase
     {
         $_GET['filter'] = ['status' => 'active'];
         $_GET['sort'] = '-created_at';
-        $query = ResourceQuery::for(RqUser::class)
+        $query = ResourceQuery::for(ResourceQueryUser::class)
             ->allowFilters(['status'])
             ->allowSorts(['created_at'])
             ->getBuilder();
@@ -177,7 +177,7 @@ class ResourceQueryBuilderTest extends TestCase
     public function testBuilderCanBeExtendedAfterGetBuilder()
     {
         $_GET['filter'] = ['status' => 'active'];
-        $builder = ResourceQuery::for(RqUser::class)
+        $builder = ResourceQuery::for(ResourceQueryUser::class)
             ->allowFilters(['status'])
             ->getBuilder()
             ->select('name', 'email');
@@ -189,20 +189,20 @@ class ResourceQueryBuilderTest extends TestCase
     public function testNonArrayFilterStringIsIgnoredSafely()
     {
         $_GET['filter'] = 'hack_attempt';
-        $query = ResourceQuery::for(RqUser::class)->allowFilters(['status'])->getBuilder();
+        $query = ResourceQuery::for(ResourceQueryUser::class)->allowFilters(['status'])->getBuilder();
         $this->assertEquals('SELECT * FROM `users`', $query->toSql());
     }
 
     public function testSortWithBareDashProducesNoOrderBy()
     {
         $_GET['sort'] = '-';
-        $query = ResourceQuery::for(RqUser::class)->allowSorts(['name'])->getBuilder();
+        $query = ResourceQuery::for(ResourceQueryUser::class)->allowSorts(['name'])->getBuilder();
         $this->assertStringNotContainsString('ORDER BY', $query->toSql());
     }
 
     public function testDefaultSortWithDisallowedColumnIsIgnored()
     {
-        $query = ResourceQuery::for(RqUser::class)
+        $query = ResourceQuery::for(ResourceQueryUser::class)
             ->allowSorts(['name'])
             ->defaultSort('-internal_score')
             ->getBuilder();
@@ -211,7 +211,7 @@ class ResourceQueryBuilderTest extends TestCase
 
     public function testGetBuilderIsIdempotent()
     {
-        $rq = ResourceQuery::for(RqUser::class)->allowSorts(['name']);
+        $rq = ResourceQuery::for(ResourceQueryUser::class)->allowSorts(['name']);
         $b1 = $rq->getBuilder();
         $b2 = $rq->getBuilder();
         $this->assertSame($b1, $b2);
@@ -223,7 +223,7 @@ class ResourceQueryBuilderTest extends TestCase
     {
         $this->db->query("INSERT INTO users (name, active) VALUES ('Alice', 1), ('Bob', 1)");
 
-        $collection = ResourceQuery::for(RqUser::class)->all();
+        $collection = ResourceQuery::for(ResourceQueryUser::class)->all();
 
         $this->assertInstanceOf(\Lightpack\Database\Lucid\Collection::class, $collection);
         $this->assertCount(2, $collection);
@@ -233,15 +233,15 @@ class ResourceQueryBuilderTest extends TestCase
     {
         $this->db->query("INSERT INTO users (name, active) VALUES ('Alice', 1)");
 
-        $model = ResourceQuery::for(RqUser::class)->one();
+        $model = ResourceQuery::for(ResourceQueryUser::class)->one();
 
-        $this->assertInstanceOf(RqUser::class, $model);
+        $this->assertInstanceOf(ResourceQueryUser::class, $model);
         $this->assertEquals('Alice', $model->name);
     }
 
     public function testOneReturnsNullWhenEmpty()
     {
-        $model = ResourceQuery::for(RqUser::class)->one();
+        $model = ResourceQuery::for(ResourceQueryUser::class)->one();
 
         $this->assertNull($model);
     }
@@ -252,7 +252,7 @@ class ResourceQueryBuilderTest extends TestCase
 
         $_GET['filter'] = ['search' => 'li'];
 
-        $collection = ResourceQuery::for(RqUser::class)
+        $collection = ResourceQuery::for(ResourceQueryUser::class)
             ->allowFilters(['search'])
             ->all();
 
@@ -265,11 +265,11 @@ class ResourceQueryBuilderTest extends TestCase
 
         $_GET['filter'] = ['search' => 'ob'];
 
-        $model = ResourceQuery::for(RqUser::class)
+        $model = ResourceQuery::for(ResourceQueryUser::class)
             ->allowFilters(['search'])
             ->one();
 
-        $this->assertInstanceOf(RqUser::class, $model);
+        $this->assertInstanceOf(ResourceQueryUser::class, $model);
         $this->assertEquals('Bob', $model->name);
     }
 
@@ -278,7 +278,7 @@ class ResourceQueryBuilderTest extends TestCase
     public function testAllowedCountIsWiredIntoBuilder()
     {
         $_GET['count'] = 'roles';
-        $builder = ResourceQuery::for(RqUser::class)->allowCounts(['roles'])->getBuilder();
+        $builder = ResourceQuery::for(ResourceQueryUser::class)->allowCounts(['roles'])->getBuilder();
 
         $loader = (new \ReflectionClass($builder))->getProperty('relationLoader');
         $loader->setAccessible(true);
@@ -293,7 +293,7 @@ class ResourceQueryBuilderTest extends TestCase
     public function testDisallowedCountIsNotWiredIntoBuilder()
     {
         $_GET['count'] = 'secret';
-        $builder = ResourceQuery::for(RqUser::class)->allowCounts(['roles'])->getBuilder();
+        $builder = ResourceQuery::for(ResourceQueryUser::class)->allowCounts(['roles'])->getBuilder();
 
         $loader = (new \ReflectionClass($builder))->getProperty('relationLoader');
         $loader->setAccessible(true);
@@ -308,7 +308,7 @@ class ResourceQueryBuilderTest extends TestCase
     public function testMultipleCountsWiredCorrectly()
     {
         $_GET['count'] = 'roles,posts,secret';
-        $builder = ResourceQuery::for(RqUser::class)->allowCounts(['roles', 'posts'])->getBuilder();
+        $builder = ResourceQuery::for(ResourceQueryUser::class)->allowCounts(['roles', 'posts'])->getBuilder();
 
         $loader = (new \ReflectionClass($builder))->getProperty('relationLoader');
         $loader->setAccessible(true);
@@ -325,7 +325,7 @@ class ResourceQueryBuilderTest extends TestCase
 
     public function testNoCountParamProducesNoCountIncludes()
     {
-        $builder = ResourceQuery::for(RqUser::class)->allowCounts(['roles'])->getBuilder();
+        $builder = ResourceQuery::for(ResourceQueryUser::class)->allowCounts(['roles'])->getBuilder();
 
         $loader = (new \ReflectionClass($builder))->getProperty('relationLoader');
         $loader->setAccessible(true);

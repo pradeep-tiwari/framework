@@ -3,7 +3,7 @@
 use Lightpack\Database\Lucid\Builder;
 use Lightpack\Database\Lucid\Model;
 
-class RqUser extends Model
+class ResourceQueryUser extends Model
 {
     protected $table = 'users';
 

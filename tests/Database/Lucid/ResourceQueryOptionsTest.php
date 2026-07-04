@@ -1,6 +1,6 @@
 <?php
 
-require_once __DIR__ . '/Fixtures/RqUser.php';
+require_once __DIR__ . '/Fixtures/ResourceQueryUser.php';
 
 use Lightpack\Container\Container;
 use Lightpack\Database\Lucid\ResourceQuery;
@@ -27,28 +27,28 @@ class ResourceQueryOptionsTest extends TestCase
     public function testAllowedIncludeIsApplied()
     {
         $_GET['include'] = 'roles';
-        $options = ResourceQuery::for(RqUser::class)->allowIncludes(['roles'])->transformOptions();
+        $options = ResourceQuery::for(ResourceQueryUser::class)->allowIncludes(['roles'])->transformOptions();
         $this->assertContains('roles', $options['includes']);
     }
 
     public function testDisallowedIncludeIsIgnored()
     {
         $_GET['include'] = 'secret_data';
-        $options = ResourceQuery::for(RqUser::class)->allowIncludes(['roles'])->transformOptions();
+        $options = ResourceQuery::for(ResourceQueryUser::class)->allowIncludes(['roles'])->transformOptions();
         $this->assertEmpty($options['includes'] ?? []);
     }
 
     public function testMultipleIncludesAreApplied()
     {
         $_GET['include'] = 'roles,profile';
-        $options = ResourceQuery::for(RqUser::class)->allowIncludes(['roles', 'profile'])->transformOptions();
+        $options = ResourceQuery::for(ResourceQueryUser::class)->allowIncludes(['roles', 'profile'])->transformOptions();
         $this->assertContains('roles', $options['includes']);
         $this->assertContains('profile', $options['includes']);
     }
 
     public function testDefaultIncludesAppliedWithoutRequest()
     {
-        $options = ResourceQuery::for(RqUser::class)
+        $options = ResourceQuery::for(ResourceQueryUser::class)
             ->allowIncludes(['roles'])
             ->defaultIncludes(['roles'])
             ->transformOptions();
@@ -58,7 +58,7 @@ class ResourceQueryOptionsTest extends TestCase
     public function testDefaultIncludesMergeWithRequestIncludes()
     {
         $_GET['include'] = 'profile';
-        $options = ResourceQuery::for(RqUser::class)
+        $options = ResourceQuery::for(ResourceQueryUser::class)
             ->allowIncludes(['roles', 'profile'])
             ->defaultIncludes(['roles'])
             ->transformOptions();
@@ -69,7 +69,7 @@ class ResourceQueryOptionsTest extends TestCase
     public function testDuplicateIncludesAreDeduped()
     {
         $_GET['include'] = 'roles';
-        $options = ResourceQuery::for(RqUser::class)
+        $options = ResourceQuery::for(ResourceQueryUser::class)
             ->allowIncludes(['roles'])
             ->defaultIncludes(['roles'])
             ->transformOptions();
@@ -81,14 +81,14 @@ class ResourceQueryOptionsTest extends TestCase
     public function testStringFieldsFilteredByAllowList()
     {
         $_GET['fields'] = 'name,email';
-        $options = ResourceQuery::for(RqUser::class)->allowFields(['name', 'email', 'created_at'])->transformOptions();
+        $options = ResourceQuery::for(ResourceQueryUser::class)->allowFields(['name', 'email', 'created_at'])->transformOptions();
         $this->assertEquals(['name', 'email'], $options['fields']['self']);
     }
 
     public function testDisallowedFieldsAreExcluded()
     {
         $_GET['fields'] = 'name,password,secret';
-        $options = ResourceQuery::for(RqUser::class)->allowFields(['name', 'email'])->transformOptions();
+        $options = ResourceQuery::for(ResourceQueryUser::class)->allowFields(['name', 'email'])->transformOptions();
         $this->assertEquals(['name'], $options['fields']['self']);
         $this->assertNotContains('password', $options['fields']['self'] ?? []);
     }
@@ -96,14 +96,14 @@ class ResourceQueryOptionsTest extends TestCase
     public function testBracketedRootFieldsByTableName()
     {
         $_GET['fields'] = ['users' => 'name,email'];
-        $options = ResourceQuery::for(RqUser::class)->allowFields(['name', 'email'])->transformOptions();
+        $options = ResourceQuery::for(ResourceQueryUser::class)->allowFields(['name', 'email'])->transformOptions();
         $this->assertEquals(['name', 'email'], $options['fields']['self']);
     }
 
     public function testRelationFieldsAcceptedForAllowedInclude()
     {
         $_GET['fields'] = ['roles' => 'name,slug'];
-        $options = ResourceQuery::for(RqUser::class)
+        $options = ResourceQuery::for(ResourceQueryUser::class)
             ->allowFields(['name', 'email'])
             ->allowIncludes(['roles'])
             ->transformOptions();
@@ -113,7 +113,7 @@ class ResourceQueryOptionsTest extends TestCase
     public function testRelationFieldsRejectedIfNotInAllowedIncludes()
     {
         $_GET['fields'] = ['secret_relation' => 'field'];
-        $options = ResourceQuery::for(RqUser::class)
+        $options = ResourceQuery::for(ResourceQueryUser::class)
             ->allowFields(['name'])
             ->allowIncludes(['roles'])
             ->transformOptions();
@@ -122,7 +122,7 @@ class ResourceQueryOptionsTest extends TestCase
 
     public function testNoFieldsProducesNoFieldsKey()
     {
-        $options = ResourceQuery::for(RqUser::class)->allowFields(['name', 'email'])->transformOptions();
+        $options = ResourceQuery::for(ResourceQueryUser::class)->allowFields(['name', 'email'])->transformOptions();
         $this->assertArrayNotHasKey('fields', $options);
     }
 
@@ -130,7 +130,7 @@ class ResourceQueryOptionsTest extends TestCase
 
     public function testTransformOptionsEmptyWhenNothingRequested()
     {
-        $options = ResourceQuery::for(RqUser::class)
+        $options = ResourceQuery::for(ResourceQueryUser::class)
             ->allowFilters(['status'])
             ->allowSorts(['name'])
             ->allowIncludes(['roles'])
@@ -143,7 +143,7 @@ class ResourceQueryOptionsTest extends TestCase
     {
         $_GET['include'] = 'roles';
         $_GET['fields'] = 'name,email';
-        $options = ResourceQuery::for(RqUser::class)
+        $options = ResourceQuery::for(ResourceQueryUser::class)
             ->allowIncludes(['roles'])
             ->allowFields(['name', 'email'])
             ->transformOptions();
@@ -156,7 +156,7 @@ class ResourceQueryOptionsTest extends TestCase
     public function testMaxPerPageCapsRequestValue()
     {
         $_GET['per_page'] = '9999';
-        $rq = ResourceQuery::for(RqUser::class)->maxPerPage(50);
+        $rq = ResourceQuery::for(ResourceQueryUser::class)->maxPerPage(50);
         $m = (new \ReflectionClass($rq))->getMethod('resolvePerPage');
         $m->setAccessible(true);
         $this->assertEquals(50, $m->invoke($rq, null));
@@ -164,7 +164,7 @@ class ResourceQueryOptionsTest extends TestCase
 
     public function testExplicitPerPageHonouredUpToMax()
     {
-        $rq = ResourceQuery::for(RqUser::class)->maxPerPage(100);
+        $rq = ResourceQuery::for(ResourceQueryUser::class)->maxPerPage(100);
         $m = (new \ReflectionClass($rq))->getMethod('resolvePerPage');
         $m->setAccessible(true);
         $this->assertEquals(20, $m->invoke($rq, 20));
@@ -173,7 +173,7 @@ class ResourceQueryOptionsTest extends TestCase
     public function testPerPageZeroBecomesOne()
     {
         $_GET['per_page'] = '0';
-        $rq = ResourceQuery::for(RqUser::class)->maxPerPage(100);
+        $rq = ResourceQuery::for(ResourceQueryUser::class)->maxPerPage(100);
         $m = (new \ReflectionClass($rq))->getMethod('resolvePerPage');
         $m->setAccessible(true);
         $this->assertEquals(1, $m->invoke($rq, null));
@@ -182,7 +182,7 @@ class ResourceQueryOptionsTest extends TestCase
     public function testPerPageNegativeBecomesOne()
     {
         $_GET['per_page'] = '-5';
-        $rq = ResourceQuery::for(RqUser::class)->maxPerPage(100);
+        $rq = ResourceQuery::for(ResourceQueryUser::class)->maxPerPage(100);
         $m = (new \ReflectionClass($rq))->getMethod('resolvePerPage');
         $m->setAccessible(true);
         $this->assertEquals(1, $m->invoke($rq, null));
@@ -191,7 +191,7 @@ class ResourceQueryOptionsTest extends TestCase
     public function testLimitParamUsedWhenPerPageAbsent()
     {
         $_GET['limit'] = '25';
-        $rq = ResourceQuery::for(RqUser::class)->maxPerPage(100);
+        $rq = ResourceQuery::for(ResourceQueryUser::class)->maxPerPage(100);
         $m = (new \ReflectionClass($rq))->getMethod('resolvePerPage');
         $m->setAccessible(true);
         $this->assertEquals(25, $m->invoke($rq, null));
@@ -200,7 +200,7 @@ class ResourceQueryOptionsTest extends TestCase
     public function testIncludeWithEmptySegmentsIsHandled()
     {
         $_GET['include'] = ',roles,';
-        $options = ResourceQuery::for(RqUser::class)->allowIncludes(['roles'])->transformOptions();
+        $options = ResourceQuery::for(ResourceQueryUser::class)->allowIncludes(['roles'])->transformOptions();
         $this->assertContains('roles', $options['includes']);
         $this->assertEquals(1, count($options['includes']));
     }
@@ -208,7 +208,7 @@ class ResourceQueryOptionsTest extends TestCase
     public function testMixedValidAndInvalidIncludesFilterCorrectly()
     {
         $_GET['include'] = 'roles,secret_data,profile';
-        $options = ResourceQuery::for(RqUser::class)
+        $options = ResourceQuery::for(ResourceQueryUser::class)
             ->allowIncludes(['roles', 'profile'])
             ->transformOptions();
         $this->assertContains('roles', $options['includes']);
@@ -219,7 +219,7 @@ class ResourceQueryOptionsTest extends TestCase
 
     public function testDefaultIncludesLoadEvenIfNotInAllowedIncludes()
     {
-        $options = ResourceQuery::for(RqUser::class)
+        $options = ResourceQuery::for(ResourceQueryUser::class)
             ->allowIncludes(['roles'])
             ->defaultIncludes(['profile'])
             ->transformOptions();
@@ -231,7 +231,7 @@ class ResourceQueryOptionsTest extends TestCase
     public function testAllowedCountIsRecognised()
     {
         $_GET['count'] = 'roles';
-        $rq = ResourceQuery::for(RqUser::class)->allowCounts(['roles']);
+        $rq = ResourceQuery::for(ResourceQueryUser::class)->allowCounts(['roles']);
         $m = (new \ReflectionClass($rq))->getMethod('parsedCounts');
         $m->setAccessible(true);
         $this->assertEquals(['roles'], $m->invoke($rq));
@@ -240,7 +240,7 @@ class ResourceQueryOptionsTest extends TestCase
     public function testDisallowedCountIsIgnored()
     {
         $_GET['count'] = 'secret_relation';
-        $rq = ResourceQuery::for(RqUser::class)->allowCounts(['roles']);
+        $rq = ResourceQuery::for(ResourceQueryUser::class)->allowCounts(['roles']);
         $m = (new \ReflectionClass($rq))->getMethod('parsedCounts');
         $m->setAccessible(true);
         $this->assertEmpty($m->invoke($rq));
@@ -249,7 +249,7 @@ class ResourceQueryOptionsTest extends TestCase
     public function testMixedCountsFilterCorrectly()
     {
         $_GET['count'] = 'roles,secret,posts';
-        $rq = ResourceQuery::for(RqUser::class)->allowCounts(['roles', 'posts']);
+        $rq = ResourceQuery::for(ResourceQueryUser::class)->allowCounts(['roles', 'posts']);
         $m = (new \ReflectionClass($rq))->getMethod('parsedCounts');
         $m->setAccessible(true);
         $result = $m->invoke($rq);
@@ -261,7 +261,7 @@ class ResourceQueryOptionsTest extends TestCase
     public function testNonStringCountParamIsIgnored()
     {
         $_GET['count'] = ['roles', 'posts'];
-        $rq = ResourceQuery::for(RqUser::class)->allowCounts(['roles']);
+        $rq = ResourceQuery::for(ResourceQueryUser::class)->allowCounts(['roles']);
         $m = (new \ReflectionClass($rq))->getMethod('parsedCounts');
         $m->setAccessible(true);
         $this->assertEmpty($m->invoke($rq));
@@ -271,7 +271,7 @@ class ResourceQueryOptionsTest extends TestCase
     {
         $_GET['include'] = 'roles';
         $_GET['fields'] = 'name,email';
-        $rq = ResourceQuery::for(RqUser::class)
+        $rq = ResourceQuery::for(ResourceQueryUser::class)
             ->allowIncludes(['roles'])
             ->allowFields(['name', 'email']);
         $first = $rq->transformOptions();

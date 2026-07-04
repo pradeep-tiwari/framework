@@ -197,6 +197,74 @@ class ResourceQueryOptionsTest extends TestCase
         $m->setAccessible(true);
         $this->assertEquals(20, $m->invoke($rq, 20));
     }
+
+    public function testPerPageZeroBecomesOne()
+    {
+        $_GET['per_page'] = '0';
+        $rq = ResourceQuery::for(RqUser::class)->maxPerPage(100);
+        $m  = (new \ReflectionClass($rq))->getMethod('resolvePerPage');
+        $m->setAccessible(true);
+        $this->assertEquals(1, $m->invoke($rq, null));
+    }
+
+    public function testPerPageNegativeBecomesOne()
+    {
+        $_GET['per_page'] = '-5';
+        $rq = ResourceQuery::for(RqUser::class)->maxPerPage(100);
+        $m  = (new \ReflectionClass($rq))->getMethod('resolvePerPage');
+        $m->setAccessible(true);
+        $this->assertEquals(1, $m->invoke($rq, null));
+    }
+
+    public function testLimitParamUsedWhenPerPageAbsent()
+    {
+        $_GET['limit'] = '25';
+        $rq = ResourceQuery::for(RqUser::class)->maxPerPage(100);
+        $m  = (new \ReflectionClass($rq))->getMethod('resolvePerPage');
+        $m->setAccessible(true);
+        $this->assertEquals(25, $m->invoke($rq, null));
+    }
+
+    public function testIncludeWithEmptySegmentsIsHandled()
+    {
+        $_GET['include'] = ',roles,';
+        $options = ResourceQuery::for(RqUser::class)->allowIncludes(['roles'])->transformOptions();
+        $this->assertContains('roles', $options['includes']);
+        $this->assertEquals(1, count($options['includes']));
+    }
+
+    public function testMixedValidAndInvalidIncludesFilterCorrectly()
+    {
+        $_GET['include'] = 'roles,secret_data,profile';
+        $options = ResourceQuery::for(RqUser::class)
+            ->allowIncludes(['roles', 'profile'])
+            ->transformOptions();
+        $this->assertContains('roles', $options['includes']);
+        $this->assertContains('profile', $options['includes']);
+        $this->assertNotContains('secret_data', $options['includes']);
+        $this->assertEquals(2, count($options['includes']));
+    }
+
+    public function testDefaultIncludesLoadEvenIfNotInAllowedIncludes()
+    {
+        $options = ResourceQuery::for(RqUser::class)
+            ->allowIncludes(['roles'])
+            ->defaultIncludes(['profile'])
+            ->transformOptions();
+        $this->assertContains('profile', $options['includes']);
+    }
+
+    public function testTransformOptionsIsIdempotent()
+    {
+        $_GET['include'] = 'roles';
+        $_GET['fields']  = 'name,email';
+        $rq = ResourceQuery::for(RqUser::class)
+            ->allowIncludes(['roles'])
+            ->allowFields(['name', 'email']);
+        $first  = $rq->transformOptions();
+        $second = $rq->transformOptions();
+        $this->assertEquals($first, $second);
+    }
 }
 
 // ─── Tests that need MySQL DB (builder / SQL generation) ─────────────────────
@@ -373,5 +441,36 @@ class ResourceQueryBuilderTest extends TestCase
         $sql = $builder->toSql();
         $this->assertStringContainsString('SELECT `name`, `email`', $sql);
         $this->assertStringContainsString('`status` = ?', $sql);
+    }
+
+    public function testNonArrayFilterStringIsIgnoredSafely()
+    {
+        $_GET['filter'] = 'hack_attempt';
+        $query = ResourceQuery::for(RqUser::class)->allowFilters(['status'])->getBuilder();
+        $this->assertEquals('SELECT * FROM `users`', $query->toSql());
+    }
+
+    public function testSortWithBareDashProducesNoOrderBy()
+    {
+        $_GET['sort'] = '-';
+        $query = ResourceQuery::for(RqUser::class)->allowSorts(['name'])->getBuilder();
+        $this->assertStringNotContainsString('ORDER BY', $query->toSql());
+    }
+
+    public function testDefaultSortWithDisallowedColumnIsIgnored()
+    {
+        $query = ResourceQuery::for(RqUser::class)
+            ->allowSorts(['name'])
+            ->defaultSort('-internal_score')
+            ->getBuilder();
+        $this->assertStringNotContainsString('ORDER BY', $query->toSql());
+    }
+
+    public function testGetBuilderIsIdempotent()
+    {
+        $rq = ResourceQuery::for(RqUser::class)->allowSorts(['name']);
+        $b1 = $rq->getBuilder();
+        $b2 = $rq->getBuilder();
+        $this->assertSame($b1, $b2);
     }
 }

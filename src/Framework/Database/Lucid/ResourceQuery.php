@@ -222,6 +222,8 @@ class ResourceQuery
      *
      * Usage:
      *   $pagination->transform($query->transformOptions())
+     *
+     * @internal Prefer paginateAndTransform() or all()->transform().
      */
     public function transformOptions(): array
     {

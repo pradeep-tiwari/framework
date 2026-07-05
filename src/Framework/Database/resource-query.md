@@ -1,14 +1,14 @@
-# ResourceQuery
+# Resource Query
 
-`ResourceQuery` solves a specific, recurring problem in API development: every list endpoint in your application ends up writing the same boilerplate — reading filter parameters, applying sort conditions, eager loading relations, handling pagination, and shaping the response. The code works, but it is scattered across controllers and grows inconsistently over time.
+`Resource Query` solves a specific, recurring problem in API development: every list endpoint in your application ends up writing the same boilerplate — reading filter parameters, applying sort conditions, eager loading relations, handling pagination, and shaping the response. The code works, but it is scattered across controllers and grows inconsistently over time.
 
-`ResourceQuery` is a single, focused class that reads standardized HTTP query parameters from the current request and translates them into the appropriate ORM operations — all secured behind an explicit allowlist that you define per endpoint.
+`Resource Query` is a single, focused class that reads standardized HTTP query parameters from the current request and translates them into the appropriate ORM operations — all secured behind an explicit allowlist that you define per endpoint.
 
 ---
 
 ## The Idea in One Minute
 
-Without `ResourceQuery`, a typical list endpoint looks like this:
+Without `Resource Query`, a typical list endpoint looks like this:
 
 ```php
 public function index()
@@ -29,23 +29,23 @@ public function index()
 }
 ```
 
-This works for two parameters. By the fifth it becomes tangled. `ResourceQuery` replaces the entire pattern:
+This works for two parameters. By the fifth it becomes tangled. `Resource Query` replaces the entire pattern:
 
 ```php
 public function index()
 {
-    $rq = ResourceQuery::for(User::class)
+    $data = User::resourceQuery()
         ->allowFilters(['status', 'role', 'search'])
         ->allowSorts(['name', 'email', 'created_at'])
         ->allowIncludes(['profile', 'posts'])
         ->allowFields(['name', 'email', 'created_at'])
-        ->defaultSort('-created_at');
+        ->defaultSort('-created_at')
+        ->paginate();
 
-    $pagination = $rq->paginate();
-
-    return response()->json($pagination->transform($rq->transformOptions()));
+    return response()->json($data);
 }
 ```
+
 
 A client can now drive this endpoint entirely through the URL:
 
@@ -64,11 +64,11 @@ GET /api/users
 
 ## Security Model: Everything Is Opt-In
 
-This is the single most important principle of `ResourceQuery`. **No query parameter has any effect unless you explicitly allow it.**
+This is the single most important principle of `Resource Query`. **No query parameter has any effect unless you explicitly allow it.**
 
 If a client sends `?filter[password]=secret&sort=internal_score`, both parameters are silently ignored because neither appears in the allowlists you defined. There is no way for a client to filter on a column, sort by a column, load a relation, or select a field that you have not explicitly permitted.
 
-This means you can safely expose `ResourceQuery` on any endpoint without fear that clients can probe your schema or access unintended data.
+This means you can safely expose `Resource Query` on any endpoint without fear that clients can probe your schema or access unintended data.
 
 ---
 
@@ -79,7 +79,7 @@ This means you can safely expose `ResourceQuery` on any endpoint without fear th
 Declares which filter keys the client may send. Each key maps to a scope method on the model — the same `scope*()` methods used by `Model::filters()`.
 
 ```php
-ResourceQuery::for(Post::class)
+Post::resourceQuery()
     ->allowFilters(['status', 'category', 'author_id', 'search']);
 ```
 
@@ -113,7 +113,7 @@ class Post extends Model
 }
 ```
 
-**Array-valued filters** are also supported natively. PHP parses `?filter[role][]=admin&filter[role][]=editor` into `['role' => ['admin', 'editor']]`, and `ResourceQuery` passes the array directly to your scope:
+**Array-valued filters** are also supported natively. PHP parses `?filter[role][]=admin&filter[role][]=editor` into `['role' => ['admin', 'editor']]`, and `Resource Query` passes the array directly to your scope:
 
 ```php
 protected function scopeRole(Builder $query, array|string $value): void
@@ -127,7 +127,7 @@ protected function scopeRole(Builder $query, array|string $value): void
 Declares which columns the client may sort by. Unrecognised column names are ignored.
 
 ```php
-ResourceQuery::for(Post::class)
+Post::resourceQuery()
     ->allowSorts(['title', 'published_at', 'view_count']);
 ```
 
@@ -152,7 +152,7 @@ The default is applied only when `?sort` is absent. A client-provided sort alway
 Declares which relations the client may eager load. Dot-notation for nested relations is supported.
 
 ```php
-ResourceQuery::for(Post::class)
+Post::resourceQuery()
     ->allowIncludes(['author', 'comments', 'comments.author', 'tags']);
 ```
 
@@ -177,7 +177,7 @@ Request includes are merged with the defaults and deduplicated.
 Declares which relation row counts the client may request. Counts are loaded via efficient separate queries after the main result set is fetched — no joins, no subqueries in the main SQL.
 
 ```php
-ResourceQuery::for(Article::class)
+Article::resourceQuery()
     ->allowCounts(['comments', 'likes', 'shares']);
 ```
 
@@ -205,7 +205,7 @@ Note: counting and loading are independent. A client can request `?count=comment
 Declares which root-model fields the client may request in the response. This does not affect the SQL query; it controls which fields the transformer outputs.
 
 ```php
-ResourceQuery::for(Post::class)
+Post::resourceQuery()
     ->allowFields(['title', 'excerpt', 'published_at', 'view_count']);
 ```
 
@@ -245,7 +245,7 @@ $pagination = $rq->paginate(20);        // fixed at 20, capped at 100
 ```
 
 ```php
-ResourceQuery::for(Post::class)
+Post::resourceQuery()
     ->maxPerPage(50)      // a client sending ?per_page=500 will get 50 results
     ->paginate();
 ```
@@ -255,7 +255,7 @@ ResourceQuery::for(Post::class)
 Executes without pagination and returns a full `Collection`.
 
 ```php
-$posts = ResourceQuery::for(Post::class)
+$posts = Post::resourceQuery()
     ->allowFilters(['status'])
     ->allowSorts(['published_at'])
     ->all();
@@ -268,17 +268,17 @@ Useful for small, bounded result sets (e.g., lookup lists) where pagination is u
 Executes and returns a single matching model or `null`.
 
 ```php
-$post = ResourceQuery::for(Post::class)
+$post = Post::resourceQuery()
     ->allowFilters(['slug'])
     ->one();
 ```
 
 ### `getBuilder(): Builder`
 
-Returns the fully configured `Builder` without executing. Use this when you need to add constraints beyond what `ResourceQuery` supports before executing:
+Returns the fully configured `Builder` without executing. Use this when you need to add constraints beyond what `Resource Query` supports before executing:
 
 ```php
-$builder = ResourceQuery::for(Post::class)
+$builder = Post::resourceQuery()
     ->allowFilters(['status'])
     ->allowSorts(['published_at'])
     ->getBuilder();
@@ -293,12 +293,12 @@ $pagination = $builder
 
 ## Shaping the Response: `transformOptions()`
 
-**Transformers are entirely optional.** `ResourceQuery` builds and executes the ORM query regardless of whether you have `Transformer` classes defined. `paginate()`, `all()`, `one()`, and `getBuilder()` have no transformer dependency at all.
+**Transformers are entirely optional.** `Resource Query` builds and executes the ORM query regardless of whether you have `Transformer` classes defined. `paginate()`, `all()`, `one()`, and `getBuilder()` have no transformer dependency at all.
 
 If you are not using transformers, just serialise the result directly and ignore `transformOptions()`:
 
 ```php
-$rq         = ResourceQuery::for(Article::class)->allowFilters(['status']);
+$rq         = Article::resourceQuery()->allowFilters(['status']);
 $pagination = $rq->paginate();
 
 return response()->json($pagination->toArray());   // no transformer involved
@@ -307,7 +307,7 @@ return response()->json($pagination->toArray());   // no transformer involved
 `transformOptions()` is only relevant when you have a `Transformer` class defined on your model and you want the client to control which fields or relations appear in the output. The method returns the `fields` and `includes` arrays parsed from the current request, ready to pass into `Pagination::transform()`, `Collection::transform()`, or `Model::transform()`.
 
 ```php
-$rq         = ResourceQuery::for(Post::class)
+$rq         = Post::resourceQuery()
     ->allowIncludes(['author', 'tags'])
     ->allowFields(['title', 'excerpt', 'published_at']);
 
@@ -347,25 +347,21 @@ When `transformOptions()` returns an empty array (no `?include` or `?fields` in 
 namespace App\Http\Controllers\Api;
 
 use App\Models\Post;
-use Lightpack\Database\Lucid\ResourceQuery;
 
 class PostController
 {
     public function index()
     {
-        $rq = ResourceQuery::for(Post::class)
+        $data = Post::resourceQuery()
             ->allowFilters(['status', 'category', 'search'])
             ->allowSorts(['title', 'published_at', 'view_count'])
             ->allowIncludes(['author', 'tags', 'comments'])
             ->allowFields(['title', 'excerpt', 'published_at', 'view_count'])
             ->defaultSort('-published_at')
-            ->maxPerPage(50);
+            ->maxPerPage(50)
+            ->paginateAndTransform();
 
-        $pagination = $rq->paginate();
-
-        return response()->json(
-            $pagination->transform($rq->transformOptions())
-        );
+        return response()->json($data);
     }
 }
 ```
@@ -403,7 +399,7 @@ Sample response for `?filter[status]=published&include=author&fields=title,publi
 
 ## How It Connects to the ORM
 
-`ResourceQuery` is not a separate query engine — it is a thin orchestrator over the ORM components Lightpack already provides.
+`Resource Query` is not a separate query engine — it is a thin orchestrator over the ORM components Lightpack already provides.
 
 | Query parameter | ORM operation |
 |---|---|
@@ -414,14 +410,14 @@ Sample response for `?filter[status]=published&include=author&fields=title,publi
 | `?fields=name,email` | `Transformer::fields(['self' => ['name', 'email']])` (optional) |
 | `?page=N&per_page=N` | `Builder::paginate($perPage)` which reads `?page` internally |
 
-The scope method convention (`scope` prefix + camelCase key) is the same convention used by `Model::filters()`. If you already have scope methods defined on your models, they work with `ResourceQuery` with zero changes.
+The scope method convention (`scope` prefix + camelCase key) is the same convention used by `Model::filters()`. If you already have scope methods defined on your models, they work with `Resource Query` with zero changes.
 
 ---
 
 ## Quick Reference
 
 ```php
-ResourceQuery::for(ModelClass::class)
+ModelClass::resourceQuery()
 
     // Allowlists — define what the client may control
     ->allowFilters(['key', ...])        // maps to scopeKey() methods

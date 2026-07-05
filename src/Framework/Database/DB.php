@@ -145,7 +145,7 @@ class DB
      */
     public function printQueryLogs(): void
     {
-        if(!isset($this->queryLogs['queries'])) {
+        if (! isset($this->queryLogs['queries'])) {
             return;
         }
 

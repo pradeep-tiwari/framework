@@ -145,6 +145,10 @@ class DB
      */
     public function printQueryLogs(): void
     {
+        if(!isset($this->queryLogs['queries'])) {
+            return;
+        }
+
         dd(
             queries: $this->queryLogs['queries'],
             duplicates: $this->computeDuplicateQueries()
@@ -332,7 +336,7 @@ class DB
 
     protected function logQuery($sql, $params)
     {
-        if (! get_env('APP_DEBUG')) {
+        if (get_env('APP_DEBUG') == false) {
             return;
         }
 

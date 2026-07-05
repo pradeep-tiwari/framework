@@ -11,28 +11,8 @@ namespace Lightpack\Database\Lucid;
  * An optional Transformer layer (via paginateAndTransform(), all()->transform()) can shape
  * the response output when a Transformer is defined on the model.
  *
- * Supported query parameters:
- *
- *   Filters:  ?filter[status]=active&filter[role][]=admin&filter[role][]=editor
- *   Sort:     ?sort=-created_at,name   (- prefix = DESC, bare = ASC)
- *   Includes: ?include=profile,posts,posts.comments
- *   Fields:   ?fields=name,email       (root model)
- *             ?fields[profile]=bio,avatar  (relation)
- *   Page:     ?page=2&per_page=20
- *
  * Security: ALL parameters are opt-in via allow*() methods. Unrecognized
  * or unallowed parameters are silently ignored.
- *
- * Example:
- *
- *   $query = ResourceQuery::for(User::class)
- *       ->allowFilters(['status', 'role', 'search'])
- *       ->allowSorts(['name', 'email', 'created_at'])
- *       ->allowIncludes(['profile', 'posts', 'posts.comments'])
- *       ->allowFields(['name', 'email', 'created_at'])
- *       ->defaultSort('-created_at');
- *
- *   $pagination = $query->paginate();
  */
 class ResourceQuery
 {

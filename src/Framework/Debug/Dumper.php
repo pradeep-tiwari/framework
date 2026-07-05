@@ -38,7 +38,7 @@ class Dumper
         $template = __DIR__ . '/templates/http/dumper.php';
 
         $this->render($template, [
-            'args' => $args[0],
+            'args' => $args,
             'dump_function' => $dumpFunction,
         ]);
     }

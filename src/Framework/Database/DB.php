@@ -132,6 +132,8 @@ class DB
      */
     public function getQueryLogs(): array
     {
+        $this->queryLogs['duplicates'] = $this->computeDuplicateQueries();
+
         return $this->queryLogs;
     }
 
@@ -143,7 +145,23 @@ class DB
      */
     public function printQueryLogs(): void
     {
+        $this->queryLogs['duplicates'] = $this->computeDuplicateQueries();
         pp($this->queryLogs);
+    }
+
+    private function computeDuplicateQueries(): array
+    {
+        $queries = $this->queryLogs['queries'] ?? [];
+        $signatures = [];
+
+        foreach ($queries as $query) {
+            $sql = is_array($query) ? ($query['sql'] ?? '') : $query;
+            $signature = md5($sql);
+            $signatures[$signature]['sql'] = $sql;
+            $signatures[$signature]['count'] = ($signatures[$signature]['count'] ?? 0) + 1;
+        }
+
+        return array_values(array_filter($signatures, fn ($q) => $q['count'] > 1));
     }
 
     public function clearQueryLogs(): void
@@ -316,8 +334,10 @@ class DB
             return;
         }
 
-        $this->queryLogs['queries'][] = $sql;
-        $this->queryLogs['bindings'][] = $params ?? [];
+        $this->queryLogs['queries'][] = [
+            'sql' => $sql,
+            'bindings' => $params ?? [],
+        ];
     }
 
     /**

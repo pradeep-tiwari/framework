@@ -89,9 +89,11 @@ final class DBTest extends TestCase
         $this->assertIsArray($logs);
         $this->assertCount(2, $logs);
         $this->assertArrayHasKey('queries', $logs);
-        $this->assertArrayHasKey('bindings', $logs);
+        $this->assertArrayHasKey('duplicates', $logs);
         $this->assertCount(3, $logs['queries']);
-        $this->assertCount(3, $logs['bindings']);
+        $this->assertArrayHasKey('sql', $logs['queries'][0]);
+        $this->assertArrayHasKey('bindings', $logs['queries'][0]);
+        $this->assertIsArray($logs['duplicates']);
     }
 
     public function testTransaction()

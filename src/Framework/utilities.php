@@ -117,7 +117,7 @@ if (! function_exists('dd')) {
     {
         $renderer = new Lightpack\Debug\Dumper;
 
-        $renderer->varDump($args);
+        $renderer->varDump(...$args);
 
         die;
     }
@@ -131,7 +131,7 @@ if (! function_exists('pp')) {
     {
         $renderer = new Lightpack\Debug\Dumper;
 
-        $renderer->printDump($args);
+        $renderer->printDump(...$args);
 
         die;
     }

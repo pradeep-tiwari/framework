@@ -228,20 +228,12 @@ Only root-model fields are validated against `allowedFields`. Relation fields ar
 
 ## Executing the Query
 
-### `paginate(?int $perPage = null): Pagination`
+### `paginate(): Pagination`
 
-Executes the query and returns a `Pagination` object. The current page is read from `?page` in the request. The per-page count is resolved in this order:
-
-1. Explicit argument passed to `paginate()`
-2. `?per_page` query parameter
-3. `?limit` query parameter (for backward compatibility)
-4. Framework default of 15
-
-The resolved value is capped at `maxPerPage` (default 100) to prevent clients from requesting arbitrarily large result sets.
+Executes the query and returns a `Pagination` object. The current page is read from `?page` in the request. The per-page count is read from `?per_page`, falling back to `?limit`, then to the framework default of 15. Capped at `maxPerPage` (default 100) to prevent clients from requesting arbitrarily large result sets.
 
 ```php
 $pagination = $rq->paginate();          // reads ?per_page from request, capped at 100
-$pagination = $rq->paginate(20);        // fixed at 20, capped at 100
 ```
 
 ```php
@@ -425,8 +417,8 @@ ModelClass::resourceQuery()
     ->maxPerPage(50)                    // caps ?per_page (default: 100)
 
     // Execution
-    ->paginate(?int $perPage)           // returns Pagination
-    ->paginateAndTransform(?int $perPage) // returns array (transformed pagination data)
+    ->paginate()                        // returns Pagination
+    ->paginateAndTransform()            // returns array (transformed pagination data)
     ->all()                             // returns Collection
     ->one()                           // returns Model|null
     ->getBuilder()                      // returns Builder for further chaining

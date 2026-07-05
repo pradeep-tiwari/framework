@@ -160,26 +160,24 @@ class ResourceQuery
     /**
      * Execute the query and return a paginated Pagination object.
      *
-     * @param int|null $perPage Override per-page count (otherwise reads ?per_page from request)
+     * Per-page is read from ?per_page in the request, falling back to ?limit,
+     * then to the framework default of 15. Capped at maxPerPage.
      */
-    public function paginate(?int $perPage = null): Pagination
+    public function paginate(): Pagination
     {
         $this->build();
-        $perPage = $this->resolvePerPage($perPage);
 
-        return $this->builder->paginate($perPage);
+        return $this->builder->paginate($this->resolvePerPage());
     }
 
     /**
      * Execute the query and return a paginated, transformed array.
      *
      * Convenience method that combines paginate() and transformOptions().
-     *
-     * @param int|null $perPage Override per-page count
      */
-    public function paginateAndTransform(?int $perPage = null): array
+    public function paginateAndTransform(): array
     {
-        $pagination = $this->paginate($perPage);
+        $pagination = $this->paginate();
 
         return $pagination->transform($this->transformOptions());
     }
@@ -495,14 +493,11 @@ class ResourceQuery
     }
 
     /**
-     * Resolve the per-page value from the request or the provided argument,
-     * capped at maxPerPage.
+     * Resolve the per-page value from the request, capped at maxPerPage.
      */
-    private function resolvePerPage(?int $perPage): int
+    private function resolvePerPage(): int
     {
-        if ($perPage === null) {
-            $perPage = (int) (request()->query('per_page') ?? request()->query('limit', 15));
-        }
+        $perPage = (int) (request()->query('per_page') ?? request()->query('limit', 15));
 
         return min(max(1, $perPage), $this->maxPerPage);
     }

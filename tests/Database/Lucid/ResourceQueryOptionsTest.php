@@ -158,15 +158,7 @@ class ResourceQueryOptionsTest extends TestCase
         $rq = ResourceQueryUser::resourceQuery()->maxPerPage(50);
         $m = (new \ReflectionClass($rq))->getMethod('resolvePerPage');
         $m->setAccessible(true);
-        $this->assertEquals(50, $m->invoke($rq, null));
-    }
-
-    public function testExplicitPerPageHonouredUpToMax()
-    {
-        $rq = ResourceQueryUser::resourceQuery()->maxPerPage(100);
-        $m = (new \ReflectionClass($rq))->getMethod('resolvePerPage');
-        $m->setAccessible(true);
-        $this->assertEquals(20, $m->invoke($rq, 20));
+        $this->assertEquals(50, $m->invoke($rq));
     }
 
     public function testPerPageZeroBecomesOne()
@@ -175,7 +167,7 @@ class ResourceQueryOptionsTest extends TestCase
         $rq = ResourceQueryUser::resourceQuery()->maxPerPage(100);
         $m = (new \ReflectionClass($rq))->getMethod('resolvePerPage');
         $m->setAccessible(true);
-        $this->assertEquals(1, $m->invoke($rq, null));
+        $this->assertEquals(1, $m->invoke($rq));
     }
 
     public function testPerPageNegativeBecomesOne()
@@ -184,7 +176,7 @@ class ResourceQueryOptionsTest extends TestCase
         $rq = ResourceQueryUser::resourceQuery()->maxPerPage(100);
         $m = (new \ReflectionClass($rq))->getMethod('resolvePerPage');
         $m->setAccessible(true);
-        $this->assertEquals(1, $m->invoke($rq, null));
+        $this->assertEquals(1, $m->invoke($rq));
     }
 
     public function testLimitParamUsedWhenPerPageAbsent()
@@ -193,7 +185,7 @@ class ResourceQueryOptionsTest extends TestCase
         $rq = ResourceQueryUser::resourceQuery()->maxPerPage(100);
         $m = (new \ReflectionClass($rq))->getMethod('resolvePerPage');
         $m->setAccessible(true);
-        $this->assertEquals(25, $m->invoke($rq, null));
+        $this->assertEquals(25, $m->invoke($rq));
     }
 
     public function testIncludeWithEmptySegmentsIsHandled()

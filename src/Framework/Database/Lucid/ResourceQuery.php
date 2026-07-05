@@ -6,8 +6,8 @@ namespace Lightpack\Database\Lucid;
  * ResourceQuery — HTTP request query parameter abstraction for Lucid models.
  *
  * Reads query string parameters from the current HTTP request and
- * translates them into ORM Builder operations. 
- * 
+ * translates them into ORM Builder operations.
+ *
  * An optional Transformer layer (via paginateAndTransform(), all()->transform()) can shape
  * the response output when a Transformer is defined on the model.
  *

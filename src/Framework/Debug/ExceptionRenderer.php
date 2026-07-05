@@ -161,6 +161,9 @@ class ExceptionRenderer
     {
         $statusCode = $exc->getCode() ?: 500;
         $statusCode = (int) $statusCode;
+        if ($statusCode < 100 || $statusCode > 599) {
+            $statusCode = 500;
+        }
         $message = $exc->getMessage() ?: 'We are facing some technical issues. We will be back soon.';
         $errorTemplate = __DIR__ . '/templates/' . $this->getResponseFormat() . '/production.php';
         $statusCodeTemplate = __DIR__ . '/templates/' . $this->getResponseFormat() . "/production/{$statusCode}.php";
@@ -186,7 +189,7 @@ class ExceptionRenderer
         }
 
         $this->renderTemplate($errorTemplate, [
-            'code' => 'HTTP: ' . $statusCode,
+            'code' => $statusCode,
             'status_code' => $statusCode,
             'error_template_not_found' => $errorTemplateNotFound,
             'message' => $message,
@@ -230,6 +233,9 @@ class ExceptionRenderer
 
         $statusCode = $exc->getCode() ?: 500;
         $statusCode = (int) $statusCode;
+        if ($statusCode < 100 || $statusCode > 599) {
+            $statusCode = 500;
+        }
         $relevantTrace = $this->findRelevantTrace($exc);
 
         $data['type'] = $errorType;

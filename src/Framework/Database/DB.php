@@ -146,7 +146,7 @@ class DB
     public function printQueryLogs(): void
     {
         dd(
-            queries: $this->queryLogs['queries'], 
+            queries: $this->queryLogs['queries'],
             duplicates: $this->computeDuplicateQueries()
         );
     }

@@ -57,7 +57,7 @@
 
         return '<span class="dump-other">' . htmlspecialchars(print_r($value, true), ENT_QUOTES, 'UTF-8') . '</span>';
     }
-    ?>
+        ?>
 
     <div class="container">
         <div class="dump-header">
@@ -67,7 +67,7 @@
 
         <?php foreach ($args as $index => $arg) : ?>
             <?php
-            $label = null;
+                $label = null;
             if (is_string($index)) {
                 $label = $index;
             } elseif (is_array($arg) && count($arg) === 1) {

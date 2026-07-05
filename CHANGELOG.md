@@ -2,7 +2,7 @@
 
 ## [0.16.1] - 2026-07-05
 
-### Features
+### Fixed
 
 - **ExceptionRenderer**: Improved error handling and response formatting for both development and production environments.
 

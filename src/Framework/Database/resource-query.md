@@ -38,7 +38,6 @@ public function index()
         ->allowFilters(['status', 'role', 'search'])
         ->allowSorts(['name', 'email', 'created_at'])
         ->allowIncludes(['profile', 'posts'])
-        ->allowFields(['name', 'email', 'created_at'])
         ->defaultSort('-created_at')
         ->paginate();
 
@@ -202,11 +201,12 @@ Note: counting and loading are independent. A client can request `?count=comment
 
 ### `allowFields(array $fields)`
 
-Declares which root-model fields the client may request in the response. This does not affect the SQL query; it controls which fields the transformer outputs.
+Declares which root-model fields the client may request. **Only relevant when the model has a Transformer defined.** It controls which fields the transformer outputs — it does NOT limit the SQL query or affect `paginate()`, `all()`, or `one()` when no transformer is involved.
 
 ```php
 Post::resourceQuery()
-    ->allowFields(['title', 'excerpt', 'published_at', 'view_count']);
+    ->allowFields(['title', 'excerpt', 'published_at', 'view_count'])
+    ->paginateAndTransform();   // transformer respects the field list
 ```
 
 **Simple form** — applies to the root model:
@@ -223,6 +223,8 @@ Post::resourceQuery()
 ```
 
 Only root-model fields are validated against `allowedFields`. Relation fields are validated only against whether the relation itself is in `allowedIncludes` — the specific field names within a relation are not restricted. This is intentional: the transformer on each related model controls what its own data looks like.
+
+> Do not use `allowFields()` unless you are using `paginateAndTransform()`, `all()->transform()`, or calling `transformOptions()` manually to pass to a transformer.
 
 ---
 
@@ -409,7 +411,7 @@ ModelClass::resourceQuery()
     ->allowSorts(['column', ...])       // validates sort column names
     ->allowIncludes(['relation', ...])  // validates ?include values
     ->allowCounts(['relation', ...])    // validates ?count values
-    ->allowFields(['field', ...])       // validates root model ?fields (optional)
+    ->allowFields(['field', ...])       // transformer only — ignored without a Transformer
 
     // Server-side defaults
     ->defaultSort('-created_at')        // applied when ?sort is absent

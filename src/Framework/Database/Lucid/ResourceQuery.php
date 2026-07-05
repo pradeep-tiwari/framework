@@ -99,7 +99,13 @@ class ResourceQuery
     }
 
     /**
-     * Whitelist root-model field names that clients may select in the response.
+     * Whitelist root-model field names that clients may request.
+     *
+     * This ONLY has an effect when the model has a Transformer defined and you
+     * call paginateAndTransform(), all()->transform(), or manually pass the
+     * output of transformOptions() to a transformer. It does NOT affect the SQL
+     * query, nor does it limit the fields returned by paginate(), all(), or
+     * one() when no transformer is involved.
      *
      * ?fields=name,email  →  transformer fields(['self' => ['name', 'email']])
      */

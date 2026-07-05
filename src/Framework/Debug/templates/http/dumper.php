@@ -55,6 +55,10 @@
             return '<span class="dump-null">null</span>';
         }
 
+        if (is_object($value) && method_exists($value, 'toArray')) {
+            return dumpNode($value->toArray());
+        }
+
         return '<span class="dump-other">' . htmlspecialchars(print_r($value, true), ENT_QUOTES, 'UTF-8') . '</span>';
     }
         ?>

@@ -6,7 +6,7 @@
 
 - **Env**: Boolean strings from OS environment variables (`'true'`, `'false'`) are now correctly converted to actual booleans.
 - **DB**: Fixed `printQueryLogs()` crash when no queries were logged. Fixed `logQuery()` ignoring `APP_DEBUG` when it arrived as a string.
-- **Dumper**: `dd()` now renders arrays in a collapsible tree instead of raw output.
+- **Dumper**: `dd()` now renders arrays and objects with `toArray()` in a collapsible tree instead of raw output.
 
 ## [0.16.1] - 2026-07-05
 

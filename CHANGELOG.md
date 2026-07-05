@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.16.0] - 2026-07-05
+
+### Features
+
+- **ResourceQuery**: New `Lightpack\Database\Lucid\ResourceQuery` class for declarative API list endpoints. Reads `?filter`, `?sort`, `?include`, `?count`, `?sum`, `?avg`, `?min`, `?max`, `?fields`, and `?page` parameters from the request and translates them into ORM operations behind an explicit allowlist.
+- **Model::resourceQuery()**: Convenience shortcut returning `ResourceQuery::for(static::class)`.
+- **hasManyThrough aggregates**: `withSum()`, `withAvg()`, `withMin()`, and `withMax()` now support `hasManyThrough` relations (previously `hasMany` only).
+
 ## [0.15.0] - 2026-07-02
 
 ### Features

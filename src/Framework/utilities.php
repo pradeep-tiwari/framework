@@ -117,7 +117,7 @@ if (! function_exists('dd')) {
     {
         $renderer = new Lightpack\Debug\Dumper;
 
-        $renderer->varDump($args);
+        $renderer->varDump(...$args);
 
         die;
     }
@@ -126,12 +126,14 @@ if (! function_exists('dd')) {
 if (! function_exists('pp')) {
     /**
      * Pretty print using print_r()
+     *
+     * @deprecated Use dd() instead. This function will be removed in a future release.
      */
     function pp(...$args): void
     {
         $renderer = new Lightpack\Debug\Dumper;
 
-        $renderer->printDump($args);
+        $renderer->printDump(...$args);
 
         die;
     }

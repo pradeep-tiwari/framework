@@ -28,22 +28,17 @@ class Env
                 // Remove quotes if present
                 $value = trim($value, '"\'');
 
-                // Handle special values
-                $value = match (strtolower($value)) {
-                    'true', '(true)' => true,
-                    'false', '(false)' => false,
-                    default => $value
-                };
+                $value = self::normalizeValue($value);
 
                 // Priority: $_ENV > $_SERVER > .env file
                 if (array_key_exists($key, $_ENV)) {
-                    self::$cache[$key] = $_ENV[$key];
+                    self::$cache[$key] = self::normalizeValue($_ENV[$key]);
 
                     continue;
                 }
 
                 if (array_key_exists($key, $_SERVER)) {
-                    self::$cache[$key] = $_SERVER[$key];
+                    self::$cache[$key] = self::normalizeValue($_SERVER[$key]);
 
                     continue;
                 }
@@ -71,11 +66,11 @@ class Env
         }
 
         if (array_key_exists($key, $_ENV)) {
-            return $_ENV[$key];
+            return self::normalizeValue($_ENV[$key]);
         }
 
         if (array_key_exists($key, $_SERVER)) {
-            return $_SERVER[$key];
+            return self::normalizeValue($_SERVER[$key]);
         }
 
         // Check process environment (set via putenv())
@@ -98,5 +93,18 @@ class Env
         putenv("{$key}=" . (is_bool($value) ? ($value ? 'true' : 'false') : (string) $value));
         $_ENV[$key] = $value;
         $_SERVER[$key] = $value;
+    }
+
+    private static function normalizeValue(mixed $value): mixed
+    {
+        if (! is_string($value)) {
+            return $value;
+        }
+
+        return match (strtolower($value)) {
+            'true', '(true)' => true,
+            'false', '(false)' => false,
+            default => $value,
+        };
     }
 }

@@ -89,6 +89,29 @@ EOT;
         $this->assertEquals('testing', Env::get('APP_ENV'));
     }
 
+    public function testSpecialValuesFromEnvAndServer()
+    {
+        $_ENV['FROM_ENV'] = 'false';
+        $_SERVER['FROM_SERVER'] = 'true';
+
+        $env = <<<EOT
+FROM_ENV=true
+FROM_SERVER=false
+EOT;
+        file_put_contents($this->envFile, $env);
+        Env::load($this->envFile);
+
+        // $_ENV value wins but gets normalized from string 'false' to boolean false
+        $this->assertFalse(Env::get('FROM_ENV'));
+        $this->assertIsBool(Env::get('FROM_ENV'));
+
+        // $_SERVER value also gets normalized from string 'true' to boolean true
+        $this->assertTrue(Env::get('FROM_SERVER'));
+        $this->assertIsBool(Env::get('FROM_SERVER'));
+
+        unset($_ENV['FROM_ENV'], $_SERVER['FROM_SERVER']);
+    }
+
     public function testDefaultValue()
     {
         $this->assertEquals('default', Env::get('NON_EXISTENT', 'default'));

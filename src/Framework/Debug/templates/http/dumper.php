@@ -62,12 +62,25 @@
     <div class="container">
         <div class="dump-header">
             <strong>Debug Dump</strong>
-            <span class="dump-meta"><?= count($args) ?> variable<?= count($args) === 1 ? '' : 's' ?> &bull; <?= $dump_function ?></span>
+            <span class="dump-meta"><?= count($args) ?> variable<?= count($args) === 1 ? '' : 's' ?></span>
         </div>
 
         <?php foreach ($args as $index => $arg) : ?>
+            <?php
+            $label = null;
+            if (is_string($index)) {
+                $label = $index;
+            } elseif (is_array($arg) && count($arg) === 1) {
+                $key = array_key_first($arg);
+                if (is_string($key)) {
+                    $label = $key;
+                    $arg = reset($arg);
+                }
+            }
+            $label ??= 'Variable #' . ($index + 1);
+            ?>
             <details class="dump-details" open>
-                <summary class="dump-summary">Variable #<?= $index + 1 ?></summary>
+                <summary class="dump-summary"><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></summary>
                 <div class="code-preview">
                     <?= dumpNode($arg) ?>
                 </div>

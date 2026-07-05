@@ -145,8 +145,10 @@ class DB
      */
     public function printQueryLogs(): void
     {
-        $this->queryLogs['duplicates'] = $this->computeDuplicateQueries();
-        pp($this->queryLogs);
+        dd(
+            queries: $this->queryLogs['queries'], 
+            duplicates: $this->computeDuplicateQueries()
+        );
     }
 
     private function computeDuplicateQueries(): array

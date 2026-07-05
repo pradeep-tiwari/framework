@@ -126,6 +126,8 @@ if (! function_exists('dd')) {
 if (! function_exists('pp')) {
     /**
      * Pretty print using print_r()
+     *
+     * @deprecated Use dd() instead. This function will be removed in a future release.
      */
     function pp(...$args): void
     {

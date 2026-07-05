@@ -291,51 +291,44 @@ $pagination = $builder
 
 ---
 
-## Shaping the Response: `transformOptions()`
+## Shaping the Response
 
 **Transformers are entirely optional.** `Resource Query` builds and executes the ORM query regardless of whether you have `Transformer` classes defined. `paginate()`, `all()`, `one()`, and `getBuilder()` have no transformer dependency at all.
 
-If you are not using transformers, just serialise the result directly and ignore `transformOptions()`:
+If you are not using transformers, just serialise the result directly:
 
 ```php
-$rq         = Article::resourceQuery()->allowFilters(['status']);
-$pagination = $rq->paginate();
+$data = Article::resourceQuery()
+    ->allowFilters(['status'])
+    ->paginate();
 
-return response()->json($pagination->toArray());   // no transformer involved
+return response()->json($data);   // no transformer involved
 ```
 
-`transformOptions()` is only relevant when you have a `Transformer` class defined on your model and you want the client to control which fields or relations appear in the output. The method returns the `fields` and `includes` arrays parsed from the current request, ready to pass into `Pagination::transform()`, `Collection::transform()`, or `Model::transform()`.
+When you do have a `Transformer` defined on the model, use `paginateAndTransform()` to execute and transform in one call. The client controls which fields and relations appear through `?fields` and `?include`:
 
 ```php
-$rq         = Post::resourceQuery()
+$data = Post::resourceQuery()
     ->allowIncludes(['author', 'tags'])
-    ->allowFields(['title', 'excerpt', 'published_at']);
+    ->allowFields(['title', 'excerpt', 'published_at'])
+    ->paginateAndTransform();
 
-$pagination = $rq->paginate();
-
-return response()->json(
-    $pagination->transform($rq->transformOptions())
-);
+return response()->json($data);
 ```
 
-`transformOptions()` never touches the database. It only parses the request parameters and validates them against the configured allowlists. You can call it before or after executing the query.
-
-The returned array is passed directly to the existing transformer infrastructure:
+For non-paginated collections, chain `transform()` after `all()`:
 
 ```php
-// What transformOptions() produces for:
-// ?include=author&fields=title,excerpt&fields[author]=name,avatar_url
+$data = Post::resourceQuery()
+    ->allowIncludes(['author'])
+    ->allowFields(['title', 'excerpt'])
+    ->all()
+    ->transform();
 
-[
-    'includes' => ['author'],
-    'fields'   => [
-        'self'   => ['title', 'excerpt'],
-        'author' => ['name', 'avatar_url'],
-    ],
-]
+return response()->json($data);
 ```
 
-When `transformOptions()` returns an empty array (no `?include` or `?fields` in the request), the transformer uses its full default output — the same result as calling `transform()` with no arguments.
+When no `?fields` or `?include` is present in the request, the transformer uses its full default output — the same result as calling `transform()` with no arguments.
 
 ---
 

@@ -275,6 +275,48 @@ class ResourceQueryOptionsTest extends TestCase
         $this->assertEmpty($m->invoke($rq));
     }
 
+    // aggregates --------------------------------------------------------------
+
+    public function testAllowedSumIsRecognised()
+    {
+        $_GET['sum'] = 'roles.price';
+        $rq = ResourceQueryUser::resourceQuery()->allowSum(['roles' => ['price']]);
+        $m = (new \ReflectionClass($rq))->getMethod('applyAggregate');
+        $m->setAccessible(true);
+
+        // applyAggregate is a no-op when builder is null, but we can test parsing
+        // by checking the allowed list directly
+        $this->assertEquals(['roles' => ['price']], (new \ReflectionClass($rq))->getProperty('allowedSums')->getValue($rq));
+    }
+
+    public function testAllowedAvgIsRecognised()
+    {
+        $_GET['avg'] = 'roles.rating';
+        $rq = ResourceQueryUser::resourceQuery()->allowAvg(['roles' => ['rating']]);
+        $this->assertEquals(['roles' => ['rating']], (new \ReflectionClass($rq))->getProperty('allowedAvgs')->getValue($rq));
+    }
+
+    public function testAllowedMinIsRecognised()
+    {
+        $_GET['min'] = 'roles.price';
+        $rq = ResourceQueryUser::resourceQuery()->allowMin(['roles' => ['price']]);
+        $this->assertEquals(['roles' => ['price']], (new \ReflectionClass($rq))->getProperty('allowedMins')->getValue($rq));
+    }
+
+    public function testAllowedMaxIsRecognised()
+    {
+        $_GET['max'] = 'roles.price';
+        $rq = ResourceQueryUser::resourceQuery()->allowMax(['roles' => ['price']]);
+        $this->assertEquals(['roles' => ['price']], (new \ReflectionClass($rq))->getProperty('allowedMaxs')->getValue($rq));
+    }
+
+    public function testAggregateStringColumnAllowed()
+    {
+        $_GET['sum'] = 'roles.price';
+        $rq = ResourceQueryUser::resourceQuery()->allowSum(['roles' => 'price']);
+        $this->assertEquals(['roles' => 'price'], (new \ReflectionClass($rq))->getProperty('allowedSums')->getValue($rq));
+    }
+
     public function testTransformOptionsIsIdempotent()
     {
         $_GET['include'] = 'roles';

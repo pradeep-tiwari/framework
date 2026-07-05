@@ -199,6 +199,32 @@ The client cannot request counts for relations not in `allowedCounts`. Unrecogni
 
 Note: counting and loading are independent. A client can request `?count=comments` (to know how many comments exist) without also requesting `?include=comments` (which would load all the comment rows). Use both together only when you need both the count and the actual data.
 
+### `allowSum(array $relations)`, `allowAvg(array $relations)`, `allowMin(array $relations)`, `allowMax(array $relations)`
+
+Whitelist relation aggregates the client may request. Each maps a relation name to an array of allowed columns.
+
+```php
+Merchant::resourceQuery()
+    ->allowSum(['products' => ['price'], 'orders' => ['total']])
+    ->allowAvg(['products' => ['rating'], 'reviews' => ['rating']])
+    ->allowMin(['products' => ['price']])
+    ->allowMax(['products' => ['price']])
+    ->paginateAndTransform();
+```
+
+The client requests them via dot-notation in the query string:
+
+```
+?sum=products.price,orders.total
+&avg=products.rating
+&min=products.price
+&max=products.price
+```
+
+Only `relation.column` pairs listed in the allowlist are executed. Wrong columns or disallowed relations are silently ignored. The resulting attributes (`products_sum_price`, `products_avg_rating`, etc.) appear on each model in the result and flow through the transformer naturally.
+
+---
+
 ### `allowFields(array $fields)`
 
 Declares which root-model fields the client may request. **Only relevant when the model has a Transformer defined.** It controls which fields the transformer outputs — it does NOT limit the SQL query or affect `paginate()`, `all()`, or `one()` when no transformer is involved.
@@ -412,6 +438,10 @@ ModelClass::resourceQuery()
     ->allowSorts(['column', ...])       // validates sort column names
     ->allowIncludes(['relation', ...])  // validates ?include values
     ->allowCounts(['relation', ...])    // validates ?count values
+    ->allowSum(['relation' => ['col']])     // validates ?sum=relation.col
+    ->allowAvg(['relation' => ['col']])     // validates ?avg=relation.col
+    ->allowMin(['relation' => ['col']])     // validates ?min=relation.col
+    ->allowMax(['relation' => ['col']])     // validates ?max=relation.col
     ->allowFields(['field', ...])       // transformer only — ignored without a Transformer
 
     // Server-side defaults

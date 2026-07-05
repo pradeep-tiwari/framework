@@ -45,6 +45,10 @@ class ResourceQuery
     private ?string $defaultSort = null;
     private array $defaultIncludes = [];
     private array $allowedCounts = [];
+    private array $allowedSums = [];
+    private array $allowedAvgs = [];
+    private array $allowedMins = [];
+    private array $allowedMaxs = [];
     private int $maxPerPage = 100;
     private int $perPage = 15;
 
@@ -151,6 +155,42 @@ class ResourceQuery
     public function allowCounts(array $relations): self
     {
         $this->allowedCounts = $relations;
+
+        return $this;
+    }
+
+    /**
+     * Whitelist relation aggregate operations the client may request.
+     *
+     * ?sum=products.price,orders.total  →  withSum('products', 'price') + withSum('orders', 'total')
+     *
+     * Each entry maps a relation name to an array of allowed columns.
+     * Only relation.column pairs in the allowlist are executed.
+     */
+    public function allowSum(array $relations): self
+    {
+        $this->allowedSums = $relations;
+
+        return $this;
+    }
+
+    public function allowAvg(array $relations): self
+    {
+        $this->allowedAvgs = $relations;
+
+        return $this;
+    }
+
+    public function allowMin(array $relations): self
+    {
+        $this->allowedMins = $relations;
+
+        return $this;
+    }
+
+    public function allowMax(array $relations): self
+    {
+        $this->allowedMaxs = $relations;
 
         return $this;
     }
@@ -276,6 +316,10 @@ class ResourceQuery
         $this->applySorts();
         $this->applyIncludes();
         $this->applyCounts();
+        $this->applySums();
+        $this->applyAvgs();
+        $this->applyMins();
+        $this->applyMaxs();
     }
 
     /**
@@ -399,6 +443,71 @@ class ResourceQuery
 
         if (! empty($includes)) {
             $this->builder->with($includes);
+        }
+    }
+
+    /**
+     * Read aggregate query parameters and apply matching Builder methods.
+     *
+     * URL format: ?sum=products.price,orders.total&avg=reviews.rating
+     * Only relation.column pairs listed in the allowlist pass through.
+     */
+    private function applySums(): void
+    {
+        $this->applyAggregate('sum', $this->allowedSums, 'withSum');
+    }
+
+    private function applyAvgs(): void
+    {
+        $this->applyAggregate('avg', $this->allowedAvgs, 'withAvg');
+    }
+
+    private function applyMins(): void
+    {
+        $this->applyAggregate('min', $this->allowedMins, 'withMin');
+    }
+
+    private function applyMaxs(): void
+    {
+        $this->applyAggregate('max', $this->allowedMaxs, 'withMax');
+    }
+
+    private function applyAggregate(string $param, array $allowed, string $builderMethod): void
+    {
+        $raw = request()->query($param, '');
+
+        if (empty($raw) || ! is_string($raw)) {
+            return;
+        }
+
+        foreach (explode(',', $raw) as $item) {
+            $item = trim($item);
+
+            if ($item === '') {
+                continue;
+            }
+
+            $parts = explode('.', $item, 2);
+
+            if (count($parts) !== 2) {
+                continue;
+            }
+
+            [$relation, $column] = $parts;
+
+            if (! array_key_exists($relation, $allowed)) {
+                continue;
+            }
+
+            $allowedColumns = $allowed[$relation];
+
+            if (is_string($allowedColumns)) {
+                $allowedColumns = [$allowedColumns];
+            }
+
+            if (in_array($column, $allowedColumns)) {
+                $this->builder->{$builderMethod}($relation, $column);
+            }
         }
     }
 

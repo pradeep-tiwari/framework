@@ -36,23 +36,23 @@ namespace Lightpack\Database\Lucid;
  */
 class ResourceQuery
 {
-    private string $modelClass;
-    private ?Builder $builder = null;
-    private array $allowedFilters = [];
-    private array $allowedSorts = [];
-    private array $allowedIncludes = [];
-    private array $allowedFields = [];
-    private ?string $defaultSort = null;
-    private array $defaultIncludes = [];
-    private array $allowedCounts = [];
-    private array $allowedSums = [];
-    private array $allowedAvgs = [];
-    private array $allowedMins = [];
-    private array $allowedMaxs = [];
-    private int $maxPerPage = 100;
-    private int $perPage = 15;
+    protected string $modelClass;
+    protected ?Builder $builder = null;
+    protected array $allowedFilters = [];
+    protected array $allowedSorts = [];
+    protected array $allowedIncludes = [];
+    protected array $allowedFields = [];
+    protected ?string $defaultSort = null;
+    protected array $defaultIncludes = [];
+    protected array $allowedCounts = [];
+    protected array $allowedSums = [];
+    protected array $allowedAvgs = [];
+    protected array $allowedMins = [];
+    protected array $allowedMaxs = [];
+    protected int $maxPerPage = 100;
+    protected int $perPage = 15;
 
-    private function __construct(string $modelClass)
+    protected function __construct(string $modelClass)
     {
         $this->modelClass = $modelClass;
     }
@@ -303,7 +303,7 @@ class ResourceQuery
      * Build the query by applying all parsed request parameters.
      * Idempotent — safe to call multiple times.
      */
-    private function build(): void
+    protected function build(): void
     {
         if ($this->builder !== null) {
             return;
@@ -325,7 +325,7 @@ class ResourceQuery
     /**
      * Read ?filter[key]=value from request and call the matching scope method.
      */
-    private function applyFilters(): void
+    protected function applyFilters(): void
     {
         $filters = request()->query('filter', []);
 
@@ -362,7 +362,7 @@ class ResourceQuery
      * Prefix a column with - for descending order. Multiple columns are
      * separated by commas: ?sort=-created_at,name
      */
-    private function applySorts(): void
+    protected function applySorts(): void
     {
         $sort = request()->query('sort');
 
@@ -397,7 +397,7 @@ class ResourceQuery
      * Read ?count=a,b from request and call Builder::withCount().
      * Delegates to parsedCounts() for the actual parsing.
      */
-    private function applyCounts(): void
+    protected function applyCounts(): void
     {
         $counts = $this->parsedCounts();
 
@@ -412,7 +412,7 @@ class ResourceQuery
      * Only allowedCounts pass through.
      * Safe to call without a DB connection — does not touch the Builder.
      */
-    private function parsedCounts(): array
+    protected function parsedCounts(): array
     {
         $requested = request()->query('count', '');
 
@@ -437,7 +437,7 @@ class ResourceQuery
      * Read ?include=a,b,a.b from request and call Builder::with().
      * Delegates to parsedIncludes() for the actual parsing.
      */
-    private function applyIncludes(): void
+    protected function applyIncludes(): void
     {
         $includes = $this->parsedIncludes();
 
@@ -452,27 +452,27 @@ class ResourceQuery
      * URL format: ?sum=products.price,orders.total&avg=reviews.rating
      * Only relation.column pairs listed in the allowlist pass through.
      */
-    private function applySums(): void
+    protected function applySums(): void
     {
         $this->applyAggregate('sum', $this->allowedSums, 'withSum');
     }
 
-    private function applyAvgs(): void
+    protected function applyAvgs(): void
     {
         $this->applyAggregate('avg', $this->allowedAvgs, 'withAvg');
     }
 
-    private function applyMins(): void
+    protected function applyMins(): void
     {
         $this->applyAggregate('min', $this->allowedMins, 'withMin');
     }
 
-    private function applyMaxs(): void
+    protected function applyMaxs(): void
     {
         $this->applyAggregate('max', $this->allowedMaxs, 'withMax');
     }
 
-    private function applyAggregate(string $param, array $allowed, string $builderMethod): void
+    protected function applyAggregate(string $param, array $allowed, string $builderMethod): void
     {
         $raw = request()->query($param, '');
 
@@ -517,7 +517,7 @@ class ResourceQuery
      * Merges with defaultIncludes. Only allowedIncludes pass through.
      * Safe to call without a DB connection — does not touch the Builder.
      */
-    private function parsedIncludes(): array
+    protected function parsedIncludes(): array
     {
         $includes = $this->defaultIncludes;
         $requested = request()->query('include', '');
@@ -548,7 +548,7 @@ class ResourceQuery
      * Relation fields are accepted for any allowed include.
      * Safe to call without a DB connection — does not touch the Builder.
      */
-    private function parsedFields(): array
+    protected function parsedFields(): array
     {
         $raw = request()->query('fields', null);
 
@@ -595,7 +595,7 @@ class ResourceQuery
     /**
      * Intersect requested field names with the allowed fields whitelist.
      */
-    private function filterAllowedFields(array $fields): array
+    protected function filterAllowedFields(array $fields): array
     {
         return array_values(
             array_intersect(
@@ -609,7 +609,7 @@ class ResourceQuery
      * Check if a key is an allowed include relation (including parent segments
      * of nested relations, e.g. 'posts' is valid when 'posts.comments' is allowed).
      */
-    private function isAllowedRelation(string $key): bool
+    protected function isAllowedRelation(string $key): bool
     {
         foreach ($this->allowedIncludes as $include) {
             if ($include === $key || str_starts_with($include, $key . '.')) {
@@ -623,7 +623,7 @@ class ResourceQuery
     /**
      * Resolve the per-page value from the request, capped at maxPerPage.
      */
-    private function resolvePerPage(): int
+    protected function resolvePerPage(): int
     {
         $perPage = (int) (request()->query('per_page') ?? request()->query('limit', $this->perPage));
 

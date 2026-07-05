@@ -206,7 +206,7 @@ Whitelist relation aggregates the client may request. Each maps a relation name 
 ```php
 Merchant::resourceQuery()
     ->allowSum(['products' => ['price'], 'orders' => ['total']])
-    ->allowAvg(['products' => ['rating'], 'reviews' => ['rating']])
+    ->allowAvg(['products' => ['price'], 'reviews' => ['rating']])
     ->allowMin(['products' => ['price']])
     ->allowMax(['products' => ['price']])
     ->paginateAndTransform();
@@ -216,7 +216,7 @@ The client requests them via dot-notation in the query string:
 
 ```
 ?sum=products.price,orders.total
-&avg=products.rating
+&avg=products.price,reviews.rating
 &min=products.price
 &max=products.price
 ```

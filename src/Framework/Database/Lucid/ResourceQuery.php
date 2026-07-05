@@ -33,8 +33,6 @@ namespace Lightpack\Database\Lucid;
  *       ->defaultSort('-created_at');
  *
  *   $pagination = $query->paginate();
- *
- *   return response()->json($pagination->transform($query->transformOptions()));
  */
 class ResourceQuery
 {
@@ -48,6 +46,7 @@ class ResourceQuery
     private array $defaultIncludes = [];
     private array $allowedCounts = [];
     private int $maxPerPage = 100;
+    private int $perPage = 15;
 
     private function __construct(string $modelClass)
     {
@@ -162,6 +161,17 @@ class ResourceQuery
     public function maxPerPage(int $max): self
     {
         $this->maxPerPage = $max;
+
+        return $this;
+    }
+
+    /**
+     * Default page size when the client sends no ?per_page parameter.
+     * Overrides the framework default of 15.
+     */
+    public function perPage(int $perPage): self
+    {
+        $this->perPage = $perPage;
 
         return $this;
     }
@@ -506,7 +516,7 @@ class ResourceQuery
      */
     private function resolvePerPage(): int
     {
-        $perPage = (int) (request()->query('per_page') ?? request()->query('limit', 15));
+        $perPage = (int) (request()->query('per_page') ?? request()->query('limit', $this->perPage));
 
         return min(max(1, $perPage), $this->maxPerPage);
     }

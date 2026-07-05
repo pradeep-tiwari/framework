@@ -188,6 +188,23 @@ class ResourceQueryOptionsTest extends TestCase
         $this->assertEquals(25, $m->invoke($rq));
     }
 
+    public function testCustomPerPageDefaultUsedWhenNoRequestParam()
+    {
+        $rq = ResourceQueryUser::resourceQuery()->perPage(50);
+        $m = (new \ReflectionClass($rq))->getMethod('resolvePerPage');
+        $m->setAccessible(true);
+        $this->assertEquals(50, $m->invoke($rq));
+    }
+
+    public function testRequestPerPageOverridesCustomDefault()
+    {
+        $_GET['per_page'] = '30';
+        $rq = ResourceQueryUser::resourceQuery()->perPage(50);
+        $m = (new \ReflectionClass($rq))->getMethod('resolvePerPage');
+        $m->setAccessible(true);
+        $this->assertEquals(30, $m->invoke($rq));
+    }
+
     public function testIncludeWithEmptySegmentsIsHandled()
     {
         $_GET['include'] = ',roles,';

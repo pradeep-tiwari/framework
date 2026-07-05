@@ -232,7 +232,7 @@ Only root-model fields are validated against `allowedFields`. Relation fields ar
 
 ### `paginate(): Pagination`
 
-Executes the query and returns a `Pagination` object. The current page is read from `?page` in the request. The per-page count is read from `?per_page`, falling back to `?limit`, then to the framework default of 15. Capped at `maxPerPage` (default 100) to prevent clients from requesting arbitrarily large result sets.
+Executes the query and returns a `Pagination` object. The current page is read from `?page` in the request. The per-page count is read from `?per_page`, falling back to `?limit`, then to the server default of 15 (customisable via `perPage()`). Capped at `maxPerPage` (default 100) to prevent clients from requesting arbitrarily large result sets.
 
 ```php
 $pagination = $rq->paginate();          // reads ?per_page from request, capped at 100
@@ -240,6 +240,7 @@ $pagination = $rq->paginate();          // reads ?per_page from request, capped 
 
 ```php
 Post::resourceQuery()
+    ->perPage(20)         // when client sends no ?per_page, use 20 instead of 15
     ->maxPerPage(50)      // a client sending ?per_page=500 will get 50 results
     ->paginate();
 ```
@@ -416,6 +417,7 @@ ModelClass::resourceQuery()
     // Server-side defaults
     ->defaultSort('-created_at')        // applied when ?sort is absent
     ->defaultIncludes(['relation'])     // always eager loaded
+    ->perPage(20)                       // default when ?per_page is absent (default: 15)
     ->maxPerPage(50)                    // caps ?per_page (default: 100)
 
     // Execution

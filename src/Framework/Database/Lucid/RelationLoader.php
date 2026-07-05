@@ -406,7 +406,7 @@ class RelationLoader
         $this->model->setEagerLoading(true);
         $query = $this->model->{$include}();
 
-        if ($this->model->getRelationType() === 'hasMany') {
+        if (in_array($this->model->getRelationType(), ['hasMany', 'hasManyThrough'])) {
             if ($constraint) {
                 $constraint($query);
             }
@@ -540,7 +540,7 @@ class RelationLoader
 
                 foreach ($items as $item) {
                     if ($item instanceof Collection) {
-                        $normalizedItems += $item->getItems();
+                        $normalizedItems = array_merge($normalizedItems, $item->getItems());
                     } else {
                         $normalizedItems[] = $item;
                     }

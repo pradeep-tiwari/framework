@@ -26,7 +26,8 @@ class AuthFilter implements FilterInterface
 
         if ('api' === $type && null === auth()->viaToken()) {
             return response()->setStatus(401)->json([
-                'error' => 'Unauthorized',
+                'success' => false,
+                'message' => 'Unauthorized',
             ]);
         }
     }

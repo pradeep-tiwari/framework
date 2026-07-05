@@ -162,7 +162,7 @@ class ExceptionRenderer
         $statusCode = $exc->getCode() ?: 500;
         $statusCode = (int) $statusCode;
         $message = $exc->getMessage() ?: 'We are facing some technical issues. We will be back soon.';
-        $errorTemplate = __DIR__ . '/templates/' . $this->getResponseFormat() . "/production/layout.php";
+        $errorTemplate = __DIR__ . '/templates/' . $this->getResponseFormat() . '/production.php';
         $statusCodeTemplate = __DIR__ . '/templates/' . $this->getResponseFormat() . "/production/{$statusCode}.php";
         $errorTemplateNotFound = ! file_exists($statusCodeTemplate);
 
@@ -172,6 +172,8 @@ class ExceptionRenderer
                 $errorTemplate = DIR_VIEWS . "/errors/{$statusCode}.php";
             } elseif (file_exists(DIR_VIEWS . '/errors/fallback.php')) {
                 $errorTemplate = DIR_VIEWS . "/errors/fallback.php";
+            } else {
+                $errorTemplate = __DIR__ . '/templates/http/production/layout.php';
             }
         }
 

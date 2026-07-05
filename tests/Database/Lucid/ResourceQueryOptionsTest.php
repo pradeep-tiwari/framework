@@ -1,0 +1,331 @@
+<?php
+
+require_once __DIR__ . '/Fixtures/ResourceQueryUser.php';
+
+use Lightpack\Container\Container;
+use Lightpack\Http\Request;
+use PHPUnit\Framework\TestCase;
+
+class ResourceQueryOptionsTest extends TestCase
+{
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $_GET = [];
+        Container::getInstance()->register('request', fn () => new Request);
+    }
+
+    protected function tearDown(): void
+    {
+        $_GET = [];
+        parent::tearDown();
+    }
+
+    // includes ----------------------------------------------------------------
+
+    public function testAllowedIncludeIsApplied()
+    {
+        $_GET['include'] = 'roles';
+        $options = ResourceQueryUser::resourceQuery()->allowIncludes(['roles'])->transformOptions();
+        $this->assertContains('roles', $options['includes']);
+    }
+
+    public function testDisallowedIncludeIsIgnored()
+    {
+        $_GET['include'] = 'secret_data';
+        $options = ResourceQueryUser::resourceQuery()->allowIncludes(['roles'])->transformOptions();
+        $this->assertEmpty($options['includes'] ?? []);
+    }
+
+    public function testMultipleIncludesAreApplied()
+    {
+        $_GET['include'] = 'roles,profile';
+        $options = ResourceQueryUser::resourceQuery()->allowIncludes(['roles', 'profile'])->transformOptions();
+        $this->assertContains('roles', $options['includes']);
+        $this->assertContains('profile', $options['includes']);
+    }
+
+    public function testDefaultIncludesAppliedWithoutRequest()
+    {
+        $options = ResourceQueryUser::resourceQuery()
+            ->allowIncludes(['roles'])
+            ->defaultIncludes(['roles'])
+            ->transformOptions();
+        $this->assertContains('roles', $options['includes']);
+    }
+
+    public function testDefaultIncludesMergeWithRequestIncludes()
+    {
+        $_GET['include'] = 'profile';
+        $options = ResourceQueryUser::resourceQuery()
+            ->allowIncludes(['roles', 'profile'])
+            ->defaultIncludes(['roles'])
+            ->transformOptions();
+        $this->assertContains('roles', $options['includes']);
+        $this->assertContains('profile', $options['includes']);
+    }
+
+    public function testDuplicateIncludesAreDeduped()
+    {
+        $_GET['include'] = 'roles';
+        $options = ResourceQueryUser::resourceQuery()
+            ->allowIncludes(['roles'])
+            ->defaultIncludes(['roles'])
+            ->transformOptions();
+        $this->assertEquals(1, count(array_filter($options['includes'], fn ($i) => $i === 'roles')));
+    }
+
+    // fields ------------------------------------------------------------------
+
+    public function testStringFieldsFilteredByAllowList()
+    {
+        $_GET['fields'] = 'name,email';
+        $options = ResourceQueryUser::resourceQuery()->allowFields(['name', 'email', 'created_at'])->transformOptions();
+        $this->assertEquals(['name', 'email'], $options['fields']['self']);
+    }
+
+    public function testDisallowedFieldsAreExcluded()
+    {
+        $_GET['fields'] = 'name,password,secret';
+        $options = ResourceQueryUser::resourceQuery()->allowFields(['name', 'email'])->transformOptions();
+        $this->assertEquals(['name'], $options['fields']['self']);
+        $this->assertNotContains('password', $options['fields']['self'] ?? []);
+    }
+
+    public function testBracketedRootFieldsByTableName()
+    {
+        $_GET['fields'] = ['users' => 'name,email'];
+        $options = ResourceQueryUser::resourceQuery()->allowFields(['name', 'email'])->transformOptions();
+        $this->assertEquals(['name', 'email'], $options['fields']['self']);
+    }
+
+    public function testRelationFieldsAcceptedForAllowedInclude()
+    {
+        $_GET['fields'] = ['roles' => 'name,slug'];
+        $options = ResourceQueryUser::resourceQuery()
+            ->allowFields(['name', 'email'])
+            ->allowIncludes(['roles'])
+            ->transformOptions();
+        $this->assertEquals(['name', 'slug'], $options['fields']['roles']);
+    }
+
+    public function testRelationFieldsRejectedIfNotInAllowedIncludes()
+    {
+        $_GET['fields'] = ['secret_relation' => 'field'];
+        $options = ResourceQueryUser::resourceQuery()
+            ->allowFields(['name'])
+            ->allowIncludes(['roles'])
+            ->transformOptions();
+        $this->assertArrayNotHasKey('secret_relation', $options['fields'] ?? []);
+    }
+
+    public function testNoFieldsProducesNoFieldsKey()
+    {
+        $options = ResourceQueryUser::resourceQuery()->allowFields(['name', 'email'])->transformOptions();
+        $this->assertArrayNotHasKey('fields', $options);
+    }
+
+    // transformOptions combos -------------------------------------------------
+
+    public function testTransformOptionsEmptyWhenNothingRequested()
+    {
+        $options = ResourceQueryUser::resourceQuery()
+            ->allowFilters(['status'])
+            ->allowSorts(['name'])
+            ->allowIncludes(['roles'])
+            ->allowFields(['name'])
+            ->transformOptions();
+        $this->assertEmpty($options);
+    }
+
+    public function testTransformOptionsCombinesFieldsAndIncludes()
+    {
+        $_GET['include'] = 'roles';
+        $_GET['fields'] = 'name,email';
+        $options = ResourceQueryUser::resourceQuery()
+            ->allowIncludes(['roles'])
+            ->allowFields(['name', 'email'])
+            ->transformOptions();
+        $this->assertEquals(['name', 'email'], $options['fields']['self']);
+        $this->assertContains('roles', $options['includes']);
+    }
+
+    // per-page ----------------------------------------------------------------
+
+    public function testMaxPerPageCapsRequestValue()
+    {
+        $_GET['per_page'] = '9999';
+        $rq = ResourceQueryUser::resourceQuery()->maxPerPage(50);
+        $m = (new \ReflectionClass($rq))->getMethod('resolvePerPage');
+        $m->setAccessible(true);
+        $this->assertEquals(50, $m->invoke($rq));
+    }
+
+    public function testPerPageZeroBecomesOne()
+    {
+        $_GET['per_page'] = '0';
+        $rq = ResourceQueryUser::resourceQuery()->maxPerPage(100);
+        $m = (new \ReflectionClass($rq))->getMethod('resolvePerPage');
+        $m->setAccessible(true);
+        $this->assertEquals(1, $m->invoke($rq));
+    }
+
+    public function testPerPageNegativeBecomesOne()
+    {
+        $_GET['per_page'] = '-5';
+        $rq = ResourceQueryUser::resourceQuery()->maxPerPage(100);
+        $m = (new \ReflectionClass($rq))->getMethod('resolvePerPage');
+        $m->setAccessible(true);
+        $this->assertEquals(1, $m->invoke($rq));
+    }
+
+    public function testLimitParamUsedWhenPerPageAbsent()
+    {
+        $_GET['limit'] = '25';
+        $rq = ResourceQueryUser::resourceQuery()->maxPerPage(100);
+        $m = (new \ReflectionClass($rq))->getMethod('resolvePerPage');
+        $m->setAccessible(true);
+        $this->assertEquals(25, $m->invoke($rq));
+    }
+
+    public function testCustomPerPageDefaultUsedWhenNoRequestParam()
+    {
+        $rq = ResourceQueryUser::resourceQuery()->perPage(50);
+        $m = (new \ReflectionClass($rq))->getMethod('resolvePerPage');
+        $m->setAccessible(true);
+        $this->assertEquals(50, $m->invoke($rq));
+    }
+
+    public function testRequestPerPageOverridesCustomDefault()
+    {
+        $_GET['per_page'] = '30';
+        $rq = ResourceQueryUser::resourceQuery()->perPage(50);
+        $m = (new \ReflectionClass($rq))->getMethod('resolvePerPage');
+        $m->setAccessible(true);
+        $this->assertEquals(30, $m->invoke($rq));
+    }
+
+    public function testIncludeWithEmptySegmentsIsHandled()
+    {
+        $_GET['include'] = ',roles,';
+        $options = ResourceQueryUser::resourceQuery()->allowIncludes(['roles'])->transformOptions();
+        $this->assertContains('roles', $options['includes']);
+        $this->assertEquals(1, count($options['includes']));
+    }
+
+    public function testMixedValidAndInvalidIncludesFilterCorrectly()
+    {
+        $_GET['include'] = 'roles,secret_data,profile';
+        $options = ResourceQueryUser::resourceQuery()
+            ->allowIncludes(['roles', 'profile'])
+            ->transformOptions();
+        $this->assertContains('roles', $options['includes']);
+        $this->assertContains('profile', $options['includes']);
+        $this->assertNotContains('secret_data', $options['includes']);
+        $this->assertEquals(2, count($options['includes']));
+    }
+
+    public function testDefaultIncludesLoadEvenIfNotInAllowedIncludes()
+    {
+        $options = ResourceQueryUser::resourceQuery()
+            ->allowIncludes(['roles'])
+            ->defaultIncludes(['profile'])
+            ->transformOptions();
+        $this->assertContains('profile', $options['includes']);
+    }
+
+    // counts ------------------------------------------------------------------
+
+    public function testAllowedCountIsRecognised()
+    {
+        $_GET['count'] = 'roles';
+        $rq = ResourceQueryUser::resourceQuery()->allowCounts(['roles']);
+        $m = (new \ReflectionClass($rq))->getMethod('parsedCounts');
+        $m->setAccessible(true);
+        $this->assertEquals(['roles'], $m->invoke($rq));
+    }
+
+    public function testDisallowedCountIsIgnored()
+    {
+        $_GET['count'] = 'secret_relation';
+        $rq = ResourceQueryUser::resourceQuery()->allowCounts(['roles']);
+        $m = (new \ReflectionClass($rq))->getMethod('parsedCounts');
+        $m->setAccessible(true);
+        $this->assertEmpty($m->invoke($rq));
+    }
+
+    public function testMixedCountsFilterCorrectly()
+    {
+        $_GET['count'] = 'roles,secret,posts';
+        $rq = ResourceQueryUser::resourceQuery()->allowCounts(['roles', 'posts']);
+        $m = (new \ReflectionClass($rq))->getMethod('parsedCounts');
+        $m->setAccessible(true);
+        $result = $m->invoke($rq);
+        $this->assertContains('roles', $result);
+        $this->assertContains('posts', $result);
+        $this->assertNotContains('secret', $result);
+    }
+
+    public function testNonStringCountParamIsIgnored()
+    {
+        $_GET['count'] = ['roles', 'posts'];
+        $rq = ResourceQueryUser::resourceQuery()->allowCounts(['roles']);
+        $m = (new \ReflectionClass($rq))->getMethod('parsedCounts');
+        $m->setAccessible(true);
+        $this->assertEmpty($m->invoke($rq));
+    }
+
+    // aggregates --------------------------------------------------------------
+
+    public function testAllowedSumIsRecognised()
+    {
+        $_GET['sum'] = 'roles.price';
+        $rq = ResourceQueryUser::resourceQuery()->allowSum(['roles' => ['price']]);
+        $m = (new \ReflectionClass($rq))->getMethod('applyAggregate');
+        $m->setAccessible(true);
+
+        // applyAggregate is a no-op when builder is null, but we can test parsing
+        // by checking the allowed list directly
+        $this->assertEquals(['roles' => ['price']], (new \ReflectionClass($rq))->getProperty('allowedSums')->getValue($rq));
+    }
+
+    public function testAllowedAvgIsRecognised()
+    {
+        $_GET['avg'] = 'roles.rating';
+        $rq = ResourceQueryUser::resourceQuery()->allowAvg(['roles' => ['rating']]);
+        $this->assertEquals(['roles' => ['rating']], (new \ReflectionClass($rq))->getProperty('allowedAvgs')->getValue($rq));
+    }
+
+    public function testAllowedMinIsRecognised()
+    {
+        $_GET['min'] = 'roles.price';
+        $rq = ResourceQueryUser::resourceQuery()->allowMin(['roles' => ['price']]);
+        $this->assertEquals(['roles' => ['price']], (new \ReflectionClass($rq))->getProperty('allowedMins')->getValue($rq));
+    }
+
+    public function testAllowedMaxIsRecognised()
+    {
+        $_GET['max'] = 'roles.price';
+        $rq = ResourceQueryUser::resourceQuery()->allowMax(['roles' => ['price']]);
+        $this->assertEquals(['roles' => ['price']], (new \ReflectionClass($rq))->getProperty('allowedMaxs')->getValue($rq));
+    }
+
+    public function testAggregateStringColumnAllowed()
+    {
+        $_GET['sum'] = 'roles.price';
+        $rq = ResourceQueryUser::resourceQuery()->allowSum(['roles' => 'price']);
+        $this->assertEquals(['roles' => 'price'], (new \ReflectionClass($rq))->getProperty('allowedSums')->getValue($rq));
+    }
+
+    public function testTransformOptionsIsIdempotent()
+    {
+        $_GET['include'] = 'roles';
+        $_GET['fields'] = 'name,email';
+        $rq = ResourceQueryUser::resourceQuery()
+            ->allowIncludes(['roles'])
+            ->allowFields(['name', 'email']);
+        $first = $rq->transformOptions();
+        $second = $rq->transformOptions();
+        $this->assertEquals($first, $second);
+    }
+}

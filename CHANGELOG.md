@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.3] - 2026-10-17
+
+### Fixed
+
+- **Dumper**: CLI `dd()` now dumps **all** arguments (was silently dropping everything after the first). Color is now properly reset after output.
+- **Dumper**: `printDump()` is deprecated. Use `varDump()` instead.
+
 ## [0.16.2] - 2026-07-05
 
 ### Fixed

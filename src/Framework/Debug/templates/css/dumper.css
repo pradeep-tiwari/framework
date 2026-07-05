@@ -1,20 +1,108 @@
 .container {
-    line-height: 1.6;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 11px;
+    line-height: 1.4;
+    color: #2d2d2d;
 }
 
 .bg-dumper {
-    background-color: #2E79FF;
+    background-color: #D91E18;
 }
 
-.code-preview {
-    background-color: beige;
+.dump-header {
+    background-color: #D91E18;
+    color: #fff;
+    padding: 8px 12px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.dump-meta {
+    opacity: 0.9;
+}
+
+.dump-details {
     border-bottom: 1px solid #cd5c5c42;
 }
 
-.code-preview:last-child {
-    border-bottom: 0;
+.dump-summary {
+    padding: 6px 12px;
+    cursor: pointer;
+    font-weight: 600;
+    user-select: none;
+    color: #000;
+    background-color: beige;
+}
+
+.dump-summary:hover {
+    background-color: rgba(15, 118, 110, 0.08);
+}
+
+.code-preview {
+    padding: 8px 12px;
+    border-bottom: 1px solid #cd5c5c42;
+}
+
+.dump-node {
+    margin-left: 4ch;
+    border-left: 1px dotted #b2bec3;
+}
+
+.dump-node-summary {
+    cursor: pointer;
+    color: #3578e5;
+    font-weight: 600;
+    padding: 2px 0;
+}
+
+.dump-node-summary:hover {
+    opacity: 0.8;
+}
+
+.dump-row {
+    padding: 2px 0 2px 6px;
+    margin: 1px 0;
+}
+
+.dump-row:hover {
+    /* background-color: rgba(46, 121, 255, 0.06); */
+}
+
+.dump-key {
+    color: #d63031;
+}
+
+.dump-arrow {
+    color: #636e72;
+}
+
+.dump-string {
+    color: #2d3436;
+}
+
+.dump-number {
+    color: #00b894;
+}
+
+.dump-bool {
+    color: #e17055;
+}
+
+.dump-null {
+    color: #e17055;
+}
+
+.dump-type {
+    color: #3578e5;
+}
+
+.dump-other {
+    color: #2d3436;
 }
 
 pre {
-    margin-bottom: 0;
+    margin: 0;
 }

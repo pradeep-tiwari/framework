@@ -406,7 +406,7 @@ class RelationLoader
         $this->model->setEagerLoading(true);
         $query = $this->model->{$include}();
 
-        if ($this->model->getRelationType() === 'hasMany') {
+        if (in_array($this->model->getRelationType(), ['hasMany', 'hasManyThrough'])) {
             if ($constraint) {
                 $constraint($query);
             }

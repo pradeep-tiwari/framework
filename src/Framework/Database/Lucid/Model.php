@@ -408,6 +408,11 @@ class Model implements JsonSerializable
         return $builder;
     }
 
+    public static function resourceQuery(): ResourceQuery
+    {
+        return ResourceQuery::for(static::class);
+    }
+
     public static function queryWithoutScopes(): Builder
     {
         $model = new static;

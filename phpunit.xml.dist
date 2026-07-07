@@ -72,6 +72,9 @@
         <testsuite name="Mfa">
             <directory>./tests/Mfa</directory>
         </testsuite>
+        <testsuite name="Meter">
+            <directory>./tests/Meter</directory>
+        </testsuite>
         <testsuite name="Integration">
             <directory>./tests/Integration</directory>
         </testsuite>

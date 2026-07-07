@@ -185,6 +185,7 @@ final class App
             \Lightpack\Redis\RedisProvider::class,
             \Lightpack\Cable\CableProvider::class,
             \Lightpack\Captcha\CaptchaProvider::class,
+            \Lightpack\Meter\MeterProvider::class,
             \Lightpack\Pdf\PdfProvider::class,
             \Lightpack\Sms\SmsProvider::class,
             \Lightpack\Mfa\MfaProvider::class,

@@ -121,6 +121,7 @@ PHP;
             'auth' => \Lightpack\Console\Views\Config\AuthView::class,
             'cable' => \Lightpack\Console\Views\Config\CableView::class,
             'captcha' => \Lightpack\Console\Views\Config\CaptchaView::class,
+            'meter' => \Lightpack\Meter\Console\Views\Config\MeterView::class,
             'cookies' => \Lightpack\Console\Views\Config\CookiesView::class,
             'cors' => \Lightpack\Console\Views\Config\CorsView::class,
             'db' => \Lightpack\Console\Views\Config\DbView::class,

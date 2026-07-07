@@ -171,6 +171,7 @@ class CreateMigration extends Command
             'users' => \Lightpack\Console\Views\Migrations\UsersView::class,
             'cache' => \Lightpack\Console\Views\Migrations\CacheView::class,
             'cable' => \Lightpack\Console\Views\Migrations\CableView::class,
+            'meter' => \Lightpack\Meter\Console\Views\Migrations\MeterView::class,
             'audits' => \Lightpack\Console\Views\Migrations\AuditsView::class,
             'social' => \Lightpack\Console\Views\Migrations\SocialView::class,
             'uploads' => \Lightpack\Console\Views\Migrations\UploadsView::class,

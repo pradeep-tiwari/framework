@@ -545,6 +545,16 @@ if (! function_exists('limiter')) {
     }
 }
 
+if (! function_exists('meter')) {
+    /**
+     * Return a meter instance for tracking usage against a quota.
+     */
+    function meter(string $name, ?string $period = null): \Lightpack\Meter\Meter
+    {
+        return app('meter.manager')->meter($name, $period);
+    }
+}
+
 if (! function_exists('lock')) {
     /**
      * Return an instance of lock utility.

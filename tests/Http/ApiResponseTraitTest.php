@@ -96,7 +96,7 @@ final class ApiResponseTraitTest extends TestCase
 
         $body = json_decode($response->getBody(), true);
         $this->assertFalse($body['success']);
-        $this->assertEquals('Resource not found.', $body['message']);
+        $this->assertEquals('Resource not found', $body['message']);
     }
 
     public function testRespondNotFoundWithCustomMessage()
@@ -116,7 +116,7 @@ final class ApiResponseTraitTest extends TestCase
 
         $body = json_decode($response->getBody(), true);
         $this->assertFalse($body['success']);
-        $this->assertEquals('Unauthorized.', $body['message']);
+        $this->assertEquals('Unauthorized', $body['message']);
     }
 
     public function testRespondForbidden()
@@ -127,7 +127,7 @@ final class ApiResponseTraitTest extends TestCase
 
         $body = json_decode($response->getBody(), true);
         $this->assertFalse($body['success']);
-        $this->assertEquals('Forbidden.', $body['message']);
+        $this->assertEquals('Forbidden', $body['message']);
     }
 
     public function testRespondBadRequest()
@@ -151,7 +151,7 @@ final class ApiResponseTraitTest extends TestCase
 
         $body = json_decode($response->getBody(), true);
         $this->assertFalse($body['success']);
-        $this->assertEquals('Validation failed.', $body['message']);
+        $this->assertEquals('Validation failed', $body['message']);
         $this->assertEquals($errors, $body['errors']);
     }
 
@@ -175,7 +175,7 @@ final class ApiResponseTraitTest extends TestCase
 
         $body = json_decode($response->getBody(), true);
         $this->assertFalse($body['success']);
-        $this->assertEquals('Method not allowed.', $body['message']);
+        $this->assertEquals('Method not allowed', $body['message']);
     }
 
     public function testRespondConflict()
@@ -197,7 +197,7 @@ final class ApiResponseTraitTest extends TestCase
 
         $body = json_decode($response->getBody(), true);
         $this->assertFalse($body['success']);
-        $this->assertEquals('Too many requests.', $body['message']);
+        $this->assertEquals('Too many requests', $body['message']);
     }
 
     public function testRespondErrorWithDefaults()
@@ -208,7 +208,7 @@ final class ApiResponseTraitTest extends TestCase
 
         $body = json_decode($response->getBody(), true);
         $this->assertFalse($body['success']);
-        $this->assertEquals('An error occurred.', $body['message']);
+        $this->assertEquals('An error occurred', $body['message']);
         $this->assertArrayNotHasKey('data', $body);
         $this->assertArrayNotHasKey('errors', $body);
     }

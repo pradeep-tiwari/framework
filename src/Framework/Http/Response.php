@@ -243,8 +243,9 @@ class Response
      * This method sets the HTTP response content as JSON.
      *
      * @param  mixed  $data The data to be encoded as JSON.
+     * @param  int|null  $status Optional HTTP status code.
      */
-    public function json($data): self
+    public function json($data, ?int $status = null): self
     {
         $json = json_encode($data);
 
@@ -254,6 +255,10 @@ class Response
 
         $this->setType('application/json');
         $this->setBody($json);
+
+        if ($status !== null) {
+            $this->setStatus($status);
+        }
 
         return $this;
     }

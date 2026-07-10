@@ -34,7 +34,7 @@ class PresenceController
         $channel = request()->input('channel');
 
         if (empty($userId) || empty($channel)) {
-            return response()->json(['success' => false, 'message' => 'User ID and channel are required'], 400);
+            return response()->setStatus(400)->json(['success' => false, 'message' => 'User ID and channel are required']);
         }
 
         $this->presence->join($userId, $channel);
@@ -51,7 +51,7 @@ class PresenceController
         $channel = request()->input('channel');
 
         if (empty($userId) || empty($channel)) {
-            return response()->json(['success' => false, 'message' => 'User ID and channel are required'], 400);
+            return response()->setStatus(400)->json(['success' => false, 'message' => 'User ID and channel are required']);
         }
 
         $this->presence->leave($userId, $channel);
@@ -68,7 +68,7 @@ class PresenceController
         $channel = request()->input('channel');
 
         if (empty($userId) || empty($channel)) {
-            return response()->json(['success' => false, 'message' => 'User ID and channel are required'], 400);
+            return response()->setStatus(400)->json(['success' => false, 'message' => 'User ID and channel are required']);
         }
 
         $this->presence->heartbeat($userId, $channel);
@@ -84,7 +84,7 @@ class PresenceController
         $channel = request()->input('channel');
 
         if (empty($channel)) {
-            return response()->json(['success' => false, 'message' => 'Channel is required'], 400);
+            return response()->setStatus(400)->json(['success' => false, 'message' => 'Channel is required']);
         }
 
         $users = $this->presence->getUsers($channel);

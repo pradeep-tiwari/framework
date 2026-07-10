@@ -109,7 +109,7 @@ class SocialAuthController
         $code = $e->getCode() ?: 500;
 
         if (request()->expectsJson()) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], $code);
+            return response()->setStatus($code)->json(['success' => false, 'message' => $e->getMessage()]);
         }
 
         session()->flash('error', $e->getMessage());

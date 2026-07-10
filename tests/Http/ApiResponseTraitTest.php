@@ -174,23 +174,53 @@ final class ApiResponseTraitTest extends TestCase
 
     public function testRespondPaginate()
     {
-        $data = [['id' => 1], ['id' => 2]];
-        $pagination = [
-            'total' => 100,
-            'per_page' => 20,
-            'current_page' => 2,
-            'last_page' => 5,
+        $paginated = [
+            'data' => [['id' => 1], ['id' => 2]],
+            'meta' => [
+                'current_page' => 2,
+                'per_page' => 20,
+                'total' => 100,
+                'total_pages' => 5,
+            ],
+            'links' => [
+                'first' => '/users?page=1',
+                'last' => '/users?page=5',
+                'prev' => '/users?page=1',
+                'next' => '/users?page=3',
+            ],
         ];
 
-        $response = $this->controller->respondPaginate($data, $pagination, 'Users list');
+        $response = $this->controller->respondPaginate($paginated, 'Users list');
 
         $this->assertEquals(200, $response->getStatus());
 
         $body = json_decode($response->getBody(), true);
         $this->assertTrue($body['success']);
         $this->assertEquals('Users list', $body['message']);
-        $this->assertEquals($data, $body['data']);
-        $this->assertEquals($pagination, $body['meta']['pagination']);
+        $this->assertEquals($paginated['data'], $body['data']);
+        $this->assertEquals($paginated['meta'], $body['meta']);
+        $this->assertEquals($paginated['links'], $body['links']);
+    }
+
+    public function testRespondPaginateWithoutLinks()
+    {
+        $paginated = [
+            'data' => [['id' => 1]],
+            'meta' => [
+                'current_page' => 1,
+                'per_page' => 20,
+                'total' => 50,
+                'total_pages' => 3,
+            ],
+        ];
+
+        $response = $this->controller->respondPaginate($paginated);
+
+        $body = json_decode($response->getBody(), true);
+        $this->assertTrue($body['success']);
+        $this->assertEquals($paginated['data'], $body['data']);
+        $this->assertEquals($paginated['meta'], $body['meta']);
+        $this->assertArrayNotHasKey('links', $body);
     }
 
     public function testRespondSuccessWithEmptyData()

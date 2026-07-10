@@ -29,6 +29,7 @@ class Response
         405 => 'Method Not Allowed',
         409 => 'Conflict',
         422 => 'Unprocessable Entity',
+        429 => 'Too Many Requests',
 
         // 5xx Server Errors
         500 => 'Internal Server Error',

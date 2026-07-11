@@ -178,7 +178,7 @@ trait ApiResponseTrait
             'links' => $paginated['links'] ?? null,
         ];
 
-        return response()->setStatus(200)->json($this->filterNulls($payload));
+        return response()->json($this->filterNulls($payload));
     }
 
     /**

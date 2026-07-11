@@ -39,16 +39,6 @@ trait ApiResponseTrait
     }
 
     /**
-     * Send a 304 Not Modified response.
-     */
-    public function respondNotModified(): Response
-    {
-        return response()
-            ->setStatus(304)
-            ->setBody('');
-    }
-
-    /**
      * Send a 404 Not Found response.
      *
      * @param string|null $message Optional error message.
@@ -109,36 +99,6 @@ trait ApiResponseTrait
     public function respondAccepted($data, ?string $message = null): Response
     {
         return $this->respondSuccess($data, $message, 202);
-    }
-
-    /**
-     * Send a 405 Method Not Allowed response.
-     *
-     * @param string|null $message Optional error message.
-     */
-    public function respondMethodNotAllowed(?string $message = null): Response
-    {
-        return $this->respondError($message ?? 'Method not allowed', 405);
-    }
-
-    /**
-     * Send a 409 Conflict response.
-     *
-     * @param string|null $message Optional error message.
-     */
-    public function respondConflict(?string $message = null): Response
-    {
-        return $this->respondError($message ?? 'Conflict', 409);
-    }
-
-    /**
-     * Send a 429 Too Many Requests response.
-     *
-     * @param string|null $message Optional error message.
-     */
-    public function respondTooManyRequests(?string $message = null): Response
-    {
-        return $this->respondError($message ?? 'Too many requests', 429);
     }
 
     /**

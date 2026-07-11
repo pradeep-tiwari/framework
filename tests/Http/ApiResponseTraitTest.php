@@ -80,14 +80,6 @@ final class ApiResponseTraitTest extends TestCase
         $this->assertEquals('application/json', $response->getType());
     }
 
-    public function testRespondNotModified()
-    {
-        $response = $this->controller->respondNotModified();
-
-        $this->assertEquals(304, $response->getStatus());
-        $this->assertEquals('', $response->getBody());
-    }
-
     public function testRespondNotFound()
     {
         $response = $this->controller->respondNotFound();
@@ -165,39 +157,6 @@ final class ApiResponseTraitTest extends TestCase
         $this->assertTrue($body['success']);
         $this->assertEquals('Job queued', $body['message']);
         $this->assertEquals(['job_id' => 123], $body['data']);
-    }
-
-    public function testRespondMethodNotAllowed()
-    {
-        $response = $this->controller->respondMethodNotAllowed();
-
-        $this->assertEquals(405, $response->getStatus());
-
-        $body = json_decode($response->getBody(), true);
-        $this->assertFalse($body['success']);
-        $this->assertEquals('Method not allowed', $body['message']);
-    }
-
-    public function testRespondConflict()
-    {
-        $response = $this->controller->respondConflict('Email already exists');
-
-        $this->assertEquals(409, $response->getStatus());
-
-        $body = json_decode($response->getBody(), true);
-        $this->assertFalse($body['success']);
-        $this->assertEquals('Email already exists', $body['message']);
-    }
-
-    public function testRespondTooManyRequests()
-    {
-        $response = $this->controller->respondTooManyRequests();
-
-        $this->assertEquals(429, $response->getStatus());
-
-        $body = json_decode($response->getBody(), true);
-        $this->assertFalse($body['success']);
-        $this->assertEquals('Too many requests', $body['message']);
     }
 
     public function testRespondErrorWithDefaults()

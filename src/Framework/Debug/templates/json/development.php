@@ -14,6 +14,7 @@ if (isset($ex)) {
 echo json_encode([
     'success' => false,
     'code' => $code,
+    'message' => $message,
     'error' => [
         'type' => $type ?? 'Exception',
         'class' => isset($ex) ? get_class($ex) : null,

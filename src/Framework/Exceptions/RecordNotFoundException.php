@@ -6,6 +6,6 @@ class RecordNotFoundException extends HttpException
 {
     public function __construct()
     {
-        parent::__construct('Requested record/entity does not exists.', 404);
+        parent::__construct('Record not found.', 404);
     }
 }

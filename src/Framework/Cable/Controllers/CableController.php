@@ -34,13 +34,13 @@ class CableController
         $lastId = (int) request()->input('lastId', 0);
 
         if (empty($channel)) {
-            return response()->json(['success' => false, 'message' => 'Channel is required'], 400);
+            return response()->setStatus(400)->json(['success' => false, 'message' => 'Channel is required']);
         }
 
         $messages = $this->cable->getMessages($channel, $lastId);
 
         if (empty($messages)) {
-            return response()->json([], 304); // Not Modified
+            return response()->setStatus(304)->json([]); // Not Modified
         }
 
         return response()->json($messages);

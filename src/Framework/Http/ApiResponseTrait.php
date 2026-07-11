@@ -160,28 +160,6 @@ trait ApiResponseTrait
     }
 
     /**
-     * Send a paginated successful response.
-     *
-     * Expects the paginated array to contain data, meta, and links.
-     * ['data' => ..., 'meta' => ..., 'links' => ...].
-     *
-     * @param array $paginated Pagination result containing data, meta, and links
-     * @param string|null $message Optional human-readable message.
-     */
-    public function respondPaginate(array $paginated, ?string $message = null): Response
-    {
-        $payload = [
-            'success' => true,
-            'message' => $message,
-            'data' => $paginated['data'] ?? [],
-            'meta' => $paginated['meta'] ?? null,
-            'links' => $paginated['links'] ?? null,
-        ];
-
-        return response()->json($this->filterNulls($payload));
-    }
-
-    /**
      * Build the standard API envelope and encode it as JSON.
      */
     protected function respond(bool $success, $data, ?string $message, ?array $errors, int $status): Response

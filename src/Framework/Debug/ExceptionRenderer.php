@@ -194,6 +194,7 @@ class ExceptionRenderer
             'error_template_not_found' => $errorTemplateNotFound,
             'message' => $message,
             'template' => $template ?? null,
+            'ex' => $exc,
         ]);
     }
 

@@ -45,7 +45,7 @@ trait ApiResponseTrait
      */
     public function respondNotFound(?string $message = null): Response
     {
-        return $this->respondError($message ?? 'Resource not found', 404);
+        return $this->respondError($message ?? 'Resource not found.', 404);
     }
 
     /**
@@ -55,7 +55,7 @@ trait ApiResponseTrait
      */
     public function respondUnauthorized(?string $message = null): Response
     {
-        return $this->respondError($message ?? 'Unauthorized', 401);
+        return $this->respondError($message ?? 'Unauthorized.', 401);
     }
 
     /**
@@ -65,7 +65,7 @@ trait ApiResponseTrait
      */
     public function respondForbidden(?string $message = null): Response
     {
-        return $this->respondError($message ?? 'Forbidden', 403);
+        return $this->respondError($message ?? 'Forbidden.', 403);
     }
 
     /**
@@ -76,7 +76,7 @@ trait ApiResponseTrait
      */
     public function respondBadRequest(?string $message = null, array $errors = []): Response
     {
-        return $this->respondError($message ?? 'Bad request', 400, $errors);
+        return $this->respondError($message ?? 'Bad request.', 400, $errors);
     }
 
     /**
@@ -87,7 +87,7 @@ trait ApiResponseTrait
      */
     public function respondValidationError(array $errors, ?string $message = null): Response
     {
-        return $this->respondError($message ?? 'Validation failed', 422, $errors);
+        return $this->respondError($message ?? 'Validation failed.', 422, $errors);
     }
 
     /**
@@ -113,7 +113,7 @@ trait ApiResponseTrait
         return $this->respond(
             false,
             null,
-            $message ?? 'An error occurred',
+            $message ?? 'An error occurred.',
             $errors ?: null,
             $status
         );

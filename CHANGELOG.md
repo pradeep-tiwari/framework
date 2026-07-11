@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.17.0] - 2026-07-11
+
+### Features
+
+- **ApiResponseTrait**: New `Lightpack\Http\ApiResponseTrait` for consistent `{success, message, data, errors}` JSON API responses.
+
+### Fixed
+
+- **ExceptionRenderer**: Production JSON errors now expose `HttpException` 4xx messages instead of a generic "technical issues" message.
+- **RecordNotFoundException**: Message corrected to "Record not found.".
+- **Debug JSON**: Development error responses now include the `message` field.
+
 ## [0.16.3] - 2026-10-17
 
 ### Fixed

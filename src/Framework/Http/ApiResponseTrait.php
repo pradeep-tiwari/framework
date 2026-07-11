@@ -178,7 +178,7 @@ trait ApiResponseTrait
             'links' => $paginated['links'] ?? null,
         ];
 
-        return response()->json($this->filterNulls($payload))->setStatus(200);
+        return response()->setStatus(200)->json($this->filterNulls($payload));
     }
 
     /**
@@ -193,7 +193,7 @@ trait ApiResponseTrait
             'errors' => $errors,
         ];
 
-        return response()->json($this->filterNulls($payload))->setStatus($status);
+        return response()->setStatus($status)->json($this->filterNulls($payload));
     }
 
     /**

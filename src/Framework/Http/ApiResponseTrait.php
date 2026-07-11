@@ -173,7 +173,7 @@ trait ApiResponseTrait
         $payload = [
             'success' => true,
             'message' => $message,
-            'data' => $paginated['data'],
+            'data' => $paginated['data'] ?? [],
             'meta' => $paginated['meta'] ?? null,
             'links' => $paginated['links'] ?? null,
         ];

@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.17.2] - 2026-07-24
+
+### Fixed
+
+- **AttributeHandler**: Fixed double-uncast regression in `toDatabaseArray()` for array-casted attributes.
+- **AttributeHandler**: `has()`/`get()` now use `property_exists()` instead of `isset()` to correctly detect null values.
+- **RelationLoader**: Eager-loaded relations stored via `setVirtualAttribute()` to prevent leaking into SQL on save.
+- **Model::clone()**: Virtual attributes now excluded when cloning to prevent DB write errors.
+- **Builder**: Subquery aggregate aliases marked as virtual after hydration to exclude from DB operations.
+- **RelationLoader**: `withCount`/`withSum`/`withAvg`/`withMin`/`withMax` results now use `setVirtualAttribute()`.
+
 ## [0.17.1] - 2026-07-24
 
 ### Fixed

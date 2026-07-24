@@ -16,6 +16,11 @@ class Builder extends Query
      */
     protected $relationLoader;
 
+    /**
+     * @var array Aliases injected via subqueries (to be marked virtual after hydration)
+     */
+    protected array $virtualAliases = [];
+
     public function __construct(Model $model)
     {
         $this->model = $model;
@@ -113,6 +118,7 @@ class Builder extends Query
         foreach ($results as $result) {
             $model = new $modelClass;
             $model->setAttributes((array) $result);
+            $this->markVirtualAttributes($model);
             $models[] = $model;
         }
 
@@ -131,6 +137,7 @@ class Builder extends Query
     {
         $model = clone $this->model;
         $model->setAttributes($attributes);
+        $this->markVirtualAttributes($model);
 
         $collection = new Collection($model);
         $this->relationLoader->loadRelations($collection);
@@ -501,10 +508,25 @@ class Builder extends Query
     private function applySubqueryAlias(string $sql, string $alias): void
     {
         $this->components['select_raw'][] = "({$sql}) AS {$alias}";
+        $this->virtualAliases[] = $alias;
 
         if (empty($this->components['columns'])) {
             // MySQL rejects a bare subquery in SELECT without at least one named column.
             $this->select('*');
+        }
+    }
+
+    /**
+     * Mark subquery-injected aliases as virtual attributes on the model
+     * so they are excluded from toDatabaseArray().
+     */
+    private function markVirtualAttributes(Model $model): void
+    {
+        foreach ($this->virtualAliases as $alias) {
+            if ($model->hasAttribute($alias)) {
+                $value = $model->{$alias};
+                $model->setVirtualAttribute($alias, $value);
+            }
         }
     }
 }

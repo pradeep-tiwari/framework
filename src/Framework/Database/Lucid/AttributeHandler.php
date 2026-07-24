@@ -34,6 +34,11 @@ class AttributeHandler
      */
     protected array $dirty = [];
 
+    /**
+     * @var array Virtual attributes (not real DB columns, e.g. withCount)
+     */
+    protected array $virtual = [];
+
     public function __construct()
     {
         $this->data = new \stdClass;
@@ -94,6 +99,17 @@ class AttributeHandler
     }
 
     /**
+     * Set a virtual attribute that is not a real DB column.
+     * These are excluded from toDatabaseArray().
+     */
+    public function setVirtual(string $key, $value): void
+    {
+        $this->data->{$key} = $value;
+        $this->virtual[$key] = true;
+        unset($this->dirty[$key]);
+    }
+
+    /**
      * Check if attribute exists.
      */
     public function has(string $key): bool
@@ -142,8 +158,11 @@ class AttributeHandler
 
     /**
      * Get all attributes as array for database operations.
-     * Values are already in database format because set() applies uncasting.
-     * This method only needs to handle DateTime objects and arrays that might exist.
+     * Values loaded via setRaw() are in PHP-cast format (e.g. bool false,
+     * array, DateTime), while values set via set() are already uncasted
+     * to DB format (e.g. int 0, JSON string, formatted date string).
+     * We inspect the actual PHP type to determine which path set the value
+     * and only transform values that are still in PHP-cast format.
      */
     public function toDatabaseArray(): array
     {
@@ -156,21 +175,29 @@ class AttributeHandler
                 continue;
             }
 
-            $castType = $this->getCastType($key);
-
-            // Handle DateTime objects that might not have been uncast
-            if ($value instanceof \DateTimeInterface) {
-                if ($castType) {
-                    $result[$key] = $this->castHandler->uncast($value, $castType);
-                } else {
-                    // Default to datetime format if no cast specified
-                    $result[$key] = $value->format('Y-m-d H:i:s');
-                }
+            // Skip virtual attributes (withCount/withSum etc.)
+            if (isset($this->virtual[$key])) {
+                continue;
             }
-            // Handle arrays that need to be uncast to JSON
-            elseif (is_array($value) && $castType === 'array') {
-                $result[$key] = $this->castHandler->uncast($value, $castType);
+
+            if ($value === null) {
+                $result[$key] = null;
+            } elseif (is_bool($value)) {
+                // setRaw() casts DB int to PHP bool; set() already stores int
+                $result[$key] = $value ? 1 : 0;
+            } elseif (is_array($value)) {
+                // setRaw() casts DB JSON string to PHP array; set() already stores JSON string
+                $result[$key] = json_encode($value);
+            } elseif ($value instanceof \DateTimeInterface) {
+                // setRaw() casts DB string to DateTime; set() already stores formatted string
+                $castType = $this->getCastType($key);
+                $result[$key] = match($castType) {
+                    'date' => $value->format('Y-m-d'),
+                    'timestamp' => (string) $value->getTimestamp(),
+                    default => $value->format('Y-m-d H:i:s'),
+                };
             } else {
+                // Already in DB format (set() uncasted it, or no cast defined)
                 $result[$key] = $value;
             }
         }
@@ -257,5 +284,13 @@ class AttributeHandler
     public function clearDirty(): void
     {
         $this->dirty = [];
+    }
+
+    /**
+     * Check if an attribute is virtual (not a real DB column).
+     */
+    public function isVirtual(string $key): bool
+    {
+        return isset($this->virtual[$key]);
     }
 }

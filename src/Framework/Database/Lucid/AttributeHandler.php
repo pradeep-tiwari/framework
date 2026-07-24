@@ -50,7 +50,7 @@ class AttributeHandler
      */
     public function get(string $key, $default = null)
     {
-        if (! isset($this->data->{$key})) {
+        if (! property_exists($this->data, $key)) {
             return $default;
         }
 
@@ -114,7 +114,7 @@ class AttributeHandler
      */
     public function has(string $key): bool
     {
-        return isset($this->data->{$key});
+        return property_exists($this->data, $key);
     }
 
     /**

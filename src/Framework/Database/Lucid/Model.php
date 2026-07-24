@@ -690,7 +690,7 @@ class Model implements JsonSerializable
         $data = $this->attributes->toArray();
 
         foreach ($data as $key => $value) {
-            if (! in_array($key, $exclude)) {
+            if (! in_array($key, $exclude) && ! $this->attributes->isVirtual($key)) {
                 $instance->setAttribute($key, $value);
             }
         }

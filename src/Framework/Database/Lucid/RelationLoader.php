@@ -505,17 +505,17 @@ class RelationLoader
         foreach ($models as $model) {
             switch ($this->model->getRelationType()) {
                 case 'hasOne':
-                    $model->setAttribute($relation, $children->first([$this->model->getRelatingForeignKey() => $model->{$this->model->getPrimaryKey()}]));
+                    $model->setVirtualAttribute($relation, $children->first([$this->model->getRelatingForeignKey() => $model->{$this->model->getPrimaryKey()}]));
 
                     break;
                 case 'belongsTo':
-                    $model->setAttribute($relation, $children->find($model->{$this->model->getRelatingForeignKey()}));
+                    $model->setVirtualAttribute($relation, $children->find($model->{$this->model->getRelatingForeignKey()}));
 
                     break;
                 case 'hasMany':
                 case 'hasManyThrough':
                 case 'pivot':
-                    $model->setAttribute($relation, $children->filter(function ($child) use ($model) {
+                    $model->setVirtualAttribute($relation, $children->filter(function ($child) use ($model) {
                         return $child->{$this->model->getRelatingKey()} === $model->{$this->model->getPrimaryKey()};
                     }));
 

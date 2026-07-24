@@ -315,10 +315,10 @@ class RelationLoader
             $this->model->setEagerLoading(false);
 
             foreach ($models as $model) {
-                $model->{$include . '_count'} = 0;
+                $model->setVirtualAttribute($include . '_count', 0);
                 foreach ($counts as $count) {
                     if ($count->{$relatingKey} === $model->{$model->getPrimaryKey()}) {
-                        $model->{$include . '_count'} = (int) $count->count;
+                        $model->setVirtualAttribute($include . '_count', (int) $count->count);
 
                         break;
                     }
@@ -348,10 +348,10 @@ class RelationLoader
             ->all();
 
         foreach ($models as $model) {
-            $model->{$include . '_count'} = 0;
+            $model->setVirtualAttribute($include . '_count', 0);
             foreach ($counts as $count) {
                 if ($count->{$groupKey} == $model->{$model->getPrimaryKey()}) {
-                    $model->{$include . '_count'} = (int) $count->count;
+                    $model->setVirtualAttribute($include . '_count', (int) $count->count);
 
                     break;
                 }
@@ -371,10 +371,10 @@ class RelationLoader
             ->all();
 
         foreach ($models as $model) {
-            $model->{$include . '_count'} = 0;
+            $model->setVirtualAttribute($include . '_count', 0);
             foreach ($counts as $count) {
                 if ($count->{$foreignKey} == $model->{$model->getPrimaryKey()}) {
-                    $model->{$include . '_count'} = (int) $count->count;
+                    $model->setVirtualAttribute($include . '_count', (int) $count->count);
 
                     break;
                 }
@@ -452,7 +452,7 @@ class RelationLoader
                 $found = false;
                 foreach ($results as $result) {
                     if ($result->{$relatingKey} === $model->{$model->getPrimaryKey()}) {
-                        $model->{$include . $attrSuffix} = $result->{$resultKey};
+                        $model->setVirtualAttribute($include . $attrSuffix, $result->{$resultKey});
                         $found = true;
 
                         break;
@@ -460,7 +460,7 @@ class RelationLoader
                 }
 
                 if (! $found) {
-                    $model->{$include . $attrSuffix} = $defaultValue;
+                    $model->setVirtualAttribute($include . $attrSuffix, $defaultValue);
                 }
             }
         }
@@ -505,17 +505,17 @@ class RelationLoader
         foreach ($models as $model) {
             switch ($this->model->getRelationType()) {
                 case 'hasOne':
-                    $model->setAttribute($relation, $children->first([$this->model->getRelatingForeignKey() => $model->{$this->model->getPrimaryKey()}]));
+                    $model->setVirtualAttribute($relation, $children->first([$this->model->getRelatingForeignKey() => $model->{$this->model->getPrimaryKey()}]));
 
                     break;
                 case 'belongsTo':
-                    $model->setAttribute($relation, $children->find($model->{$this->model->getRelatingForeignKey()}));
+                    $model->setVirtualAttribute($relation, $children->find($model->{$this->model->getRelatingForeignKey()}));
 
                     break;
                 case 'hasMany':
                 case 'hasManyThrough':
                 case 'pivot':
-                    $model->setAttribute($relation, $children->filter(function ($child) use ($model) {
+                    $model->setVirtualAttribute($relation, $children->filter(function ($child) use ($model) {
                         return $child->{$this->model->getRelatingKey()} === $model->{$this->model->getPrimaryKey()};
                     }));
 

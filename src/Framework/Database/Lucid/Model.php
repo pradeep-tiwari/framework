@@ -116,6 +116,15 @@ class Model implements JsonSerializable
     }
 
     /**
+     * Set a virtual attribute that is not a real DB column.
+     * Used by withCount/withSum to inject aggregate values.
+     */
+    public function setVirtualAttribute(string $key, mixed $value): void
+    {
+        $this->attributes->setVirtual($key, $value);
+    }
+
+    /**
      * Returns a model property or executes a relation
      * method if present.
      */
@@ -681,7 +690,7 @@ class Model implements JsonSerializable
         $data = $this->attributes->toArray();
 
         foreach ($data as $key => $value) {
-            if (! in_array($key, $exclude)) {
+            if (! in_array($key, $exclude) && ! $this->attributes->isVirtual($key)) {
                 $instance->setAttribute($key, $value);
             }
         }

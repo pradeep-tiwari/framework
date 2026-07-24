@@ -38,29 +38,29 @@ class LimiterTest extends TestCase
 
     public function testFirstAttemptSucceeds()
     {
-        // 1-second window
-        $this->assertTrue($this->limiter->attempt('test-key', 3, 1));
+        // 60-second window (testing count logic, not timing)
+        $this->assertTrue($this->limiter->attempt('test-key', 3, 60));
         $this->assertEquals(1, $this->limiter->getHits('test-key'));
     }
 
     public function testMultipleAttemptsWithinLimit()
     {
-        // 1-second window
-        $this->assertTrue($this->limiter->attempt('test-key', 3, 1));
-        $this->assertTrue($this->limiter->attempt('test-key', 3, 1));
-        $this->assertTrue($this->limiter->attempt('test-key', 3, 1));
+        // 60-second window (testing count logic, not timing)
+        $this->assertTrue($this->limiter->attempt('test-key', 3, 60));
+        $this->assertTrue($this->limiter->attempt('test-key', 3, 60));
+        $this->assertTrue($this->limiter->attempt('test-key', 3, 60));
         $this->assertEquals(3, $this->limiter->getHits('test-key'));
     }
 
     public function testExceedingLimitFails()
     {
-        // First 3 attempts should succeed (1-second window)
-        $this->assertTrue($this->limiter->attempt('test-key', 3, 1));
-        $this->assertTrue($this->limiter->attempt('test-key', 3, 1));
-        $this->assertTrue($this->limiter->attempt('test-key', 3, 1));
+        // 60-second window (testing limit enforcement, not timing)
+        $this->assertTrue($this->limiter->attempt('test-key', 3, 60));
+        $this->assertTrue($this->limiter->attempt('test-key', 3, 60));
+        $this->assertTrue($this->limiter->attempt('test-key', 3, 60));
 
         // Fourth attempt should fail
-        $this->assertFalse($this->limiter->attempt('test-key', 3, 1));
+        $this->assertFalse($this->limiter->attempt('test-key', 3, 60));
         $this->assertEquals(3, $this->limiter->getHits('test-key'));
     }
 
@@ -84,9 +84,9 @@ class LimiterTest extends TestCase
 
     public function testDifferentKeysTrackedSeparately()
     {
-        // 1-second window
-        $this->assertTrue($this->limiter->attempt('key1', 2, 1));
-        $this->assertTrue($this->limiter->attempt('key2', 2, 1));
+        // 60-second window (testing key isolation, not timing)
+        $this->assertTrue($this->limiter->attempt('key1', 2, 60));
+        $this->assertTrue($this->limiter->attempt('key2', 2, 60));
 
         $this->assertEquals(1, $this->limiter->getHits('key1'));
         $this->assertEquals(1, $this->limiter->getHits('key2'));

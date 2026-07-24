@@ -40,7 +40,7 @@
         "phpunit/phpunit": "^9.5.10",
         "friendsofphp/php-cs-fixer": "^3.40",
         "phpmailer/phpmailer": "^6.9.2",
-        "dompdf/dompdf": "^2.0",
+        "dompdf/dompdf": "^3.0",
         "twilio/sdk": "^7.0",
         "robthree/twofactorauth": "^1.8",
         "bacon/bacon-qr-code": "^3.0",
@@ -49,7 +49,7 @@
     },
     "suggest": {
         "phpmailer/phpmailer": "Required for Mailer integration (^6.9.2)",
-        "dompdf/dompdf": "Required for PDF generation (^2.0)",
+        "dompdf/dompdf": "Required for PDF generation (^3.0)",
         "twilio/sdk": "Required for Twilio SMS integration (^7.0)",
         "robthree/twofactorauth": "Required for Two-Factor Authentication (^1.8)",
         "bacon/bacon-qr-code": "Required for server-side QR code generation (^3.0)",

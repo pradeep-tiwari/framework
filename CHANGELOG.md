@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.17.1] - 2026-07-24
+
+### Fixed
+
+- **RelationLoader**: Fixed `is_callable()` false positive when eager loading relation names that match global helper functions. String values are now always treated as relation names, never as constraint callables.
+
+### Changed
+
+- **dompdf/dompdf**: Bumped from `^2.0` to `^3.0` in `require-dev` and `suggest` to resolve security advisories blocking CI.
+
 ## [0.17.0] - 2026-07-11
 
 ### Features

@@ -143,7 +143,7 @@ class RelationLoader
         $property = $type . 'Includes';
 
         foreach ($includes as $key => $value) {
-            $isConstraint = !is_string($value) && is_callable($value);
+            $isConstraint = ! is_string($value) && is_callable($value);
             $relation = $isConstraint ? $key : $value;
             $constraint = $isConstraint ? $value : null;
             $this->{$property}[$relation . ':' . $column] = [
@@ -186,7 +186,7 @@ class RelationLoader
         $constraint = null;
         $include = $value;
 
-        if (!is_string($value) && is_callable($value)) {
+        if (! is_string($value) && is_callable($value)) {
             if (! is_string($key)) {
                 throw new \Exception("Relation key must be a string.");
             }
@@ -293,7 +293,7 @@ class RelationLoader
         $constraint = null;
         $include = $value;
 
-        if (!is_string($value) && is_callable($value)) {
+        if (! is_string($value) && is_callable($value)) {
             if (! is_string($key)) {
                 throw new \Exception("Relation key must be a string.");
             }

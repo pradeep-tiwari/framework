@@ -5,6 +5,7 @@
 ### Fixed
 
 - **RelationLoader**: Fixed `is_callable()` false positive when eager loading relation names that match global helper functions. String values are now always treated as relation names, never as constraint callables.
+- **LimiterTest**: Fixed flaky tests by using 60-second TTL windows for tests that verify counting/limit logic (not timing). Tests that explicitly verify timing behavior (`testSubMinuteWindow`, `testLimitResetsAfterExpiry`) retain their original short windows.
 
 ### Changed
 

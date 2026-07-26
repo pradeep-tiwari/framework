@@ -34,14 +34,20 @@ class Cookie
         $httpOnly = $options['http_only'] ?? true;
         $sameSite = $options['same_site'] ?? 'lax';
 
-        return setcookie($key, $value, [
-            'expires' => $expire,
-            'path' => $path,
-            'domain' => $domain,
-            'secure' => $secure,
-            'httpOnly' => $httpOnly,
-            'sameSite' => $sameSite,
-        ]);
+        $_COOKIE[$key] = $value;
+
+        if (! headers_sent()) {
+            setcookie($key, $value, [
+                'expires' => $expire,
+                'path' => $path,
+                'domain' => $domain,
+                'secure' => $secure,
+                'httpOnly' => $httpOnly,
+                'sameSite' => $sameSite,
+            ]);
+        }
+
+        return true;
     }
 
     public function forever(string $key, string $value, array $options = [])
@@ -73,7 +79,11 @@ class Cookie
         if ($_COOKIE[$key] ?? null) {
             unset($_COOKIE[$key]);
 
-            return $this->set($key, '', time() - 3600);
+            if (! headers_sent()) {
+                setcookie($key, '', time() - 3600, '/');
+            }
+
+            return true;
         }
 
         return false;

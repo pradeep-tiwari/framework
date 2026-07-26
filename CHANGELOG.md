@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.17.3] - 2026-07-26
+
+### Fixed
+
+- **Cookie::set()**: Syncs `$_COOKIE` in-memory and guards `setcookie()` with `headers_sent()` for test compatibility.
+- **Cookie::delete()**: Calls `setcookie()` directly instead of routing through `set()` which re-added the cookie to `$_COOKIE`.
+- **TestCase::setUp()**: Resets `$_COOKIE = []` for test isolation.
+
 ## [0.17.2] - 2026-07-24
 
 ### Fixed

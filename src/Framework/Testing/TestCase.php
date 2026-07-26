@@ -32,6 +32,8 @@ class TestCase extends BaseTestCase
 
         Mail::clearSentMails();
 
+        $_COOKIE = [];
+
         if (method_exists($this, 'beginTransaction')) {
             $this->beginTransaction();
         }

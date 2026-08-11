@@ -11,6 +11,7 @@ use PHPUnit\Framework\TestCase as BaseTestCase;
 /**
  * @method void beginTransaction()
  * @method void rollbackTransaction()
+ * @method void tearDownFileUploads()
  */
 class TestCase extends BaseTestCase
 {
@@ -165,17 +166,6 @@ class TestCase extends BaseTestCase
     {
         foreach ($session as $key => $value) {
             session()->set($key, $value);
-        }
-
-        return $this;
-    }
-
-    public function withFiles(array $files): self
-    {
-        $this->isMultipartFormdata = true;
-
-        foreach ($files as $file => $value) {
-            $_FILES[$file] = $value;
         }
 
         return $this;

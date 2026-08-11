@@ -42,6 +42,46 @@ trait FileUploadTrait
     }
 
     /**
+     * Create multiple fake uploaded files in PHP's multi-file array syntax.
+     *
+     * Each spec may contain:
+     *   - 'name'    (string) Original filename, e.g. 'photo.jpg'
+     *   - 'content' (string) File content (defaults to a small placeholder)
+     *   - 'mime'    (string) MIME type (defaults to 'text/plain')
+     *
+     * Returns the $_FILES array-syntax structure ready for withFiles():
+     *
+     *   $this->withFiles([
+     *       'photos' => $this->fakeFiles([
+     *           ['name' => 'a.jpg', 'mime' => 'image/jpeg'],
+     *           ['name' => 'b.jpg', 'mime' => 'image/jpeg'],
+     *       ]),
+     *   ]);
+     *
+     * All temp files are tracked and deleted automatically after the test.
+     */
+    public function fakeFiles(array $specs): array
+    {
+        $result = ['name' => [], 'type' => [], 'tmp_name' => [], 'error' => [], 'size' => []];
+
+        foreach ($specs as $spec) {
+            $file = $this->fakeFile(
+                $spec['name']    ?? 'file.txt',
+                $spec['content'] ?? 'fake file content',
+                $spec['mime']    ?? 'text/plain'
+            );
+
+            $result['name'][]     = $file['name'];
+            $result['type'][]     = $file['type'];
+            $result['tmp_name'][] = $file['tmp_name'];
+            $result['error'][]    = $file['error'];
+            $result['size'][]     = $file['size'];
+        }
+
+        return $result;
+    }
+
+    /**
      * Swap the storage service to an isolated temp directory.
      *
      * Prevents store() from writing to the real storage directory during tests.

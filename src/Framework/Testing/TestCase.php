@@ -38,6 +38,10 @@ class TestCase extends BaseTestCase
         $_FILES  = [];
         $_COOKIE = [];
 
+        // Allow LocalStorage::store() to use copy() instead of move_uploaded_file()
+        // so that file upload tests work in a CLI/PHPUnit context.
+        $_SERVER['X_LIGHTPACK_TEST_UPLOAD'] = true;
+
         if (method_exists($this, 'beginTransaction')) {
             $this->beginTransaction();
         }
@@ -62,7 +66,10 @@ class TestCase extends BaseTestCase
             // Swallow logout errors so reset still runs.
         }
 
-        // Reset per-test state.
+        if (method_exists($this, 'tearDownFileUploads')) {
+            $this->tearDownFileUploads();
+        }
+
         parent::tearDown();
 
         Container::getInstance()->reset();

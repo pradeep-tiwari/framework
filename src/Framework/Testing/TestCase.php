@@ -3,9 +3,7 @@
 namespace Lightpack\Testing;
 
 use Lightpack\App;
-use Lightpack\Auth\IdentityInterface;
 use Lightpack\Container\Container;
-use Lightpack\Filters\FilterProvider;
 use Lightpack\Http\Response;
 use Lightpack\Mail\Mail;
 use PHPUnit\Framework\TestCase as BaseTestCase;
@@ -23,12 +21,6 @@ class TestCase extends BaseTestCase
     protected Response $response;
     protected $isJsonRequest = false;
     protected $isMultipartFormdata = false;
-
-    /** @var IdentityInterface|null User to authenticate before each request. */
-    protected ?IdentityInterface $actingAsUser = null;
-
-    /** @var bool When true, route filters are bypassed for the next request. */
-    protected bool $bypassFilters = false;
 
     protected function setUp(): void
     {
@@ -71,9 +63,6 @@ class TestCase extends BaseTestCase
         }
 
         // Reset per-test state.
-        $this->actingAsUser = null;
-        $this->bypassFilters = false;
-
         parent::tearDown();
 
         Container::getInstance()->reset();
@@ -120,41 +109,7 @@ class TestCase extends BaseTestCase
         $this->registerAppRequest();
         $this->container->get('request')->setMethod($method);
 
-        // Bypass route filters for this request when withoutFilters() was called.
-        if ($this->bypassFilters) {
-            $this->container->register('filter', function () {
-                return new class {
-                    private $response;
-
-                    public function register(string $route, string $filter, array $params = []): void {}
-
-                    public function setResponse($response): void
-                    {
-                        $this->response = $response;
-                    }
-
-                    public function processBeforeFilters(string $route): void {}
-
-                    public function processAfterFilters(string $route)
-                    {
-                        return $this->response;
-                    }
-                };
-            });
-        }
-
-        // Authenticate as the specified user before dispatching.
-        if ($this->actingAsUser !== null) {
-            auth()->loginAs($this->actingAsUser);
-        }
-
         $response = $this->response = \Lightpack\App::run();
-
-        // Restore the real filter service so subsequent requests are unaffected.
-        if ($this->bypassFilters) {
-            (new FilterProvider)->register($this->container);
-            $this->bypassFilters = false;
-        }
 
         // Reset per-request flags and superglobals so they do not bleed into
         // subsequent request() calls within the same test.
@@ -170,37 +125,6 @@ class TestCase extends BaseTestCase
         $this->isJsonRequest = true;
 
         return $this->request($method, $route, $params);
-    }
-
-    /**
-     * Set a user to be authenticated before every subsequent request() call.
-     *
-     * The user remains active for the lifetime of the test. Call it once and
-     * all further request() calls in that test run as that user.
-     *
-     * @param IdentityInterface $user
-     * @return self
-     */
-    public function actingAs(IdentityInterface $user): self
-    {
-        $this->actingAsUser = $user;
-
-        return $this;
-    }
-
-    /**
-     * Bypass route filters for the next request() call only.
-     *
-     * Useful when testing controller logic in isolation, without rate-limiting,
-     * auth, or other filters interfering.
-     *
-     * @return self
-     */
-    public function withoutFilters(): self
-    {
-        $this->bypassFilters = true;
-
-        return $this;
     }
 
     protected function registerAppRequest()

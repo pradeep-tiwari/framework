@@ -3,7 +3,9 @@
 namespace Lightpack\Testing;
 
 use Lightpack\App;
+use Lightpack\Auth\IdentityInterface;
 use Lightpack\Container\Container;
+use Lightpack\Filters\FilterProvider;
 use Lightpack\Http\Response;
 use Lightpack\Mail\Mail;
 use PHPUnit\Framework\TestCase as BaseTestCase;
@@ -22,6 +24,12 @@ class TestCase extends BaseTestCase
     protected $isJsonRequest = false;
     protected $isMultipartFormdata = false;
 
+    /** @var IdentityInterface|null User to authenticate before each request. */
+    protected ?IdentityInterface $actingAsUser = null;
+
+    /** @var bool When true, route filters are bypassed for the next request. */
+    protected bool $bypassFilters = false;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -32,6 +40,10 @@ class TestCase extends BaseTestCase
 
         Mail::clearSentMails();
 
+        // Reset all superglobals that carry request state between tests.
+        $_POST   = [];
+        $_GET    = [];
+        $_FILES  = [];
         $_COOKIE = [];
 
         if (method_exists($this, 'beginTransaction')) {
@@ -41,14 +53,26 @@ class TestCase extends BaseTestCase
 
     protected function tearDown(): void
     {
-        if (method_exists($this, 'rollbackTransaction')) {
-            $this->rollbackTransaction();
+        try {
+            if (method_exists($this, 'rollbackTransaction')) {
+                $this->rollbackTransaction();
+            }
+        } catch (\Throwable $e) {
+            // Swallow rollback errors so cleanup always continues.
         }
 
-        // ensure user identity is cleared
-        if ($this->container->get('config')->has('auth')) {
-            auth()->logout();
+        // Ensure user identity is cleared after each test.
+        try {
+            if ($this->container->get('config')->has('auth')) {
+                auth()->logout();
+            }
+        } catch (\Throwable $e) {
+            // Swallow logout errors so reset still runs.
         }
+
+        // Reset per-test state.
+        $this->actingAsUser = null;
+        $this->bypassFilters = false;
 
         parent::tearDown();
 
@@ -67,9 +91,10 @@ class TestCase extends BaseTestCase
         // Parse query parameters
         parse_str($queryString, $queryParams);
 
-        // Set GET/POST params
+        // Set GET/POST params.
         if ($method === 'GET') {
             $_GET = array_merge($queryParams, $params);
+            $_POST = [];
         } else {
             $params['_token'] = csrf_token();
             $_POST = $params;
@@ -95,7 +120,49 @@ class TestCase extends BaseTestCase
         $this->registerAppRequest();
         $this->container->get('request')->setMethod($method);
 
-        return $this->response = \Lightpack\App::run();
+        // Bypass route filters for this request when withoutFilters() was called.
+        if ($this->bypassFilters) {
+            $this->container->register('filter', function () {
+                return new class {
+                    private $response;
+
+                    public function register(string $route, string $filter, array $params = []): void {}
+
+                    public function setResponse($response): void
+                    {
+                        $this->response = $response;
+                    }
+
+                    public function processBeforeFilters(string $route): void {}
+
+                    public function processAfterFilters(string $route)
+                    {
+                        return $this->response;
+                    }
+                };
+            });
+        }
+
+        // Authenticate as the specified user before dispatching.
+        if ($this->actingAsUser !== null) {
+            auth()->loginAs($this->actingAsUser);
+        }
+
+        $response = $this->response = \Lightpack\App::run();
+
+        // Restore the real filter service so subsequent requests are unaffected.
+        if ($this->bypassFilters) {
+            (new FilterProvider)->register($this->container);
+            $this->bypassFilters = false;
+        }
+
+        // Reset per-request flags and superglobals so they do not bleed into
+        // subsequent request() calls within the same test.
+        $this->isJsonRequest = false;
+        $this->isMultipartFormdata = false;
+        $_FILES = [];
+
+        return $response;
     }
 
     public function requestJson(string $method, string $route, array $params = []): Response
@@ -103,6 +170,37 @@ class TestCase extends BaseTestCase
         $this->isJsonRequest = true;
 
         return $this->request($method, $route, $params);
+    }
+
+    /**
+     * Set a user to be authenticated before every subsequent request() call.
+     *
+     * The user remains active for the lifetime of the test. Call it once and
+     * all further request() calls in that test run as that user.
+     *
+     * @param IdentityInterface $user
+     * @return self
+     */
+    public function actingAs(IdentityInterface $user): self
+    {
+        $this->actingAsUser = $user;
+
+        return $this;
+    }
+
+    /**
+     * Bypass route filters for the next request() call only.
+     *
+     * Useful when testing controller logic in isolation, without rate-limiting,
+     * auth, or other filters interfering.
+     *
+     * @return self
+     */
+    public function withoutFilters(): self
+    {
+        $this->bypassFilters = true;
+
+        return $this;
     }
 
     protected function registerAppRequest()

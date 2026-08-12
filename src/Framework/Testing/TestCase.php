@@ -11,11 +11,11 @@ use PHPUnit\Framework\TestCase as BaseTestCase;
 /**
  * @method void beginTransaction()
  * @method void rollbackTransaction()
- * @method void tearDownFileUploads()
  */
 class TestCase extends BaseTestCase
 {
     use AssertionTrait;
+    use FileUploadTrait;
     use MailAssertionTrait;
 
     protected Container $container;
@@ -67,9 +67,7 @@ class TestCase extends BaseTestCase
             // Swallow logout errors so reset still runs.
         }
 
-        if (method_exists($this, 'tearDownFileUploads')) {
-            $this->tearDownFileUploads();
-        }
+        $this->tearDownFileUploads();
 
         parent::tearDown();
 

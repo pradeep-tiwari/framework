@@ -47,7 +47,7 @@ class SmsManager extends BaseManager
      */
     protected function setDefaultFromConfig(): void
     {
-        $default = $this->container->get('config')->get('sms.provider', 'null');
+        $default = $this->container->get('config')->get('sms.provider', 'log') ?? 'log';
         $this->setDefaultDriver($default);
     }
 

@@ -11,7 +11,7 @@ class SmsView
 
 return [
     'sms' => [
-        'provider' => get_env('SMS_PROVIDER'), // 'twilio', null, log
+        'provider' => get_env('SMS_PROVIDER', 'log'), // 'twilio', 'log', 'null'
         'twilio' => [
             'sid' => get_env('TWILIO_SID', 'your_account_sid'),
             'token' => get_env('TWILIO_TOKEN', 'your_auth_token'),

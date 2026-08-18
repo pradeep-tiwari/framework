@@ -13,7 +13,7 @@ class ServeCommand extends Command
     {
         chdir(DIR_ROOT);
 
-        $host = '127.0.0.1';
+        $host = $this->args->get('host', '127.0.0.1');
         $requestedPort = (int) $this->args->get('port', 8000);
 
         $this->output->newline();

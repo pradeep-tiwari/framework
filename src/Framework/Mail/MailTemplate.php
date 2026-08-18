@@ -459,7 +459,7 @@ HTML;
     {
         $bgColor = $this->colors[$component['color']] ?? $this->colors['primary'];
         $text = $this->escape($component['text']);
-        $url  = $this->escape($component['url']);
+        $url = $this->escape($component['url']);
 
         return <<<HTML
 <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin: {$this->spacing['lg']} 0; font-family: {$this->fonts['family']};">
@@ -583,7 +583,7 @@ HTML;
      */
     protected function renderLink(array $component): string
     {
-        $url         = $this->escape($component['url']);
+        $url = $this->escape($component['url']);
         $displayText = $this->escape($component['text'] ?? $component['url']);
 
         return <<<HTML
@@ -642,7 +642,7 @@ HTML;
         ];
 
         $style = $colors[$component['alertType']] ?? $colors['info'];
-        $text  = $this->escape($component['text']);
+        $text = $this->escape($component['text']);
 
         return <<<HTML
 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: {$this->spacing['lg']} 0; font-family: {$this->fonts['family']};">
@@ -752,7 +752,7 @@ HTML;
         $isFirst = true;
         foreach ($component['data'] as $key => $value) {
             $borderTop = $isFirst ? '' : 'border-top: 1px solid ' . $this->colors['border'] . ';';
-            $key   = $this->escape($key);
+            $key = $this->escape($key);
             $value = $this->escape($value);
             $content .= <<<HTML
     <tr>

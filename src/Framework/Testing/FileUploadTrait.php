@@ -49,15 +49,15 @@ trait FileUploadTrait
         }
 
         foreach ($files as $key => $spec) {
-            if (!empty($spec) && is_array(reset($spec))) {
+            if (! empty($spec) && is_array(reset($spec))) {
                 // Multi-file specs: [['name' => 'a.jpg', ...], ['name' => 'b.jpg', ...]]
                 $_FILES[$key] = $this->fakeFiles($spec);
             } else {
                 // Single-file spec: ['name' => 'photo.jpg', 'content' => 'fake', 'mime' => 'image/jpeg']
                 $_FILES[$key] = $this->fakeFile(
-                    $spec['name']    ?? 'file.txt',
+                    $spec['name'] ?? 'file.txt',
                     $spec['content'] ?? 'fake file content',
-                    $spec['mime']    ?? 'text/plain'
+                    $spec['mime'] ?? 'text/plain'
                 );
             }
         }
@@ -81,11 +81,11 @@ trait FileUploadTrait
         $this->fakeFiles[] = $tmp;
 
         return [
-            'name'     => $name,
-            'type'     => $mime,
+            'name' => $name,
+            'type' => $mime,
             'tmp_name' => $tmp,
-            'error'    => UPLOAD_ERR_OK,
-            'size'     => strlen($content),
+            'error' => UPLOAD_ERR_OK,
+            'size' => strlen($content),
         ];
     }
 
@@ -102,16 +102,16 @@ trait FileUploadTrait
 
         foreach ($specs as $spec) {
             $file = $this->fakeFile(
-                $spec['name']    ?? 'file.txt',
+                $spec['name'] ?? 'file.txt',
                 $spec['content'] ?? 'fake file content',
-                $spec['mime']    ?? 'text/plain'
+                $spec['mime'] ?? 'text/plain'
             );
 
-            $result['name'][]     = $file['name'];
-            $result['type'][]     = $file['type'];
+            $result['name'][] = $file['name'];
+            $result['type'][] = $file['type'];
             $result['tmp_name'][] = $file['tmp_name'];
-            $result['error'][]    = $file['error'];
-            $result['size'][]     = $file['size'];
+            $result['error'][] = $file['error'];
+            $result['size'][] = $file['size'];
         }
 
         return $result;

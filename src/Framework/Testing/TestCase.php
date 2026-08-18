@@ -34,9 +34,9 @@ class TestCase extends BaseTestCase
         Mail::clearSentMails();
 
         // Reset all superglobals that carry request state between tests.
-        $_POST   = [];
-        $_GET    = [];
-        $_FILES  = [];
+        $_POST = [];
+        $_GET = [];
+        $_FILES = [];
         $_COOKIE = [];
 
         // Allow LocalStorage::store() to use copy() instead of move_uploaded_file()

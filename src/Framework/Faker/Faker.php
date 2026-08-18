@@ -10,6 +10,7 @@ class Faker
 {
     protected string $locale = 'en';
     protected array $data = [];
+    protected ?UniqueFaker $uniqueFaker = null;
 
     public function __construct(string $locale = 'en', ?string $customLocalePath = null)
     {
@@ -58,11 +59,21 @@ class Faker
     }
 
     /**
-     * Return a UniqueFaker instance for generating unique values.
+     * Return a cached UniqueFaker instance for generating unique values.
+     * The same instance is reused so uniqueness is tracked across calls
+     * within the same batch. Call resetUnique() to start a fresh batch.
      */
     public function unique(): UniqueFaker
     {
-        return new UniqueFaker($this);
+        return $this->uniqueFaker ??= new UniqueFaker($this);
+    }
+
+    /**
+     * Reset the unique faker state so the next batch starts fresh.
+     */
+    public function resetUnique(): void
+    {
+        $this->uniqueFaker = null;
     }
 
     public function firstName(): string

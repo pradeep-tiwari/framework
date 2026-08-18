@@ -2,12 +2,25 @@
 
 namespace Lightpack\Factory;
 
+use Lightpack\Faker\Faker;
+
 abstract class Factory
 {
     /**
      * @var int|null Number of entities to produce in batch mode.
      */
     protected ?int $batchCount = null;
+
+    /**
+     * Shared Faker instance, created once per factory instance.
+     * Available to all template() implementations via $this->faker.
+     */
+    protected Faker $faker;
+
+    public function __construct(?Faker $faker = null)
+    {
+        $this->faker = $faker ?? new Faker;
+    }
 
     /**
      * Return an array representing a single instance of the entity.
@@ -32,6 +45,10 @@ abstract class Factory
      */
     public function make(array $overrides = [])
     {
+        // Reset unique() state so each make()/save() call gets a fresh
+        // uniqueness scope — values are unique within a batch, not across batches.
+        $this->faker->resetUnique();
+
         if ($this->batchCount !== null) {
             $result = $this->items($this->batchCount, $overrides);
             $this->batchCount = null;

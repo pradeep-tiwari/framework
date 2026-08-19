@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.18.0] - 2026-08-19
+
+### Added
+
+- `Faker::richText()` — generates structured HTML for blog posts and product descriptions.
+- `Faker::resetUnique()` — clears unique faker state so each factory batch starts fresh.
+- `Factory` now exposes a shared `$this->faker` property to all templates.
+- `FileUploadTrait` — fake file uploads in tests with `withFiles()`, auto-faked storage, and automatic cleanup.
+- New test assertions: `assertResponseBodyContains`, `assertResponseJsonKeyMissing`, `assertSessionMissing`, `assertSessionHasNoErrors`, `assertAuthenticated`, `assertGuest`, `assertRedirectRoute`.
+- New database assertions: `assertDatabaseHas`, `assertDatabaseMissing`, `assertDatabaseCount`.
+- `ServeCommand` `--host` argument for dev server.
+
+### Changed
+
+- Default SMS provider is now `log` instead of `null`.
+- `MailTemplate` now escapes HTML at render time instead of at build time.
+- Generated factory stubs use `$this->faker` instead of creating their own instance.
+- `TestCase` resets all superglobals between tests and sets up file upload support for CLI contexts.
+- `TestCase::tearDown()` always runs cleanup even if rollback or logout throws.
+- `TestCase::request()` resets per-request flags after each call to prevent state bleed.
+- Removed `actingAs()` and `withoutFilters()` from `TestCase` — replaced by trait-based helpers.
+- `DatabaseTrait::tearDownAfterClass()` wraps rollback in try-finally.
+- Blocked `robthree/twofactorauth >=2.0` via composer conflict.
+
+### Tests
+
+- New: `AssertionTraitTest`, `FileUploadTraitTest`, `MailTemplateTest`, `SmsManagerTest`.
+- Expanded: `FactoryTest` for shared faker and `resetUnique()`.
+- Moved `MailAssertionTraitTest` to `tests/Testing/`.
+
 ## [0.17.3] - 2026-07-26
 
 ### Fixed

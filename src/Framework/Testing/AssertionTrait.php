@@ -23,6 +23,13 @@ trait AssertionTrait
         return $this;
     }
 
+    public function assertResponseBodyContains(string $needle): self
+    {
+        $this->assertStringContainsString($needle, $this->response->getBody());
+
+        return $this;
+    }
+
     public function assertResponseHasValidJson(): self
     {
         $this->assertJson($this->response->getBody());
@@ -47,6 +54,13 @@ trait AssertionTrait
     public function assertResponseJsonKeyValue(string $key, $value): self
     {
         $this->assertSame($value, (new Arr)->get($key, $this->getArrayResponse()));
+
+        return $this;
+    }
+
+    public function assertResponseJsonKeyMissing(string $key): self
+    {
+        $this->assertFalse((new Arr)->has($key, $this->getArrayResponse()), "Failed asserting that the JSON response does not contain the key '{$key}'.");
 
         return $this;
     }

@@ -10,6 +10,7 @@ class Faker
 {
     protected string $locale = 'en';
     protected array $data = [];
+    protected ?UniqueFaker $uniqueFaker = null;
 
     public function __construct(string $locale = 'en', ?string $customLocalePath = null)
     {
@@ -58,11 +59,21 @@ class Faker
     }
 
     /**
-     * Return a UniqueFaker instance for generating unique values.
+     * Return a cached UniqueFaker instance for generating unique values.
+     * The same instance is reused so uniqueness is tracked across calls
+     * within the same batch. Call resetUnique() to start a fresh batch.
      */
     public function unique(): UniqueFaker
     {
-        return new UniqueFaker($this);
+        return $this->uniqueFaker ??= new UniqueFaker($this);
+    }
+
+    /**
+     * Reset the unique faker state so the next batch starts fresh.
+     */
+    public function resetUnique(): void
+    {
+        $this->uniqueFaker = null;
     }
 
     public function firstName(): string
@@ -128,6 +139,39 @@ class Faker
         }
 
         return implode(' ', $out);
+    }
+
+    /**
+     * Generate rich HTML content suitable for blog posts, product
+     * descriptions, or any field that stores HTML markup.
+     *
+     * Produces a structured document with headings, paragraphs,
+     * a bullet list, and a blockquote. The $paragraphs parameter
+     * controls how many body paragraphs are inserted.
+     *
+     * @param int $paragraphs Number of body paragraphs to insert (default: 3)
+     */
+    public function richText(int $paragraphs = 3): string
+    {
+        $blocks = [];
+        $blocks[] = '<h2>' . rtrim($this->sentence(), '.') . '</h2>';
+        $blocks[] = '<p>' . $this->paragraph(3) . '</p>';
+        $blocks[] = '<h3>' . rtrim($this->sentence(), '.') . '</h3>';
+
+        $items = [];
+        for ($i = 0, $n = mt_rand(3, 5); $i < $n; $i++) {
+            $items[] = '<li>' . $this->sentence() . '</li>';
+        }
+        $blocks[] = '<ul>' . "\n" . implode("\n", $items) . "\n" . '</ul>';
+
+        for ($i = 0; $i < $paragraphs; $i++) {
+            $blocks[] = '<p>' . $this->paragraph(3) . '</p>';
+        }
+
+        $blocks[] = '<blockquote><p>' . $this->paragraph(2) . '</p></blockquote>';
+        $blocks[] = '<p>' . $this->paragraph(2) . '</p>';
+
+        return implode("\n\n", $blocks);
     }
 
     public function date(string $format = 'Y-m-d'): string

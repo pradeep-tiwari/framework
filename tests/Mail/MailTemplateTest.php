@@ -512,4 +512,270 @@ class MailTemplateTest extends TestCase
         $this->assertStringContainsString('&quot;', $html);
         $this->assertStringNotContainsString('"; style="', $html);
     }
+
+    // ========================================
+    // SPECIAL CHARACTER / PLAIN TEXT TESTS
+    // ========================================
+
+    public function testButtonUrlWithAmpersandInPlainText()
+    {
+        $template = new MailTemplate;
+        $template->button('Verify', 'https://example.com/verify?token=abc&expires=123');
+
+        $text = $template->toPlainText();
+
+        // Plain text should have raw &, not &amp;
+        $this->assertStringContainsString('https://example.com/verify?token=abc&expires=123', $text);
+        $this->assertStringNotContainsString('&amp;', $text);
+    }
+
+    public function testButtonUrlWithAmpersandInHtml()
+    {
+        $template = new MailTemplate;
+        $template->button('Verify', 'https://example.com/verify?token=abc&expires=123');
+
+        $html = $template->toHtml();
+
+        // HTML should have &amp; in the href attribute
+        $this->assertStringContainsString('https://example.com/verify?token=abc&amp;expires=123', $html);
+        $this->assertStringNotContainsString('token=abc&expires', $html);
+    }
+
+    public function testHeadingWithSpecialCharsInPlainText()
+    {
+        $template = new MailTemplate;
+        $template->heading("Don't miss out & save big!");
+
+        $text = $template->toPlainText();
+
+        // Plain text should have raw special chars
+        $this->assertStringContainsString("DON'T MISS OUT & SAVE BIG!", $text);
+        $this->assertStringNotContainsString('&#039;', $text);
+        $this->assertStringNotContainsString('&amp;', $text);
+    }
+
+    public function testHeadingWithSpecialCharsInHtml()
+    {
+        $template = new MailTemplate;
+        $template->heading("Don't miss out & save big!");
+
+        $html = $template->toHtml();
+
+        // HTML should be escaped
+        $this->assertStringContainsString('Don&#039;t miss out &amp; save big!', $html);
+    }
+
+    public function testParagraphWithSpecialCharsInPlainText()
+    {
+        $template = new MailTemplate;
+        $template->paragraph("Click <here> to view & it's free");
+
+        $text = $template->toPlainText();
+
+        // Plain text should have raw special chars
+        $this->assertStringContainsString("Click <here> to view & it's free", $text);
+        $this->assertStringNotContainsString('&lt;', $text);
+        $this->assertStringNotContainsString('&gt;', $text);
+        $this->assertStringNotContainsString('&amp;', $text);
+    }
+
+    public function testParagraphWithSpecialCharsInHtml()
+    {
+        $template = new MailTemplate;
+        $template->paragraph("Click <here> to view & it's free");
+
+        $html = $template->toHtml();
+
+        // HTML should be escaped
+        $this->assertStringContainsString('Click &lt;here&gt; to view &amp; it&#039;s free', $html);
+    }
+
+    public function testLinkUrlWithAmpersandInPlainText()
+    {
+        $template = new MailTemplate;
+        $template->link('https://example.com/page?a=1&b=2');
+
+        $text = $template->toPlainText();
+
+        $this->assertStringContainsString('https://example.com/page?a=1&b=2', $text);
+        $this->assertStringNotContainsString('&amp;', $text);
+    }
+
+    public function testLinkUrlWithAmpersandInHtml()
+    {
+        $template = new MailTemplate;
+        $template->link('https://example.com/page?a=1&b=2');
+
+        $html = $template->toHtml();
+
+        $this->assertStringContainsString('https://example.com/page?a=1&amp;b=2', $html);
+    }
+
+    public function testAlertWithSpecialCharsInPlainText()
+    {
+        $template = new MailTemplate;
+        $template->alert("Warning: You're over & above the limit");
+
+        $text = $template->toPlainText();
+
+        $this->assertStringContainsString("You're over & above the limit", $text);
+        $this->assertStringNotContainsString('&#039;', $text);
+        $this->assertStringNotContainsString('&amp;', $text);
+    }
+
+    public function testKeyValueTableWithSpecialCharsInPlainText()
+    {
+        $template = new MailTemplate;
+        $template->keyValueTable([
+            'Name' => "O'Brien & Associates",
+            'Rate' => '$50/hr',
+        ]);
+
+        $text = $template->toPlainText();
+
+        $this->assertStringContainsString("O'Brien & Associates", $text);
+        $this->assertStringNotContainsString('&#039;', $text);
+        $this->assertStringNotContainsString('&amp;', $text);
+    }
+
+    public function testKeyValueTableWithSpecialCharsInHtml()
+    {
+        $template = new MailTemplate;
+        $template->keyValueTable([
+            'Name' => "O'Brien & Associates",
+        ]);
+
+        $html = $template->toHtml();
+
+        $this->assertStringContainsString('O&#039;Brien &amp; Associates', $html);
+    }
+
+    public function testBulletListWithSpecialCharsInPlainText()
+    {
+        $template = new MailTemplate;
+        $template->bulletList(["Tom & Jerry", "It's a trap!"]);
+
+        $text = $template->toPlainText();
+
+        $this->assertStringContainsString("Tom & Jerry", $text);
+        $this->assertStringContainsString("It's a trap!", $text);
+        $this->assertStringNotContainsString('&amp;', $text);
+        $this->assertStringNotContainsString('&#039;', $text);
+    }
+
+    public function testBulletListWithSpecialCharsInHtml()
+    {
+        $template = new MailTemplate;
+        $template->bulletList(["Tom & Jerry"]);
+
+        $html = $template->toHtml();
+
+        $this->assertStringContainsString('Tom &amp; Jerry', $html);
+    }
+
+    public function testTableWithSpecialCharsInPlainText()
+    {
+        $template = new MailTemplate;
+        $template->table(
+            ['Name', 'Status'],
+            [["O'Brien", 'Active & Pending']]
+        );
+
+        $text = $template->toPlainText();
+
+        $this->assertStringContainsString("O'Brien", $text);
+        $this->assertStringContainsString("Active & Pending", $text);
+        $this->assertStringNotContainsString('&#039;', $text);
+        $this->assertStringNotContainsString('&amp;', $text);
+    }
+
+    public function testTableWithSpecialCharsInHtml()
+    {
+        $template = new MailTemplate;
+        $template->table(
+            ['Name & Title'],
+            [["O'Brien"]]
+        );
+
+        $html = $template->toHtml();
+
+        $this->assertStringContainsString('Name &amp; Title', $html);
+        $this->assertStringContainsString('O&#039;Brien', $html);
+    }
+
+    public function testCodeWithSpecialCharsInPlainText()
+    {
+        $template = new MailTemplate;
+        $template->code('if (a < b && c > d) { echo "ok"; }');
+
+        $text = $template->toPlainText();
+
+        // Plain text should show raw code
+        $this->assertStringContainsString('if (a < b && c > d) { echo "ok"; }', $text);
+        $this->assertStringNotContainsString('&lt;', $text);
+        $this->assertStringNotContainsString('&gt;', $text);
+        $this->assertStringNotContainsString('&amp;', $text);
+    }
+
+    public function testCodeWithSpecialCharsInHtml()
+    {
+        $template = new MailTemplate;
+        $template->code('if (a < b && c > d) { echo "ok"; }');
+
+        $html = $template->toHtml();
+
+        // HTML should be escaped
+        $this->assertStringContainsString('&lt;', $html);
+        $this->assertStringContainsString('&gt;', $html);
+        $this->assertStringContainsString('&amp;&amp;', $html);
+    }
+
+    public function testImageWithSpecialCharsInHtml()
+    {
+        $template = new MailTemplate;
+        $template->image('https://example.com/img?a=1&b=2', "Tom & Jerry's logo");
+
+        $html = $template->toHtml();
+
+        $this->assertStringContainsString('https://example.com/img?a=1&amp;b=2', $html);
+        $this->assertStringContainsString('Tom &amp; Jerry&#039;s logo', $html);
+    }
+
+    public function testImageWithSpecialCharsInPlainText()
+    {
+        $template = new MailTemplate;
+        $template->image('https://example.com/img?a=1&b=2', "Tom & Jerry's logo");
+
+        $text = $template->toPlainText();
+
+        // Plain text alt text should be raw
+        $this->assertStringContainsString("Tom & Jerry's logo", $text);
+        $this->assertStringNotContainsString('&amp;', $text);
+        $this->assertStringNotContainsString('&#039;', $text);
+    }
+
+    public function testSubjectInTitleTagIsEscaped()
+    {
+        $template = new MailTemplate;
+        $template->heading('Test');
+        $template->setData(['subject' => "Welcome & <enjoy> 'your' email"]);
+
+        $html = $template->toHtml();
+
+        // Subject appears in <title> tag and must be escaped
+        $this->assertStringContainsString('<title>Welcome &amp; &lt;enjoy&gt; &#039;your&#039; email</title>', $html);
+        $this->assertStringNotContainsString('<title>Welcome & <enjoy>', $html);
+    }
+
+    public function testSubjectWithScriptTagIsEscaped()
+    {
+        $template = new MailTemplate;
+        $template->heading('Test');
+        $template->setData(['subject' => '<script>alert(1)</script>']);
+
+        $html = $template->toHtml();
+
+        $this->assertStringContainsString('&lt;script&gt;', $html);
+        $this->assertStringNotContainsString('<title><script>', $html);
+    }
 }

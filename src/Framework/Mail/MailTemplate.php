@@ -301,6 +301,7 @@ class MailTemplate
     {
         $appName = $this->data['app_name'] ?? get_env('APP_NAME') ?? 'Application';
         $subject = $this->data['subject'] ?? 'Email from ' . $appName;
+        $escapedSubject = $this->escape($subject);
 
         return <<<HTML
 <!DOCTYPE html>
@@ -310,7 +311,7 @@ class MailTemplate
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="x-apple-disable-message-reformatting">
-    <title>{$subject}</title>
+    <title>{$escapedSubject}</title>
     <!--[if mso]>
     <style type="text/css">
         table {border-collapse: collapse; font-family: {$this->fonts['family']};}
@@ -443,8 +444,8 @@ HTML;
     {
         $this->components[] = [
             'type' => 'button',
-            'text' => $this->escape($text),
-            'url' => $this->escape($url),
+            'text' => $text,
+            'url' => $url,
             'color' => $color,
         ];
 
@@ -457,13 +458,15 @@ HTML;
     protected function renderButton(array $component): string
     {
         $bgColor = $this->colors[$component['color']] ?? $this->colors['primary'];
+        $text = $this->escape($component['text']);
+        $url = $this->escape($component['url']);
 
         return <<<HTML
 <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin: {$this->spacing['lg']} 0; font-family: {$this->fonts['family']};">
     <tr>
         <td style="border-radius: 4px; background-color: {$bgColor};">
-            <a href="{$component['url']}" style="display: inline-block; padding: {$this->spacing['md']} {$this->spacing['lg']}; font-size: {$this->fonts['sizeBase']}; font-weight: 500; color: {$this->colors['white']}; text-decoration: none; border-radius: 4px; font-family: {$this->fonts['family']};">
-                {$component['text']}
+            <a href="{$url}" style="display: inline-block; padding: {$this->spacing['md']} {$this->spacing['lg']}; font-size: {$this->fonts['sizeBase']}; font-weight: 500; color: {$this->colors['white']}; text-decoration: none; border-radius: 4px; font-family: {$this->fonts['family']};">
+                {$text}
             </a>
         </td>
     </tr>
@@ -478,7 +481,7 @@ HTML;
     {
         $this->components[] = [
             'type' => 'heading',
-            'text' => $this->escape($text),
+            'text' => $text,
             'level' => max(1, min(3, $level)), // Clamp between 1-3
         ];
 
@@ -499,10 +502,11 @@ HTML;
 
         $size = $sizes[$level] ?? $this->fonts['sizeH2'];
         $marginBottom = $level === 1 ? $this->spacing['lg'] : $this->spacing['md'];
+        $text = $this->escape($component['text']);
 
         return <<<HTML
 <h{$level} style="margin: 0 0 {$marginBottom}; font-size: {$size}; font-weight: 600; color: {$this->colors['text']}; line-height: 1.3; font-family: {$this->fonts['family']};">
-    {$component['text']}
+    {$text}
 </h{$level}>
 HTML;
     }
@@ -514,7 +518,7 @@ HTML;
     {
         $this->components[] = [
             'type' => 'paragraph',
-            'text' => $this->escape($text),
+            'text' => $text,
         ];
 
         return $this;
@@ -525,9 +529,11 @@ HTML;
      */
     protected function renderParagraph(array $component): string
     {
+        $text = $this->escape($component['text']);
+
         return <<<HTML
 <p style="margin: 0 0 {$this->spacing['md']}; font-size: {$this->fonts['sizeBase']}; color: {$this->colors['text']}; line-height: 1.6; word-break: break-word; overflow-wrap: break-word; font-family: {$this->fonts['family']};">
-    {$component['text']}
+    {$text}
 </p>
 HTML;
     }
@@ -553,8 +559,8 @@ HTML;
     {
         $this->components[] = [
             'type' => 'link',
-            'url' => $this->escape($url),
-            'text' => $text ? $this->escape($text) : null,
+            'url' => $url,
+            'text' => $text,
         ];
 
         return $this;
@@ -577,11 +583,12 @@ HTML;
      */
     protected function renderLink(array $component): string
     {
-        $displayText = $component['text'] ?? $component['url'];
+        $url = $this->escape($component['url']);
+        $displayText = $this->escape($component['text'] ?? $component['url']);
 
         return <<<HTML
 <p style="margin: 0 0 {$this->spacing['md']}; font-size: {$this->fonts['sizeBase']}; word-break: break-all; overflow-wrap: break-word; font-family: {$this->fonts['family']};">
-    <a href="{$component['url']}" style="color: {$this->colors['primary']}; text-decoration: underline; word-break: break-all; font-family: {$this->fonts['family']};">{$displayText}</a>
+    <a href="{$url}" style="color: {$this->colors['primary']}; text-decoration: underline; word-break: break-all; font-family: {$this->fonts['family']};">{$displayText}</a>
 </p>
 HTML;
     }
@@ -615,7 +622,7 @@ HTML;
     {
         $this->components[] = [
             'type' => 'alert',
-            'text' => $this->escape($text),
+            'text' => $text,
             'alertType' => $type,
         ];
 
@@ -635,13 +642,14 @@ HTML;
         ];
 
         $style = $colors[$component['alertType']] ?? $colors['info'];
+        $text = $this->escape($component['text']);
 
         return <<<HTML
 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: {$this->spacing['lg']} 0; font-family: {$this->fonts['family']};">
     <tr>
         <td style="padding: {$this->spacing['md']}; background-color: {$style['bg']}; border-left: 4px solid {$style['border']}; border-radius: 4px;">
             <p style="margin: 0; font-size: {$this->fonts['sizeBase']}; color: {$style['text']}; line-height: 1.6; font-family: {$this->fonts['family']};">
-                {$component['text']}
+                {$text}
             </p>
         </td>
     </tr>
@@ -656,7 +664,7 @@ HTML;
     {
         $this->components[] = [
             'type' => 'code',
-            'code' => $this->escape($code),
+            'code' => $code,
         ];
 
         return $this;
@@ -667,11 +675,13 @@ HTML;
      */
     protected function renderCode(array $component): string
     {
+        $code = $this->escape($component['code']);
+
         return <<<HTML
 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: {$this->spacing['lg']} 0; font-family: 'Courier New', monospace;">
     <tr>
         <td style="padding: {$this->spacing['md']}; background-color: #F3F4F6; border-radius: 4px; font-family: 'Courier New', monospace; font-size: {$this->fonts['sizeSmall']}; color: {$this->colors['text']}; overflow-x: auto;">
-            <pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word; font-family: 'Courier New', monospace;">{$component['code']}</pre>
+            <pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word; font-family: 'Courier New', monospace;">{$code}</pre>
         </td>
     </tr>
 </table>
@@ -685,7 +695,7 @@ HTML;
     {
         $this->components[] = [
             'type' => 'bulletList',
-            'items' => array_map(fn ($item) => $this->escape($item), $items),
+            'items' => $items,
         ];
 
         return $this;
@@ -699,6 +709,7 @@ HTML;
         $content = '<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: ' . $this->spacing['lg'] . ' 0; font-family: ' . $this->fonts['family'] . ';">';
 
         foreach ($component['items'] as $item) {
+            $item = $this->escape($item);
             $content .= <<<HTML
     <tr>
         <td style="padding: {$this->spacing['sm']} 0;">
@@ -723,14 +734,9 @@ HTML;
      */
     public function keyValueTable(array $data): self
     {
-        $escaped = [];
-        foreach ($data as $key => $value) {
-            $escaped[$this->escape($key)] = $this->escape($value);
-        }
-
         $this->components[] = [
             'type' => 'keyValueTable',
-            'data' => $escaped,
+            'data' => $data,
         ];
 
         return $this;
@@ -746,6 +752,8 @@ HTML;
         $isFirst = true;
         foreach ($component['data'] as $key => $value) {
             $borderTop = $isFirst ? '' : 'border-top: 1px solid ' . $this->colors['border'] . ';';
+            $key = $this->escape($key);
+            $value = $this->escape($value);
             $content .= <<<HTML
     <tr>
         <td style="padding: {$this->spacing['md']}; {$borderTop} font-weight: 600; color: {$this->colors['text']}; width: 40%; background-color: {$this->colors['background']}; font-size: {$this->fonts['sizeBase']}; font-family: {$this->fonts['family']};">
@@ -774,7 +782,7 @@ HTML;
         // Header row
         $content .= '<tr style="background-color: ' . $this->colors['background'] . ';">';
         foreach ($component['headers'] as $header) {
-            $content .= '<th style="padding: ' . $this->spacing['md'] . '; text-align: left; font-weight: 600; color: ' . $this->colors['text'] . '; font-size: ' . $this->fonts['sizeBase'] . '; font-family: ' . $this->fonts['family'] . ';">' . $header . '</th>';
+            $content .= '<th style="padding: ' . $this->spacing['md'] . '; text-align: left; font-weight: 600; color: ' . $this->colors['text'] . '; font-size: ' . $this->fonts['sizeBase'] . '; font-family: ' . $this->fonts['family'] . ';">' . $this->escape($header) . '</th>';
         }
         $content .= '</tr>';
 
@@ -782,7 +790,7 @@ HTML;
         foreach ($component['rows'] as $row) {
             $content .= '<tr>';
             foreach ($row as $cell) {
-                $content .= '<td style="padding: ' . $this->spacing['md'] . '; border-top: 1px solid ' . $this->colors['border'] . '; color: ' . $this->colors['text'] . '; font-size: ' . $this->fonts['sizeBase'] . '; font-family: ' . $this->fonts['family'] . ';">' . $cell . '</td>';
+                $content .= '<td style="padding: ' . $this->spacing['md'] . '; border-top: 1px solid ' . $this->colors['border'] . '; color: ' . $this->colors['text'] . '; font-size: ' . $this->fonts['sizeBase'] . '; font-family: ' . $this->fonts['family'] . ';">' . $this->escape($cell) . '</td>';
             }
             $content .= '</tr>';
         }
@@ -800,16 +808,10 @@ HTML;
      */
     public function table(array $headers, array $rows): self
     {
-        $escapedHeaders = array_map(fn ($h) => $this->escape($h), $headers);
-        $escapedRows = array_map(
-            fn ($row) => array_map(fn ($cell) => $this->escape($cell), $row),
-            $rows
-        );
-
         $this->components[] = [
             'type' => 'table',
-            'headers' => $escapedHeaders,
-            'rows' => $escapedRows,
+            'headers' => $headers,
+            'rows' => $rows,
         ];
 
         return $this;
@@ -822,8 +824,8 @@ HTML;
     {
         $this->components[] = [
             'type' => 'image',
-            'src' => $this->escape($src),
-            'alt' => $this->escape($alt),
+            'src' => $src,
+            'alt' => $alt,
             'width' => $width,
             'align' => $align,
         ];
@@ -840,11 +842,14 @@ HTML;
         $widthStyle = $component['width'] ? 'width: ' . $component['width'] . 'px; ' : '';
         $maxWidth = $component['width'] ? 'max-width: ' . $component['width'] . 'px; ' : 'max-width: 100%; ';
 
+        $src = $this->escape($component['src']);
+        $alt = $this->escape($component['alt']);
+
         return <<<HTML
 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: {$this->spacing['lg']} 0; font-family: {$this->fonts['family']};">
     <tr>
         <td align="{$align}">
-            <img src="{$component['src']}" alt="{$component['alt']}" style="{$widthStyle}{$maxWidth}height: auto; display: block; border: 0;">
+            <img src="{$src}" alt="{$alt}" style="{$widthStyle}{$maxWidth}height: auto; display: block; border: 0;">
         </td>
     </tr>
 </table>

@@ -23,6 +23,13 @@ trait AssertionTrait
         return $this;
     }
 
+    public function assertResponseBodyContains(string $needle): self
+    {
+        $this->assertStringContainsString($needle, $this->response->getBody());
+
+        return $this;
+    }
+
     public function assertResponseHasValidJson(): self
     {
         $this->assertJson($this->response->getBody());
@@ -47,6 +54,13 @@ trait AssertionTrait
     public function assertResponseJsonKeyValue(string $key, $value): self
     {
         $this->assertSame($value, (new Arr)->get($key, $this->getArrayResponse()));
+
+        return $this;
+    }
+
+    public function assertResponseJsonKeyMissing(string $key): self
+    {
+        $this->assertFalse((new Arr)->has($key, $this->getArrayResponse()), "Failed asserting that the JSON response does not contain the key '{$key}'.");
 
         return $this;
     }
@@ -97,6 +111,13 @@ trait AssertionTrait
         return $this;
     }
 
+    public function assertSessionMissing(string $key): self
+    {
+        $this->assertFalse(session()->has($key), "Failed asserting that session is missing key '{$key}'.");
+
+        return $this;
+    }
+
     public function assertSessionHasErrors(array $keys = []): self
     {
         $errors = session()->get('_validation_errors', []);
@@ -112,6 +133,15 @@ trait AssertionTrait
                 $this->assertTrue(isset($errors[$key]), "Session missing error: '{$key}'");
             }
         }
+
+        return $this;
+    }
+
+    public function assertSessionHasNoErrors(): self
+    {
+        $errors = session()->get('_validation_errors', []);
+
+        $this->assertEmpty($errors, 'Failed asserting that the session has no validation errors.');
 
         return $this;
     }
@@ -196,5 +226,43 @@ trait AssertionTrait
     {
         $this->expectException(InvalidUrlSignatureException::class);
         $this->expectExceptionCode(403);
+    }
+
+    /**
+     * Assert that the current user is authenticated.
+     *
+     * Uses the auth service's own API — does not couple to session internals.
+     *
+     * @return self
+     */
+    public function assertAuthenticated(): self
+    {
+        $this->assertTrue(auth()->isLoggedIn(), 'Failed asserting that the user is authenticated.');
+
+        return $this;
+    }
+
+    /**
+     * Assert that the current user is a guest (not authenticated).
+     *
+     * @return self
+     */
+    public function assertGuest(): self
+    {
+        $this->assertTrue(auth()->isGuest(), 'Failed asserting that the user is a guest (not authenticated).');
+
+        return $this;
+    }
+
+    /**
+     * Assert that the response redirects to a named route.
+     *
+     * @param string $name The route name.
+     * @param array $params Route parameters.
+     * @return self
+     */
+    public function assertRedirectRoute(string $name, array $params = []): self
+    {
+        return $this->assertRedirectUrl(route()->url($name, $params));
     }
 }

@@ -15,6 +15,7 @@ use PHPUnit\Framework\TestCase as BaseTestCase;
 class TestCase extends BaseTestCase
 {
     use AssertionTrait;
+    use FileUploadTrait;
     use MailAssertionTrait;
 
     protected Container $container;
@@ -32,7 +33,15 @@ class TestCase extends BaseTestCase
 
         Mail::clearSentMails();
 
+        // Reset all superglobals that carry request state between tests.
+        $_POST = [];
+        $_GET = [];
+        $_FILES = [];
         $_COOKIE = [];
+
+        // Allow LocalStorage::store() to use copy() instead of move_uploaded_file()
+        // so that file upload tests work in a CLI/PHPUnit context.
+        $_SERVER['X_LIGHTPACK_TEST_UPLOAD'] = true;
 
         if (method_exists($this, 'beginTransaction')) {
             $this->beginTransaction();
@@ -41,14 +50,24 @@ class TestCase extends BaseTestCase
 
     protected function tearDown(): void
     {
-        if (method_exists($this, 'rollbackTransaction')) {
-            $this->rollbackTransaction();
+        try {
+            if (method_exists($this, 'rollbackTransaction')) {
+                $this->rollbackTransaction();
+            }
+        } catch (\Throwable $e) {
+            // Swallow rollback errors so cleanup always continues.
         }
 
-        // ensure user identity is cleared
-        if ($this->container->get('config')->has('auth')) {
-            auth()->logout();
+        // Ensure user identity is cleared after each test.
+        try {
+            if ($this->container->get('config')->has('auth')) {
+                auth()->logout();
+            }
+        } catch (\Throwable $e) {
+            // Swallow logout errors so reset still runs.
         }
+
+        $this->tearDownFileUploads();
 
         parent::tearDown();
 
@@ -67,9 +86,10 @@ class TestCase extends BaseTestCase
         // Parse query parameters
         parse_str($queryString, $queryParams);
 
-        // Set GET/POST params
+        // Set GET/POST params.
         if ($method === 'GET') {
             $_GET = array_merge($queryParams, $params);
+            $_POST = [];
         } else {
             $params['_token'] = csrf_token();
             $_POST = $params;
@@ -95,7 +115,15 @@ class TestCase extends BaseTestCase
         $this->registerAppRequest();
         $this->container->get('request')->setMethod($method);
 
-        return $this->response = \Lightpack\App::run();
+        $response = $this->response = \Lightpack\App::run();
+
+        // Reset per-request flags and superglobals so they do not bleed into
+        // subsequent request() calls within the same test.
+        $this->isJsonRequest = false;
+        $this->isMultipartFormdata = false;
+        $_FILES = [];
+
+        return $response;
     }
 
     public function requestJson(string $method, string $route, array $params = []): Response
@@ -136,17 +164,6 @@ class TestCase extends BaseTestCase
     {
         foreach ($session as $key => $value) {
             session()->set($key, $value);
-        }
-
-        return $this;
-    }
-
-    public function withFiles(array $files): self
-    {
-        $this->isMultipartFormdata = true;
-
-        foreach ($files as $file => $value) {
-            $_FILES[$file] = $value;
         }
 
         return $this;

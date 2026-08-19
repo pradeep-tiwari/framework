@@ -141,6 +141,39 @@ class Faker
         return implode(' ', $out);
     }
 
+    /**
+     * Generate rich HTML content suitable for blog posts, product
+     * descriptions, or any field that stores HTML markup.
+     *
+     * Produces a structured document with headings, paragraphs,
+     * a bullet list, and a blockquote. The $paragraphs parameter
+     * controls how many body paragraphs are inserted.
+     *
+     * @param int $paragraphs Number of body paragraphs to insert (default: 3)
+     */
+    public function richText(int $paragraphs = 3): string
+    {
+        $blocks = [];
+        $blocks[] = '<h2>' . rtrim($this->sentence(), '.') . '</h2>';
+        $blocks[] = '<p>' . $this->paragraph(3) . '</p>';
+        $blocks[] = '<h3>' . rtrim($this->sentence(), '.') . '</h3>';
+
+        $items = [];
+        for ($i = 0, $n = mt_rand(3, 5); $i < $n; $i++) {
+            $items[] = '<li>' . $this->sentence() . '</li>';
+        }
+        $blocks[] = '<ul>' . "\n" . implode("\n", $items) . "\n" . '</ul>';
+
+        for ($i = 0; $i < $paragraphs; $i++) {
+            $blocks[] = '<p>' . $this->paragraph(3) . '</p>';
+        }
+
+        $blocks[] = '<blockquote><p>' . $this->paragraph(2) . '</p></blockquote>';
+        $blocks[] = '<p>' . $this->paragraph(2) . '</p>';
+
+        return implode("\n\n", $blocks);
+    }
+
     public function date(string $format = 'Y-m-d'): string
     {
         $timestamp = mt_rand(strtotime('-10 years'), time());

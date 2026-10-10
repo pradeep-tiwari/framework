@@ -23,7 +23,7 @@ class SmtpDriver implements DriverInterface
         $username = get_env('MAIL_USERNAME');
 
         $this->mailer->isSMTP();
-        $this->mailer->SMTPAuth = !empty($username); // Skip auth for auth-less servers (Mailpit, MailHog)
+        $this->mailer->SMTPAuth = ! empty($username); // Skip auth for auth-less servers (Mailpit, MailHog)
         $this->mailer->Host = get_env('MAIL_HOST');
         $this->mailer->Port = get_env('MAIL_PORT');
         $this->mailer->Username = $username;

@@ -20,11 +20,13 @@ class SmtpDriver implements DriverInterface
     private function configure(): void
     {
         // Configure SMTP
+        $username = get_env('MAIL_USERNAME');
+
         $this->mailer->isSMTP();
-        $this->mailer->SMTPAuth = true;
+        $this->mailer->SMTPAuth = !empty($username); // Skip auth for auth-less servers (Mailpit, MailHog)
         $this->mailer->Host = get_env('MAIL_HOST');
         $this->mailer->Port = get_env('MAIL_PORT');
-        $this->mailer->Username = get_env('MAIL_USERNAME');
+        $this->mailer->Username = $username;
         $this->mailer->Password = get_env('MAIL_PASSWORD');
         $this->mailer->SMTPSecure = get_env('MAIL_ENCRYPTION');
 

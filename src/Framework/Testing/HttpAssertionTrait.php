@@ -11,7 +11,7 @@ trait HttpAssertionTrait
      * to a stub: string body, Http::response() array, or a callable
      * receiving the request array.
      *
-     *     $this->fakeHttp(['api.resend.com/*' => Http::fakeResponse(['id' => 'x'], 200)]);
+     *     $this->fakeHttp(['api.example.com/*' => Http::fakeResponse(['id' => 'x'], 200)]);
      *     $this->fakeHttp(); // stub everything with 200 empty body
      */
     protected function fakeHttp(array $stubs = []): void

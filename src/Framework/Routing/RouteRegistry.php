@@ -106,6 +106,20 @@ class RouteRegistry
         return $this->routes[$method] ?? [];
     }
 
+    /**
+     * All registered routes as a flat list, regardless of HTTP method.
+     */
+    public function routes(): array
+    {
+        $routes = [];
+
+        foreach ($this->routes as $routesForMethod) {
+            array_push($routes, ...array_values($routesForMethod));
+        }
+
+        return $routes;
+    }
+
     public function group(array $options, callable $callback): void
     {
         $oldOptions = $this->options;

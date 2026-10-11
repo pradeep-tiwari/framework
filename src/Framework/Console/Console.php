@@ -22,6 +22,7 @@ use Lightpack\Console\Commands\GenerateAppKey;
 use Lightpack\Console\Commands\LinkStorage;
 use Lightpack\Console\Commands\ProcessJobs;
 use Lightpack\Console\Commands\RetryFailedJobs;
+use Lightpack\Console\Commands\RouteListCommand;
 use Lightpack\Console\Commands\RunMigrationDown;
 use Lightpack\Console\Commands\RunMigrationUp;
 use Lightpack\Console\Commands\ScheduleEvents;
@@ -112,6 +113,7 @@ class Console
         'jobs:retry' => RetryFailedJobs::class,
         'create:tool' => CreateTool::class,
         'create:lang' => CreateLangCommand::class,
+        'route:list' => RouteListCommand::class,
     ];
 
     public static function register(string $command, Command $handler)

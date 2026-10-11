@@ -34,7 +34,7 @@ class TestCase extends BaseTestCase
         $this->container = Container::getInstance();
 
         Mail::clearSentMails();
-        ToolExecutor::flushRecordedCalls();
+        ToolExecutor::onInvoke(null);
 
         // Reset all superglobals that carry request state between tests.
         $_POST = [];

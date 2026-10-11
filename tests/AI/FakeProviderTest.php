@@ -16,12 +16,12 @@ class FakeProviderTest extends TestCase
     {
         parent::setUp();
         $this->ai = new Fake(new Http, new Cache(new ArrayDriver), new Config);
-        ToolExecutor::flushRecordedCalls();
+        ToolExecutor::onInvoke(null);
     }
 
     protected function tearDown(): void
     {
-        ToolExecutor::flushRecordedCalls();
+        ToolExecutor::onInvoke(null);
         parent::tearDown();
     }
 
@@ -154,8 +154,13 @@ class FakeProviderTest extends TestCase
         $this->assertFalse($result['success']);
     }
 
-    public function testToolCallFlowRecordsInvocation()
+    public function testToolCallFlowNotifiesInvokeObserver()
     {
+        $calls = [];
+        ToolExecutor::onInvoke(function ($name, $params, $result) use (&$calls) {
+            $calls[] = ['name' => $name, 'params' => $params, 'result' => $result];
+        });
+
         $this->ai->respondWith([
             '{"tool": "get_weather", "params": {"city": "Paris"}}',
             'Sunny in Paris',
@@ -170,8 +175,6 @@ class FakeProviderTest extends TestCase
         $this->assertSame('Sunny in Paris', $result['raw']);
         $this->assertSame(['get_weather'], $result['tools_used']);
 
-        $calls = ToolExecutor::recordedCalls();
-
         $this->assertCount(1, $calls);
         $this->assertSame('get_weather', $calls[0]['name']);
         $this->assertSame(['city' => 'Paris'], $calls[0]['params']);
@@ -180,6 +183,11 @@ class FakeProviderTest extends TestCase
 
     public function testToolDecisionNoneSkipsInvocation()
     {
+        $calls = [];
+        ToolExecutor::onInvoke(function ($name, $params, $result) use (&$calls) {
+            $calls[] = $name;
+        });
+
         $this->ai->respondWith(['{"tool": "none"}', 'just an answer']);
 
         $result = $this->ai->task()
@@ -189,7 +197,7 @@ class FakeProviderTest extends TestCase
 
         $this->assertTrue($result['success']);
         $this->assertSame([], $result['tools_used']);
-        $this->assertSame([], ToolExecutor::recordedCalls());
+        $this->assertSame([], $calls);
     }
 
     public function testSimilarRanksMatchingContentFirst()

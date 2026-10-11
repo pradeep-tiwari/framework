@@ -11,7 +11,13 @@ use Lightpack\AI\Support\SchemaValidator;
 class ToolExecutor
 {
     private array $tools = [];
-    private static array $recordedCalls = [];
+
+    /**
+     * Optional observer called after every tool execution as
+     * fn(string $toolName, array $params, mixed $result).
+     * Null by default so production never records invocations.
+     */
+    private static $onInvoke = null;
 
     public function __construct(array $tools = [])
     {
@@ -19,16 +25,13 @@ class ToolExecutor
     }
 
     /**
-     * Every tool invocation, in order — for testing/assertions.
+     * Register (or clear, with null) a tool-invocation observer.
+     * The observer receives fn(string $toolName, array $params, mixed $result)
+     * after each invokeTool call, on success or failure.
      */
-    public static function recordedCalls(): array
+    public static function onInvoke(?callable $fn): void
     {
-        return self::$recordedCalls;
-    }
-
-    public static function flushRecordedCalls(): void
-    {
-        self::$recordedCalls = [];
+        self::$onInvoke = $fn;
     }
 
     /**
@@ -140,7 +143,9 @@ class ToolExecutor
         try {
             $result = ToolInvoker::invoke($toolDef['fn'], $params);
 
-            self::$recordedCalls[] = ['name' => $toolName, 'params' => $params, 'result' => $result];
+            if (self::$onInvoke !== null) {
+                (self::$onInvoke)($toolName, $params, $result);
+            }
 
             return [
                 'success' => true,
@@ -148,7 +153,9 @@ class ToolExecutor
                 'error' => null,
             ];
         } catch (\Throwable $e) {
-            self::$recordedCalls[] = ['name' => $toolName, 'params' => $params, 'result' => null];
+            if (self::$onInvoke !== null) {
+                (self::$onInvoke)($toolName, $params, null);
+            }
 
             return [
                 'success' => false,

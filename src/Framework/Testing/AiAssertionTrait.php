@@ -8,6 +8,12 @@ use Lightpack\AI\Tools\ToolExecutor;
 trait AiAssertionTrait
 {
     /**
+     * Tool invocations observed since fakeAi() was called, as
+     * ['name' => ..., 'params' => ..., 'result' => ...] entries.
+     */
+    private array $toolCalls = [];
+
+    /**
      * Swap the default AI driver for a scripted Fake and return it.
      *
      * Call before the code under test resolves ai():
@@ -16,6 +22,11 @@ trait AiAssertionTrait
      */
     public function fakeAi(array $responses = []): Fake
     {
+        ToolExecutor::onInvoke(
+            fn (string $name, array $params, mixed $result) =>
+            $this->toolCalls[] = ['name' => $name, 'params' => $params, 'result' => $result]
+        );
+
         $manager = app('ai.manager');
         $manager->setDefaultDriver('fake');
         $fake = $manager->driver('fake');
@@ -102,17 +113,17 @@ trait AiAssertionTrait
     }
 
     /**
-     * Clear the tool-invocation log (usually in setUp/tearDown).
+     * Clear the tool-invocation log.
      */
     public function clearToolCalls(): void
     {
-        ToolExecutor::flushRecordedCalls();
+        $this->toolCalls = [];
     }
 
     private function callsTo(string $name): array
     {
         return array_filter(
-            ToolExecutor::recordedCalls(),
+            $this->toolCalls,
             fn ($call) => $call['name'] === $name
         );
     }

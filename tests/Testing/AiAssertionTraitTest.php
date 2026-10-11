@@ -26,12 +26,12 @@ class AiAssertionTraitTest extends TestCase
         $container->register('config', fn () => new Config);
         (new AiProvider)->register($container);
 
-        ToolExecutor::flushRecordedCalls();
+        ToolExecutor::onInvoke(null);
     }
 
     protected function tearDown(): void
     {
-        ToolExecutor::flushRecordedCalls();
+        ToolExecutor::onInvoke(null);
         Container::getInstance()->reset();
         parent::tearDown();
     }
@@ -177,9 +177,11 @@ class AiAssertionTraitTest extends TestCase
             ->tool('get_weather', fn ($p) => 'sunny', 'Get weather', ['city' => ['string', 'City']])
             ->run();
 
+        $this->assertToolCalled('get_weather');
+
         $this->clearToolCalls();
 
-        $this->assertSame([], ToolExecutor::recordedCalls());
+        $this->assertToolNotCalled('get_weather');
     }
 
     public function testFluentChaining()

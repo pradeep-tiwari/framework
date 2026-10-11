@@ -4,7 +4,9 @@ namespace Lightpack\Testing;
 
 use Lightpack\App;
 use Lightpack\Container\Container;
+use Lightpack\Http\Http;
 use Lightpack\Http\Response;
+use Lightpack\Jobs\Connection;
 use Lightpack\Mail\Mail;
 use PHPUnit\Framework\TestCase as BaseTestCase;
 
@@ -16,6 +18,8 @@ class TestCase extends BaseTestCase
 {
     use AssertionTrait;
     use FileUploadTrait;
+    use HttpAssertionTrait;
+    use JobAssertionTrait;
     use MailAssertionTrait;
 
     protected Container $container;
@@ -32,6 +36,8 @@ class TestCase extends BaseTestCase
         $this->container = Container::getInstance();
 
         Mail::clearSentMails();
+        Http::clearFakes();
+        Connection::setEngine(null);
 
         // Reset all superglobals that carry request state between tests.
         $_POST = [];

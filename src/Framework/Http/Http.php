@@ -15,6 +15,18 @@ namespace Lightpack\Http;
  */
 class Http
 {
+    /**
+     * URL-pattern => stub map. Null = faking disabled; empty array =
+     * fake every request with a 200 empty-body response.
+     */
+    protected static ?array $fakeStubs = null;
+
+    /**
+     * Outbound requests recorded while faking:
+     * [ ['method' => ..., 'url' => ..., 'data' => [...], 'headers' => [...]], ... ]
+     */
+    protected static array $fakeRequests = [];
+
     protected array $headers = [];
     protected array $options = [];
     protected ?string $error = null;
@@ -27,6 +39,44 @@ class Http
     {
         $this->options[CURLOPT_TIMEOUT] = 30;
         $this->options[CURLOPT_FOLLOWLOCATION] = true;
+    }
+
+    /**
+     * Enable faking. $stubs maps URL patterns (exact or glob-style '*')
+     * to a stub: a body string, an array via Http::fakeResponse(), or a
+     * callable receiving ['method', 'url', 'data', 'headers'] and
+     * returning either. Requests made while faking are recorded and
+     * never hit the network.
+     */
+    public static function fake(array $stubs = []): void
+    {
+        self::$fakeStubs = $stubs;
+        self::$fakeRequests = [];
+    }
+
+    /**
+     * Disable faking and clear recorded requests.
+     */
+    public static function clearFakes(): void
+    {
+        self::$fakeStubs = null;
+        self::$fakeRequests = [];
+    }
+
+    /**
+     * Requests recorded while faking, in order.
+     */
+    public static function recordedRequests(): array
+    {
+        return self::$fakeRequests;
+    }
+
+    /**
+     * Build a stubbed response entry for fake().
+     */
+    public static function fakeResponse(mixed $body = '', int $status = 200, array $headers = []): array
+    {
+        return ['body' => $body, 'status' => $status, 'headers' => $headers];
     }
 
     public function get(string $url, array $query = []): self
@@ -193,6 +243,10 @@ class Http
 
     private function request(string $method, string $url, array $data = []): self
     {
+        if (self::$fakeStubs !== null) {
+            return $this->fakeRequest($method, $url, $data);
+        }
+
         $ch = curl_init();
 
         // Build URL with query parameters for GET requests
@@ -259,6 +313,84 @@ class Http
     }
 
     /**
+     * Record an outbound request and return the matching stub instead
+     * of touching the network. Mirrors the state a real response sets:
+     * statusCode, response body, responseHeaders, error.
+     */
+    protected function fakeRequest(string $method, string $url, array $data = []): self
+    {
+        // Real path appends query params to URL for GET; do the same so
+        // the recorded URL matches production behavior.
+        if ($method === 'GET' && ! empty($data)) {
+            $url .= '?' . http_build_query($data);
+            $data = [];
+        }
+
+        // Mirror the real path: non-GET requests default to JSON.
+        if ($method !== 'GET' && ! isset($this->headers['Content-Type'])) {
+            $this->headers['Content-Type'] = 'application/json';
+        }
+
+        $stub = $this->resolveStub([
+            'method' => $method,
+            'url' => $url,
+            'data' => $data,
+            'headers' => $this->headers,
+        ]);
+
+        $this->applyStub($stub);
+
+        return $this;
+    }
+
+    /**
+     * Record the request and return the resolved stub for the URL.
+     * Falls back to a 200 empty body when no pattern matches.
+     */
+    protected function resolveStub(array $request): array
+    {
+        self::$fakeRequests[] = $request;
+
+        $stub = null;
+
+        foreach (self::$fakeStubs as $pattern => $candidate) {
+            $pattern = (string) $pattern;
+            $needle = rtrim($pattern, '*');
+
+            if ($pattern === $request['url'] || fnmatch($pattern, $request['url']) || str_contains($request['url'], $needle)) {
+                $stub = $candidate;
+
+                break;
+            }
+        }
+
+        if (is_callable($stub)) {
+            $stub = $stub($request);
+        }
+
+        if (is_string($stub)) {
+            $stub = ['body' => $stub];
+        }
+
+        return $stub ?? [];
+    }
+
+    /**
+     * Populate response state from a resolved stub.
+     */
+    protected function applyStub(array $stub): void
+    {
+        $body = $stub['body'] ?? '';
+
+        $this->statusCode = $stub['status'] ?? 200;
+        $this->response = is_string($body) ? $body : json_encode($body);
+        $this->responseHeaders = $stub['headers'] ?? [];
+        $this->error = null;
+
+        $this->resetState();
+    }
+
+    /**
      * Set request timeout in seconds.
      */
     public function timeout(int $seconds): self
@@ -306,8 +438,32 @@ class Http
      */
     public function stream(string $method, string $url, ?array $data, callable $onChunk): self
     {
-        $ch = curl_init();
         $method = strtoupper($method);
+
+        if (self::$fakeStubs !== null) {
+            $stub = $this->resolveStub([
+                'method' => $method,
+                'url' => $url,
+                'data' => $data ?? [],
+                'headers' => $this->headers,
+            ]);
+
+            $status = $stub['status'] ?? 200;
+            $body = $stub['body'] ?? '';
+            $this->statusCode = $status;
+            $this->error = null;
+            $this->resetState();
+
+            if ($status >= 400) {
+                throw new \Exception('Streaming request failed: HTTP error ' . $status);
+            }
+
+            $onChunk(is_string($body) ? $body : json_encode($body));
+
+            return $this;
+        }
+
+        $ch = curl_init();
 
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
@@ -385,6 +541,24 @@ class Http
      */
     public function download(string $url, string $savePath): bool
     {
+        if (self::$fakeStubs !== null) {
+            $stub = $this->resolveStub([
+                'method' => 'GET',
+                'url' => $url,
+                'data' => [],
+                'headers' => $this->headers,
+            ]);
+
+            $body = $stub['body'] ?? '';
+            $this->statusCode = $stub['status'] ?? 200;
+            $this->error = null;
+            $this->resetState();
+
+            $bytes = @file_put_contents($savePath, is_string($body) ? $body : json_encode($body));
+
+            return $bytes !== false && $this->statusCode < 400;
+        }
+
         $fp = fopen($savePath, 'w+');
 
         if ($fp === false) {

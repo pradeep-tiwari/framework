@@ -2,6 +2,7 @@
 
 namespace Lightpack\Testing;
 
+use Lightpack\AI\Tools\ToolExecutor;
 use Lightpack\App;
 use Lightpack\Container\Container;
 use Lightpack\Http\Response;
@@ -14,6 +15,7 @@ use PHPUnit\Framework\TestCase as BaseTestCase;
  */
 class TestCase extends BaseTestCase
 {
+    use AiAssertionTrait;
     use AssertionTrait;
     use FileUploadTrait;
     use MailAssertionTrait;
@@ -32,6 +34,7 @@ class TestCase extends BaseTestCase
         $this->container = Container::getInstance();
 
         Mail::clearSentMails();
+        ToolExecutor::flushRecordedCalls();
 
         // Reset all superglobals that carry request state between tests.
         $_POST = [];

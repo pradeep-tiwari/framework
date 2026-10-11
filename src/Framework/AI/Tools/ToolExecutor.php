@@ -11,10 +11,24 @@ use Lightpack\AI\Support\SchemaValidator;
 class ToolExecutor
 {
     private array $tools = [];
+    private static array $recordedCalls = [];
 
     public function __construct(array $tools = [])
     {
         $this->tools = $tools;
+    }
+
+    /**
+     * Every tool invocation, in order — for testing/assertions.
+     */
+    public static function recordedCalls(): array
+    {
+        return self::$recordedCalls;
+    }
+
+    public static function flushRecordedCalls(): void
+    {
+        self::$recordedCalls = [];
     }
 
     /**
@@ -126,12 +140,16 @@ class ToolExecutor
         try {
             $result = ToolInvoker::invoke($toolDef['fn'], $params);
 
+            self::$recordedCalls[] = ['name' => $toolName, 'params' => $params, 'result' => $result];
+
             return [
                 'success' => true,
                 'result' => $result,
                 'error' => null,
             ];
         } catch (\Throwable $e) {
+            self::$recordedCalls[] = ['name' => $toolName, 'params' => $params, 'result' => null];
+
             return [
                 'success' => false,
                 'result' => null,

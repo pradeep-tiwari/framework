@@ -3,6 +3,7 @@
 namespace Lightpack\AI;
 
 use Lightpack\AI\Providers\Anthropic;
+use Lightpack\AI\Providers\Fake;
 use Lightpack\AI\Providers\Gemini;
 use Lightpack\AI\Providers\Groq;
 use Lightpack\AI\Providers\Mistral;
@@ -59,6 +60,14 @@ class AiManager extends BaseManager
 
         $this->register('gemini', function ($container) {
             return new Gemini(
+                new Http,
+                $container->get('cache'),
+                $container->get('config')
+            );
+        });
+
+        $this->register('fake', function ($container) {
+            return new Fake(
                 new Http,
                 $container->get('cache'),
                 $container->get('config')

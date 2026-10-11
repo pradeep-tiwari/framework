@@ -681,4 +681,40 @@ final class RouteRegistryTest extends TestCase
         $this->assertStringContainsString('&signature=encryptedSignature', $signedUrl);
         $this->assertStringMatchesFormat('%s&expires=%s', $signedUrl);
     }
+
+    public function testRoutesFlattensAllVerbPaths()
+    {
+        $routeRegistry = $this->getRouteRegistry();
+
+        $routeRegistry->get('/users', 'UserController', 'index');
+        $routeRegistry->post('/users', 'UserController', 'store');
+        $routeRegistry->options('/health', 'HealthController', 'index');
+
+        $routes = $routeRegistry->routes();
+
+        $this->assertCount(3, $routes);
+        $this->assertContainsOnlyInstancesOf(Route::class, $routes);
+    }
+
+    public function testRoutesPreservesSameUriAcrossVerbs()
+    {
+        $routeRegistry = $this->getRouteRegistry();
+
+        $routeRegistry->get('/login', 'AuthController', 'index');
+        $routeRegistry->post('/login', 'AuthController', 'authenticate');
+
+        $routes = $routeRegistry->routes();
+
+        $this->assertCount(2, $routes, 'Same URI under different verbs must not be dropped');
+
+        $verbs = array_map(fn (Route $route) => $route->getVerb(), $routes);
+
+        $this->assertContains(self::HTTP_GET, $verbs);
+        $this->assertContains(self::HTTP_POST, $verbs);
+    }
+
+    public function testRoutesReturnsEmptyArrayWhenNothingRegistered()
+    {
+        $this->assertSame([], $this->getRouteRegistry()->routes());
+    }
 }
